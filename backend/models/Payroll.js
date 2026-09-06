@@ -1,0 +1,42 @@
+const mongoose = require('mongoose');
+
+const payrollSchema = new mongoose.Schema(
+  {
+    employeeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+    monthYear: {
+      type: String, // MM-YYYY
+      required: true,
+    },
+    baseSalary: {
+      type: Number,
+      required: true,
+    },
+    bonus: {
+      type: Number,
+      default: 0,
+    },
+    deductions: {
+      type: Number,
+      default: 0,
+    },
+    netSalary: {
+      type: Number,
+      required: true,
+    },
+    status: {
+      type: String,
+      enum: ['Paid', 'Unpaid'],
+      default: 'Unpaid',
+    },
+  },
+  { timestamps: true }
+);
+
+// One payroll record per employee per month
+payrollSchema.index({ employeeId: 1, monthYear: 1 }, { unique: true });
+
+module.exports = mongoose.model('Payroll', payrollSchema);
