@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { HiOutlineCamera, HiOutlineTrash, HiOutlineUpload, HiOutlineX, HiOutlinePhotograph } from "react-icons/hi";
 import API from "../../api/axios";
 import { useAuth } from "../../context/AuthContext";
@@ -79,6 +80,262 @@ const ProfilePictureUploader = () => {
     return (bytes / (1024 * 1024)).toFixed(2) + " MB";
   };
 
+  // Modal rendered via Portal to escape parent stacking contexts
+  const modal = showModal
+    ? createPortal(
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            zIndex: 99999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "16px",
+            backgroundColor: "rgba(0, 0, 0, 0.82)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) handleCancel();
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "380px",
+              maxHeight: "85vh",
+              borderRadius: "20px",
+              border: "1px solid rgba(99, 102, 241, 0.2)",
+              backgroundColor: "#0f172a",
+              boxShadow:
+                "0 25px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(99, 102, 241, 0.08)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              animation: "ppuModalIn 0.3s ease-out",
+            }}
+          >
+            {/* ---- Header ---- */}
+            <div
+              style={{
+                padding: "20px 24px",
+                display: "flex",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                borderBottom: "1px solid rgba(71, 85, 105, 0.4)",
+                background: "linear-gradient(180deg, rgba(30,41,59,0.8) 0%, transparent 100%)",
+                flexShrink: 0,
+              }}
+            >
+              <div>
+                <h3
+                  style={{
+                    fontSize: "18px",
+                    fontWeight: 700,
+                    color: "#f1f5f9",
+                    margin: 0,
+                    lineHeight: 1.3,
+                  }}
+                >
+                  Update Profile Picture
+                </h3>
+                <p
+                  style={{
+                    fontSize: "13px",
+                    color: "#94a3b8",
+                    margin: "4px 0 0 0",
+                  }}
+                >
+                  Preview your new photo before saving
+                </p>
+              </div>
+              <button
+                onClick={handleCancel}
+                style={{
+                  padding: "6px",
+                  borderRadius: "8px",
+                  color: "#94a3b8",
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+                title="Close"
+              >
+                <HiOutlineX style={{ width: "20px", height: "20px" }} />
+              </button>
+            </div>
+
+            {/* ---- Body (scrollable) ---- */}
+            <div
+              style={{
+                padding: "28px 24px 20px",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "18px",
+                overflowY: "auto",
+                flex: "1 1 auto",
+                minHeight: 0,
+              }}
+            >
+              {/* Preview circle */}
+              <div
+                style={{
+                  width: "120px",
+                  height: "120px",
+                  borderRadius: "50%",
+                  overflow: "hidden",
+                  border: "3px solid rgba(99, 102, 241, 0.35)",
+                  boxShadow: "0 0 25px rgba(99, 102, 241, 0.15)",
+                  flexShrink: 0,
+                }}
+              >
+                <img
+                  src={preview}
+                  alt="Preview"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    display: "block",
+                  }}
+                />
+              </div>
+
+              {/* File info */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  fontSize: "13px",
+                  color: "#94a3b8",
+                }}
+              >
+                <HiOutlinePhotograph
+                  style={{
+                    width: "16px",
+                    height: "16px",
+                    color: "#818cf8",
+                    flexShrink: 0,
+                  }}
+                />
+                <span
+                  style={{
+                    color: "#e2e8f0",
+                    fontWeight: 500,
+                    maxWidth: "170px",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {selectedFile?.name}
+                </span>
+                <span style={{ fontSize: "12px", color: "#64748b" }}>
+                  ({formatFileSize(selectedFile?.size || 0)})
+                </span>
+              </div>
+            </div>
+
+            {/* ---- Footer with buttons (always visible) ---- */}
+            <div
+              style={{
+                padding: "16px 24px 20px",
+                display: "flex",
+                gap: "12px",
+                borderTop: "1px solid rgba(71, 85, 105, 0.4)",
+                flexShrink: 0,
+                background: "linear-gradient(0deg, rgba(15,23,42,1) 0%, rgba(15,23,42,0.95) 100%)",
+              }}
+            >
+              <button
+                onClick={handleUpload}
+                disabled={uploading}
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
+                  padding: "11px 16px",
+                  borderRadius: "12px",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  color: "#ffffff",
+                  border: "none",
+                  cursor: uploading ? "not-allowed" : "pointer",
+                  opacity: uploading ? 0.6 : 1,
+                  background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
+                  boxShadow: "0 4px 20px rgba(99, 102, 241, 0.4)",
+                  transition: "all 0.2s",
+                  fontFamily: "inherit",
+                }}
+              >
+                {uploading ? (
+                  <>
+                    <div
+                      style={{
+                        width: "16px",
+                        height: "16px",
+                        border: "2px solid rgba(255,255,255,0.3)",
+                        borderTopColor: "#fff",
+                        borderRadius: "50%",
+                        animation: "ppuSpin 0.7s linear infinite",
+                      }}
+                    />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <HiOutlineUpload style={{ width: "16px", height: "16px" }} />
+                    Save Photo
+                  </>
+                )}
+              </button>
+              <button
+                onClick={handleCancel}
+                style={{
+                  flex: 1,
+                  padding: "11px 16px",
+                  borderRadius: "12px",
+                  fontWeight: 500,
+                  fontSize: "14px",
+                  color: "#cbd5e1",
+                  backgroundColor: "rgba(51, 65, 85, 0.5)",
+                  border: "1px solid rgba(71, 85, 105, 0.5)",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                  fontFamily: "inherit",
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+
+          <style>{`
+            @keyframes ppuModalIn {
+              from { opacity: 0; transform: translateY(24px) scale(0.96); }
+              to { opacity: 1; transform: translateY(0) scale(1); }
+            }
+            @keyframes ppuSpin {
+              from { transform: rotate(0deg); }
+              to { transform: rotate(360deg); }
+            }
+          `}</style>
+        </div>,
+        document.body
+      )
+    : null;
+
   return (
     <>
       {/* Avatar with camera overlay */}
@@ -115,117 +372,7 @@ const ProfilePictureUploader = () => {
         onChange={handleFileSelect}
       />
 
-      {showModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ backgroundColor: "rgba(0, 0, 0, 0.75)", backdropFilter: "blur(8px)" }}
-          onClick={(e) => { if (e.target === e.currentTarget) handleCancel(); }}
-        >
-          <div
-            className="w-full max-w-sm rounded-2xl border shadow-2xl overflow-hidden"
-            style={{
-              backgroundColor: "rgba(30, 41, 59, 0.95)",
-              borderColor: "rgba(71, 85, 105, 0.5)",
-              animation: "modalSlideUp 0.3s ease-out",
-            }}
-          >
-            <div
-              className="px-6 py-4 flex items-center justify-between"
-              style={{ borderBottom: "1px solid rgba(71, 85, 105, 0.5)" }}
-            >
-              <div>
-                <h3 className="text-lg font-bold text-white">Update Profile Picture</h3>
-                <p className="text-sm text-slate-400 mt-0.5">Preview your new photo before saving</p>
-              </div>
-              <button
-                onClick={handleCancel}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
-                title="Close"
-              >
-                <HiOutlineX className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-6 flex flex-col items-center gap-5">
-              <div
-                className="w-36 h-36 rounded-full overflow-hidden shadow-2xl"
-                style={{
-                  border: "4px solid rgba(99, 102, 241, 0.3)",
-                  boxShadow: "0 0 30px rgba(99, 102, 241, 0.15)",
-                }}
-              >
-                <img
-                  src={preview}
-                  alt="Preview"
-                  className="w-full h-full object-cover"
-                />
-              </div>
-
-              <div className="flex items-center gap-2 text-sm text-slate-400 text-center">
-                <HiOutlinePhotograph className="w-4 h-4 flex-shrink-0 text-indigo-400" />
-                <span className="text-slate-200 font-medium truncate max-w-[200px]">
-                  {selectedFile?.name}
-                </span>
-                <span className="text-xs text-slate-500">
-                  ({formatFileSize(selectedFile?.size || 0)})
-                </span>
-              </div>
-
-              <div className="flex gap-3 w-full mt-1">
-                <button
-                  onClick={handleUpload}
-                  disabled={uploading}
-                  className="flex-1 flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl
-                             font-semibold text-white transition-all duration-300
-                             disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
-                  style={{
-                    background: uploading
-                      ? "linear-gradient(to right, #4338ca, #4f46e5)"
-                      : "linear-gradient(to right, #4f46e5, #6366f1)",
-                    boxShadow: "0 4px 15px rgba(79, 70, 229, 0.35)",
-                  }}
-                >
-                  {uploading ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Uploading...
-                    </>
-                  ) : (
-                    <>
-                      <HiOutlineUpload className="w-4 h-4" />
-                      Save Photo
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={handleCancel}
-                  className="flex-1 px-5 py-2.5 rounded-xl font-medium text-slate-200
-                             transition-all duration-300 active:scale-[0.98]"
-                  style={{
-                    backgroundColor: "rgba(51, 65, 85, 0.5)",
-                    border: "1px solid rgba(71, 85, 105, 0.5)",
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <style>{`
-        @keyframes modalSlideUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px) scale(0.95);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-        }
-      `}</style>
+      {modal}
     </>
   );
 };
