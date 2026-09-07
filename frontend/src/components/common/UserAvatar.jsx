@@ -19,7 +19,8 @@ const sizeMap = {
 const UserAvatar = ({ user, size = "md", className = "", onClick }) => {
   const sizeClass = sizeMap[size] || sizeMap.md;
   const initial = user?.name?.charAt(0)?.toUpperCase() || "?";
-  const photoUrl = user?.profilePicture
+  const hasPhoto = user?.profilePicture && user.profilePicture !== "";
+  const photoUrl = hasPhoto
     ? (user.profilePicture.startsWith('http://') || user.profilePicture.startsWith('https://')
         ? user.profilePicture
         : `${AVATAR_BASE_URL}${user.profilePicture}`)
