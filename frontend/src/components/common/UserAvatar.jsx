@@ -1,4 +1,4 @@
-﻿/**
+/**
  * UserAvatar — shows profile picture if available, else shows initials circle.
  * Props:
  *   user        — user object { name, profilePicture }
@@ -19,7 +19,11 @@ const sizeMap = {
 const UserAvatar = ({ user, size = "md", className = "", onClick }) => {
   const sizeClass = sizeMap[size] || sizeMap.md;
   const initial = user?.name?.charAt(0)?.toUpperCase() || "?";
-  const hasPhoto = user?.profilePicture && user.profilePicture !== "";
+  const photoUrl = user?.profilePicture
+    ? (user.profilePicture.startsWith('http://') || user.profilePicture.startsWith('https://')
+        ? user.profilePicture
+        : `${AVATAR_BASE_URL}${user.profilePicture}`)
+    : null;
 
   return (
     <div
@@ -28,9 +32,9 @@ const UserAvatar = ({ user, size = "md", className = "", onClick }) => {
                   ${onClick ? "cursor-pointer" : ""}
                   ${className}`}
     >
-      {hasPhoto ? (
+      {hasPhoto && photoUrl ? (
         <img
-          src={`${AVATAR_BASE_URL}${user.profilePicture}`}
+          src={photoUrl}
           alt={user?.name || "Avatar"}
           className="w-full h-full object-cover"
           onError={(e) => {

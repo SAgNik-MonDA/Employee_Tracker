@@ -3,6 +3,7 @@ const User         = require('../models/User');
 const FaceResetLog = require('../models/FaceResetLog');
 const generateToken = require('../utils/generateToken');
 const sendEmail    = require('../utils/sendEmail');
+const { uploadToCloudinary } = require('../config/cloudinary');
 
 // ─── Helper: safe user response (no password fields) ─────────────────────────
 const userResponse = (user) => ({
@@ -740,18 +741,19 @@ const uploadAvatar = async (req, res) => {
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    if (user.profilePicture) {
-      const fs = require('fs'), path = require('path');
-      const oldPath = path.join(__dirname, '../uploads/avatars', user.profilePicture);
-      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-    }
+    // Upload image buffer directly to Cloudinary
+    const result = await uploadToCloudinary(req.file.buffer, {
+      folder: 'employee_tracker/avatars',
+      public_id: `user_avatar_${user._id}_${Date.now()}`
+    });
 
-    user.profilePicture = req.file.filename;
+    user.profilePicture = result.secure_url;
     await user.save();
+
     res.json({
       message: 'Profile picture updated successfully',
-      profilePicture:    req.file.filename,
-      profilePictureUrl: `/uploads/avatars/${req.file.filename}`,
+      profilePicture:    result.secure_url,
+      profilePictureUrl: result.secure_url,
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -768,13 +770,8 @@ const deleteAvatar = async (req, res) => {
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    if (user.profilePicture) {
-      const fs = require('fs'), path = require('path');
-      const filePath = path.join(__dirname, '../uploads/avatars', user.profilePicture);
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-      user.profilePicture = '';
-      await user.save();
-    }
+    user.profilePicture = '';
+    await user.save();
     res.json({ message: 'Profile picture removed successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });

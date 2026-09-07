@@ -5,6 +5,7 @@ const User = require('../models/User');
 const ShiftSchedule = require('../models/ShiftSchedule');
 const TeamHistory = require('../models/TeamHistory');
 const Notification = require('../models/Notification');
+const { uploadToCloudinary } = require('../config/cloudinary');
 const path = require('path');
 const fs = require('fs');
 
@@ -431,10 +432,15 @@ exports.addDocument = async (req, res) => {
 
     let doc;
     if (req.file) {
+      const result = await uploadToCloudinary(req.file.buffer, {
+        folder: 'employee_tracker/documents',
+        resource_type: 'auto',
+      });
+
       doc = {
         type: 'file',
         filename: req.file.originalname,
-        fileUrl: '/uploads/team-docs/' + req.file.filename,
+        fileUrl: result.secure_url,
         uploadedBy: req.user._id,
       };
     } else {

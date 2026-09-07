@@ -1,41 +1,29 @@
-const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
+const multer = require('multer');
 
-// Ensure upload directory exists
-const uploadDir = path.join(__dirname, "../uploads/avatars");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+// Store files in memory buffer for direct Cloudinary upload
+const storage = multer.memoryStorage();
 
-// Storage config — saves as avatar-{userId}-{timestamp}.{ext}
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    const filename = `avatar-${req.user._id}-${Date.now()}${ext}`;
-    cb(null, filename);
-  },
-});
-
-// Only allow image files
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = /jpeg|jpg|png|gif|webp/;
-  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = allowedTypes.test(file.mimetype);
-  if (extname && mimetype) {
+  const allowedTypes = [
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/webp',
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  ];
+  if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error("Only image files are allowed (jpg, jpeg, png, gif, webp)"), false);
+    cb(new Error('Only JPG, PNG, WebP images, PDF, and DOC files are allowed'), false);
   }
 };
 
 const upload = multer({
   storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
   fileFilter,
-  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB max
 });
 
 module.exports = upload;
