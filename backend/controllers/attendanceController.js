@@ -12,6 +12,30 @@ const euclideanDistance = (desc1, desc2) => {
   return Math.sqrt(sum);
 };
 
+// Helper: Check if today is a scheduled weekly holiday for the user
+const checkIsTodayHoliday = (user) => {
+  if (!user || !Array.isArray(user.weeklyHolidays) || user.weeklyHolidays.length === 0) {
+    return false;
+  }
+  const todayDay = new Date().getDay(); // 0 = Sun, 6 = Sat
+  if (!user.weeklyHolidays.includes(todayDay)) return false;
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  if (user.holidayStartDate) {
+    const start = new Date(user.holidayStartDate);
+    const startDateOnly = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    if (today < startDateOnly) return false;
+  }
+  if (user.holidayValidUntil) {
+    const until = new Date(user.holidayValidUntil);
+    const untilDateOnly = new Date(until.getFullYear(), until.getMonth(), until.getDate(), 23, 59, 59, 999);
+    if (today > untilDateOnly) return false;
+  }
+  return true;
+};
+
 // @desc    Check in for today
 // @route   POST /api/attendance/check-in
 // @access  Private
@@ -19,6 +43,10 @@ const checkIn = async (req, res) => {
   try {
     const { liveFaceDescriptor } = req.body;
     const user = await User.findById(req.user._id);
+
+    if (checkIsTodayHoliday(user)) {
+      return res.status(400).json({ message: 'Today is your scheduled weekly holiday. Check-in is disabled.' });
+    }
 
     if (!user.faceDescriptor || user.faceDescriptor.length === 0) {
       return res.status(403).json({ message: 'Face Authentication not set up. Please set it up in your profile.' });
@@ -118,6 +146,10 @@ const checkOut = async (req, res) => {
   try {
     const { liveFaceDescriptor } = req.body;
     const user = await User.findById(req.user._id);
+
+    if (checkIsTodayHoliday(user)) {
+      return res.status(400).json({ message: 'Today is your scheduled weekly holiday. Check-out is disabled.' });
+    }
 
     if (!user.faceDescriptor || user.faceDescriptor.length === 0) {
       return res.status(403).json({ message: 'Face Authentication not set up.' });
@@ -526,14 +558,18 @@ const getTodayStatus = async (req, res) => {
       }
     }
 
+    const user = await User.findById(req.user._id).select('weeklyHolidays holidayStartDate holidayValidUntil').lean();
+    const isHoliday = checkIsTodayHoliday(user);
+
     if (attendance) {
-      // Inject expectedShift into response
+      // Inject expectedShift and isHoliday into response
       const responseData = attendance.toObject();
       responseData.expectedShift = shiftType;
+      responseData.isHoliday = isHoliday;
       return res.json(responseData);
     }
 
-    res.json({ expectedShift: shiftType });
+    res.json({ expectedShift: shiftType, isHoliday });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }

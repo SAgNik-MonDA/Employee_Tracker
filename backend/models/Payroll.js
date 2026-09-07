@@ -19,6 +19,18 @@ const payrollSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    pfDeduction: {
+      type: Number,
+      default: 0,
+    },
+    mediclaimDeduction: {
+      type: Number,
+      default: 0,
+    },
+    leaveDeduction: {
+      type: Number,
+      default: 0,
+    },
     deductions: {
       type: Number,
       default: 0,
@@ -29,7 +41,7 @@ const payrollSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['Paid', 'Unpaid'],
+      enum: ['Paid', 'Unpaid', 'Pending'],
       default: 'Unpaid',
     },
   },

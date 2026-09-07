@@ -31,21 +31,9 @@ const generatePayroll = async (req, res) => {
     const payrollResults = [];
 
     for (const emp of employees) {
-      // Check if payroll already generated for this employee & month
-      const existingPayroll = await Payroll.findOne({
-        employeeId: emp._id,
-        monthYear,
-      });
-
-      if (existingPayroll) {
-        payrollResults.push({ employee: emp.name, status: 'Already Generated', payroll: existingPayroll });
-        continue;
-      }
-
-      const basicSalary = emp.basicSalary;
+      const basicSalary = emp.basicSalary || 0;
 
       // Count absent days (days with no attendance record & no approved leave)
-      // Get total working days in the month (approximate: 30)
       const totalWorkingDays = 30;
 
       // Count days employee was present
@@ -75,7 +63,12 @@ const generatePayroll = async (req, res) => {
       }
 
       const absentDays = Math.max(0, totalWorkingDays - presentDays - leaveDays);
-      const deductions = Math.round((basicSalary / 30) * absentDays);
+
+      // Detailed deduction calculations
+      const pfDeduction = Math.round(basicSalary * 0.12);
+      const mediclaimDeduction = basicSalary > 0 ? 1000 : 0;
+      const leaveDeduction = Math.round((basicSalary / 30) * absentDays);
+      const totalDeductions = pfDeduction + mediclaimDeduction + leaveDeduction;
 
       // Check performance rating for bonus
       const performance = await Performance.findOne({
@@ -88,28 +81,49 @@ const generatePayroll = async (req, res) => {
         bonus = Math.round(basicSalary * 0.10); // 10% bonus for perfect rating
       }
 
-      const netSalary = basicSalary + bonus - deductions;
+      const netSalary = Math.max(0, basicSalary + bonus - totalDeductions);
 
-      const payroll = await Payroll.create({
+      // Upsert: Check if payroll already exists for this employee & month
+      const existingPayroll = await Payroll.findOne({
         employeeId: emp._id,
         monthYear,
-        baseSalary: basicSalary,
-        bonus,
-        deductions,
-        netSalary: Math.max(0, netSalary),
-        status: 'Unpaid',
       });
 
-      payrollResults.push({ employee: emp.name, status: 'Generated', payroll });
+      let payroll;
+      if (existingPayroll) {
+        existingPayroll.baseSalary = basicSalary;
+        existingPayroll.bonus = bonus;
+        existingPayroll.pfDeduction = pfDeduction;
+        existingPayroll.mediclaimDeduction = mediclaimDeduction;
+        existingPayroll.leaveDeduction = leaveDeduction;
+        existingPayroll.deductions = totalDeductions;
+        existingPayroll.netSalary = netSalary;
+        payroll = await existingPayroll.save();
+        payrollResults.push({ employee: emp.name, status: 'Updated', payroll });
+      } else {
+        payroll = await Payroll.create({
+          employeeId: emp._id,
+          monthYear,
+          baseSalary: basicSalary,
+          bonus,
+          pfDeduction,
+          mediclaimDeduction,
+          leaveDeduction,
+          deductions: totalDeductions,
+          netSalary,
+          status: 'Unpaid',
+        });
+        payrollResults.push({ employee: emp.name, status: 'Generated', payroll });
+      }
 
       // In-app notification for the employee
       await Notification.create({
         userId: emp._id,
         type: 'payroll_generated',
-        title: 'Payslip Generated',
-        message: `Your payslip for ${monthYear} has been generated. Net salary: ₹${Math.max(0, netSalary).toLocaleString()}.`,
+        title: 'Payslip Updated',
+        message: `Your payslip for ${monthYear} has been generated/updated. Net salary: ₹${netSalary.toLocaleString()}.`,
         link: '/employee/payslips',
-      });
+      }).catch(() => {});
 
       // Send email notification
       await sendEmail({
@@ -121,16 +135,19 @@ const generatePayroll = async (req, res) => {
           <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse;">
             <tr><td><strong>Base Salary</strong></td><td>₹${basicSalary.toLocaleString()}</td></tr>
             <tr><td><strong>Bonus</strong></td><td>₹${bonus.toLocaleString()}</td></tr>
-            <tr><td><strong>Deductions</strong></td><td>₹${deductions.toLocaleString()}</td></tr>
-            <tr><td><strong>Net Salary</strong></td><td>₹${Math.max(0, netSalary).toLocaleString()}</td></tr>
+            <tr><td><strong>Mediclaim Deduction</strong></td><td>₹${mediclaimDeduction.toLocaleString()}</td></tr>
+            <tr><td><strong>PF Deduction (12%)</strong></td><td>₹${pfDeduction.toLocaleString()}</td></tr>
+            <tr><td><strong>Leave & Attendance Deductions</strong></td><td>₹${leaveDeduction.toLocaleString()}</td></tr>
+            <tr><td><strong>Total Deductions</strong></td><td>₹${totalDeductions.toLocaleString()}</td></tr>
+            <tr><td><strong>Net Salary</strong></td><td>₹${netSalary.toLocaleString()}</td></tr>
           </table>
           <p>Best regards,<br/>HR Team</p>
         `,
-      });
+      }).catch(() => {});
     }
 
     res.status(201).json({
-      message: `Payroll processed for ${payrollResults.length} employees`,
+      message: `Payroll processed/updated for ${payrollResults.length} employees`,
       results: payrollResults,
     });
   } catch (error) {
@@ -160,26 +177,50 @@ const getAllPayroll = async (req, res) => {
     if (monthYear) filter.monthYear = monthYear;
 
     const payrolls = await Payroll.find(filter)
-      .populate('employeeId', 'name email department designation')
+      .populate('employeeId', 'name email department designation employeeCode role bankDetails basicSalary phone')
       .sort({ createdAt: -1 });
 
-    res.json(payrolls);
+    const enriched = payrolls.map((p) => {
+      const obj = p.toObject();
+      const base = obj.baseSalary || obj.employeeId?.basicSalary || 0;
+      const pf = obj.pfDeduction !== undefined && obj.pfDeduction !== null && obj.pfDeduction > 0 
+        ? obj.pfDeduction 
+        : Math.round(base * 0.12);
+      const medi = obj.mediclaimDeduction !== undefined && obj.mediclaimDeduction !== null && obj.mediclaimDeduction > 0
+        ? obj.mediclaimDeduction
+        : (base > 0 ? 1000 : 0);
+      const leave = obj.leaveDeduction !== undefined && obj.leaveDeduction !== null
+        ? obj.leaveDeduction
+        : (obj.deductions || 0);
+
+      obj.pfDeduction = pf;
+      obj.mediclaimDeduction = medi;
+      obj.leaveDeduction = leave;
+      obj.deductions = pf + medi + leave;
+      obj.netSalary = Math.max(0, base + (obj.bonus || 0) - obj.deductions);
+      return obj;
+    });
+
+    res.json(enriched);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
-// @desc    Mark payroll as paid
+// @desc    Update payroll status (Paid, Unpaid, Pending)
 // @route   PUT /api/payroll/mark-paid/:id
 // @access  Private (Admin, HR)
 const markAsPaid = async (req, res) => {
   try {
+    const { status } = req.body;
+    const newStatus = status && ['Paid', 'Unpaid', 'Pending'].includes(status) ? status : 'Paid';
+
     const payroll = await Payroll.findById(req.params.id);
     if (!payroll) {
       return res.status(404).json({ message: 'Payroll record not found' });
     }
 
-    payroll.status = 'Paid';
+    payroll.status = newStatus;
     await payroll.save();
 
     res.json(payroll);
@@ -194,3 +235,4 @@ module.exports = {
   getAllPayroll,
   markAsPaid,
 };
+

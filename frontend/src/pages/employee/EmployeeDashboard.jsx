@@ -111,8 +111,31 @@ const EmployeeDashboard = () => {
     );
   }
 
-  const todayDay = new Date().getDay();
-  const isTodayHoliday = user?.weeklyHolidays?.includes(todayDay);
+  const checkIsHolidayToday = () => {
+    if (todayStatus?.isHoliday !== undefined && todayStatus.isHoliday) {
+      return true;
+    }
+    if (!user || !Array.isArray(user.weeklyHolidays) || user.weeklyHolidays.length === 0) return false;
+    const todayDay = new Date().getDay();
+    if (!user.weeklyHolidays.includes(todayDay)) return false;
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    if (user.holidayStartDate) {
+      const start = new Date(user.holidayStartDate);
+      const startDateOnly = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+      if (today < startDateOnly) return false;
+    }
+    if (user.holidayValidUntil) {
+      const until = new Date(user.holidayValidUntil);
+      const untilDateOnly = new Date(until.getFullYear(), until.getMonth(), until.getDate(), 23, 59, 59, 999);
+      if (today > untilDateOnly) return false;
+    }
+    return true;
+  };
+
+  const isTodayHoliday = checkIsHolidayToday();
 
   return (
     <div className="space-y-8">
@@ -121,8 +144,17 @@ const EmployeeDashboard = () => {
 
       {/* Holiday Banner */}
       {isTodayHoliday && (
-        <div className="glass-card bg-amber-500/10 border-amber-500/30 p-4 flex items-center justify-center text-amber-400">
-          <span className="text-lg font-bold">🎉 Today is your weekly holiday! Enjoy your time off!</span>
+        <div className="glass-card bg-gradient-to-r from-amber-500/15 via-purple-500/15 to-indigo-500/15 border border-amber-500/30 p-4 flex items-center justify-between text-amber-300 shadow-xl backdrop-blur-md animate-fade-in">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🎉</span>
+            <div>
+              <p className="font-bold text-amber-200 text-base">Today is your Weekly Holiday!</p>
+              <p className="text-xs text-amber-300/80">Attendance check-in & check-out actions are disabled for today. Have a relaxed day!</p>
+            </div>
+          </div>
+          <span className="text-xs font-semibold px-3 py-1 bg-amber-500/20 text-amber-300 rounded-full border border-amber-500/30">
+            Holiday Off Day
+          </span>
         </div>
       )}
 
@@ -254,12 +286,30 @@ const EmployeeDashboard = () => {
         </div>
         <div className="flex flex-wrap gap-4 items-center">
           {!todayStatus?.checkIn ? (
-            <button onClick={handleCheckIn} className="btn-success flex items-center gap-2">
+            <button
+              onClick={handleCheckIn}
+              disabled={isTodayHoliday}
+              className={`btn-success flex items-center gap-2 ${
+                isTodayHoliday
+                  ? 'opacity-50 cursor-not-allowed bg-surface-800 text-surface-500 border-surface-700/50 shadow-none hover:bg-surface-800'
+                  : ''
+              }`}
+              title={isTodayHoliday ? 'Check-in disabled on weekly holidays' : ''}
+            >
               🕐 Check In
             </button>
           ) : !todayStatus?.checkOut ? (
             <>
-              <button onClick={handleCheckOut} className="btn-danger flex items-center gap-2">
+              <button
+                onClick={handleCheckOut}
+                disabled={isTodayHoliday}
+                className={`btn-danger flex items-center gap-2 ${
+                  isTodayHoliday
+                    ? 'opacity-50 cursor-not-allowed bg-surface-800 text-surface-500 border-surface-700/50 shadow-none hover:bg-surface-800'
+                    : ''
+                }`}
+                title={isTodayHoliday ? 'Check-out disabled on weekly holidays' : ''}
+              >
                 👋 Check Out
               </button>
               {/* Emergency Checkout logic... */}
@@ -271,7 +321,7 @@ const EmployeeDashboard = () => {
                 <span className="text-sm font-medium text-amber-400 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
                   Emergency Checkout: Pending Approval
                 </span>
-              ) : (
+              ) : !isTodayHoliday && (
                 <button onClick={() => setShowEarlyCheckoutModal(true)} className="btn-secondary text-amber-400 hover:bg-amber-500/10 hover:border-amber-500/30">
                   Emergency Check-out Request
                 </button>
