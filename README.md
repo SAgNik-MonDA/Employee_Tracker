@@ -25,12 +25,16 @@ Designed with modern dark-mode glassmorphism aesthetics, real-time notifications
 ### 💰 Payroll & Performance Review
 - **Automated Payroll Generation**: Computes basic salary, allowances, deductions, taxes, and net pay.
 - **Payslip Downloads**: Employees can view and download formatted digital payslips.
+- **Excel Export for Payroll**: Download beautifully styled Excel sheets for any month, detailing breakdown of net salary, PF, medical deductions, absent/late penalties, and bank details.
 - **Performance Evaluation**: Multi-dimensional reviews and progress ratings.
 
-### 🏖️ Leave Approvals & Real-Time Communications
+### 🗓️ Leave Approvals & Real-Time Communications
 - **Leave Request Management**: Multi-tier approvals (PM -> HR/Admin).
 - **Socket.io Live Chat & Notifications**: Real-time team chat and instant push notifications.
 - **Automated Schedulers**: Schedulers for employee birthday banners and holiday notifications.
+
+### ☁️ Cloud Storage & Asset Management
+- **Cloudinary Integration**: Secure cloud storage for all user avatars, PDFs, and team documents, ensuring scalable asset management without bloating local servers.
 
 ---
 
