@@ -51,16 +51,28 @@ const MyPayslips = () => {
     doc.text(`Designation: ${user?.designation || '-'}`, 14, 86);
 
     // Salary Table
+    const tableBody = [
+      ['Base Salary', `₹${(payslip.baseSalary || 0).toLocaleString()}`],
+      ['Bonus', `₹${(payslip.bonus || 0).toLocaleString()}`],
+      ['Mediclaim Deduction', `- ₹${(payslip.mediclaimDeduction || 0).toLocaleString()}`],
+      ['PF Deduction', `- ₹${(payslip.pfDeduction || 0).toLocaleString()}`],
+      ['Leave & Attendance Deductions', `- ₹${(payslip.leaveDeduction || 0).toLocaleString()}`],
+      ['Total Deductions', `- ₹${(payslip.deductions || 0).toLocaleString()}`],
+    ];
+
+    if (payslip.effectiveDays && payslip.totalDaysInMonth && payslip.effectiveDays < payslip.totalDaysInMonth) {
+      tableBody.push(['Days Worked', `${payslip.effectiveDays} / ${payslip.totalDaysInMonth} (Prorated)`]);
+    }
+
+    tableBody.push(
+      ['', ''],
+      ['Net Salary', `₹${(payslip.netSalary || 0).toLocaleString()}`],
+    );
+
     doc.autoTable({
       startY: 100,
       head: [['Component', 'Amount (₹)']],
-      body: [
-        ['Base Salary', `₹${payslip.baseSalary.toLocaleString()}`],
-        ['Bonus', `₹${payslip.bonus.toLocaleString()}`],
-        ['Deductions', `- ₹${payslip.deductions.toLocaleString()}`],
-        ['', ''],
-        ['Net Salary', `₹${payslip.netSalary.toLocaleString()}`],
-      ],
+      body: tableBody,
       theme: 'grid',
       headStyles: { fillColor: [79, 70, 229], fontSize: 11 },
       bodyStyles: { fontSize: 10 },
@@ -119,20 +131,26 @@ const MyPayslips = () => {
               <div className="space-y-2 mb-5">
                 <div className="flex justify-between text-sm">
                   <span className="text-surface-400">Base Salary</span>
-                  <span className="text-surface-200">₹{p.baseSalary.toLocaleString()}</span>
+                  <span className="text-surface-200">₹{(p.baseSalary || 0).toLocaleString()}</span>
                 </div>
+                {p.effectiveDays && p.totalDaysInMonth && p.effectiveDays < p.totalDaysInMonth && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-surface-400">Days Worked</span>
+                    <span className="text-amber-400">{p.effectiveDays} / {p.totalDaysInMonth}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm">
                   <span className="text-surface-400">Bonus</span>
-                  <span className="text-emerald-400">+₹{p.bonus.toLocaleString()}</span>
+                  <span className="text-emerald-400">+₹{(p.bonus || 0).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-surface-400">Deductions</span>
-                  <span className="text-rose-400">-₹{p.deductions.toLocaleString()}</span>
+                  <span className="text-surface-400">Total Deductions</span>
+                  <span className="text-rose-400">-₹{(p.deductions || 0).toLocaleString()}</span>
                 </div>
                 <hr className="border-surface-700/50" />
                 <div className="flex justify-between font-semibold">
                   <span className="text-surface-300">Net Salary</span>
-                  <span className="text-primary-400 text-lg">₹{p.netSalary.toLocaleString()}</span>
+                  <span className="text-primary-400 text-lg">₹{(p.netSalary || 0).toLocaleString()}</span>
                 </div>
               </div>
               <button

@@ -1,7 +1,8 @@
 const EmployeeRequest = require('../models/EmployeeRequest');
 const ShiftSchedule = require('../models/ShiftSchedule');
 const Team = require('../models/Team');
-
+const User = require('../models/User');
+const Notification = require('../models/Notification');
 // @desc    Submit a generic employee request
 // @route   POST /api/requests
 // @access  Private
@@ -28,6 +29,17 @@ const submitRequest = async (req, res) => {
       currentShift: requestType === 'Shift Change' ? currentShift : '',
       desiredShift: requestType === 'Shift Change' ? desiredShift : '',
     });
+
+    // Notify Admin and HR about the new request
+    const admins = await User.find({ role: { $in: ['Admin', 'HR'] } }, '_id');
+    const notifDocs = admins.map((admin) => ({
+      userId: admin._id,
+      type: 'general_request_submitted',
+      title: `New ${requestType} Request`,
+      message: `${req.user.name} submitted a ${requestType} request.`,
+      link: '/admin/requests',
+    }));
+    if (notifDocs.length > 0) await Notification.insertMany(notifDocs);
 
     res.status(201).json({ message: 'Request submitted successfully', request: newRequest });
   } catch (error) {
@@ -122,6 +134,15 @@ const reviewRequest = async (req, res) => {
         }
       }
     }
+
+    // Notify employee about the decision
+    await Notification.create({
+      userId: request.employeeId,
+      type: 'general_request_reviewed',
+      title: `Request ${status}`,
+      message: `Your ${request.requestType} request has been ${status.toLowerCase()}.`,
+      link: '/employee/requests',
+    });
 
     res.json({ message: `Request has been ${status.toLowerCase()}` });
   } catch (error) {

@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { HiOutlineDocumentText, HiOutlinePlus } from 'react-icons/hi';
 import API from '../../api/axios';
 import toast from 'react-hot-toast';
+import { useNotifications } from '../../context/NotificationContext';
 
 const MyRequests = () => {
+  const { notifications } = useNotifications();
   const [requests, setRequests] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -28,6 +30,13 @@ const MyRequests = () => {
   useEffect(() => {
     fetchRequests();
   }, []);
+
+  // Re-fetch when a new notification arrives
+  useEffect(() => {
+    if (notifications.length > 0) {
+      fetchRequests();
+    }
+  }, [notifications.length]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

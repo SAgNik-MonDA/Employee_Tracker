@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import API from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
+import { useNotifications } from '../../context/NotificationContext';
 import ProfilePictureUploader from '../../components/common/ProfilePictureUploader';
 import BankDetailsForm from '../../components/common/BankDetailsForm';
 import BirthdayBanner from '../../components/common/BirthdayBanner';
@@ -42,6 +43,7 @@ const RoleBadge = ({ role }) => {
 // ─── Main Component ───────────────────────────────────────────────────────────
 const ProfilePage = () => {
   const { user, updateSessionUser } = useAuth();
+  const { notifications } = useNotifications();
   const [profile, setProfile]       = useState(null);
   const [loading, setLoading]       = useState(true);
   const [showPassword, setShowPassword] = useState(false);
@@ -110,6 +112,13 @@ const ProfilePage = () => {
   }, [resetForm.oldPassword]);
 
   useEffect(() => { fetchProfile(); }, []);
+
+  // Re-fetch profile when a new notification comes in (e.g., face reset approved/rejected)
+  useEffect(() => {
+    if (notifications.length > 0) {
+      fetchProfile();
+    }
+  }, [notifications.length]);
 
   const fetchProfile = async () => {
     try {

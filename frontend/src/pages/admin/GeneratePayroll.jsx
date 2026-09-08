@@ -111,7 +111,7 @@ const GeneratePayroll = () => {
       titleCell.fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: 'FF1E1B4B' } // Dark Indigo
+        fgColor: { argb: 'FF1E1B4B' }
       };
       titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
       worksheet.getRow(1).height = 42;
@@ -124,7 +124,7 @@ const GeneratePayroll = () => {
       metaCell.fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: 'FF334155' } // Slate
+        fgColor: { argb: 'FF334155' }
       };
       metaCell.alignment = { horizontal: 'center', vertical: 'middle' };
       worksheet.getRow(2).height = 24;
@@ -140,16 +140,16 @@ const GeneratePayroll = () => {
         'Designation',
         'Month of Salary',
         'Base Salary (₹)',
+        'Days Worked',
+        'Bonus (₹)',
         'Mediclaim Deduction (₹)',
         'PF Deduction (₹)',
         'Leave & Attendance Deductions (₹)',
         'Total Deductions (₹)',
         'Net Salary (₹)',
         'Bank Name',
-        'Bank Branch Name',
-        'IFSC Code',
         'Account Holder Name',
-        'Branch Address',
+        'IFSC Code',
         'Status'
       ];
 
@@ -162,10 +162,10 @@ const GeneratePayroll = () => {
         cell.fill = {
           type: 'pattern',
           pattern: 'solid',
-          fgColor: { argb: 'FF4338CA' } // Indigo Header
+          fgColor: { argb: 'FF4338CA' }
         };
         cell.alignment = {
-          horizontal: colNumber >= 6 && colNumber <= 11 ? 'right' : 'center',
+          horizontal: (colNumber >= 6 && colNumber <= 13 && colNumber !== 7) ? 'right' : 'center',
           vertical: 'middle',
           wrapText: true
         };
@@ -179,34 +179,34 @@ const GeneratePayroll = () => {
 
       // 5. Populate Data Rows (Row 5+)
       let totalBase = 0;
+      let totalBonus = 0;
       let totalMedi = 0;
       let totalPF = 0;
       let totalLeave = 0;
-      let totalDedSum = 0;
+      let totalDed = 0;
       let totalNet = 0;
 
       recordsToExport.forEach((p, idx) => {
         const emp = p.employeeId || {};
         const bank = emp.bankDetails || {};
-        const base = p.baseSalary || emp.basicSalary || 0;
-        const pf = p.pfDeduction !== undefined ? p.pfDeduction : Math.round(base * 0.12);
-        const medi = p.mediclaimDeduction !== undefined ? p.mediclaimDeduction : (base > 0 ? 1000 : 0);
-        const leave = p.leaveDeduction !== undefined ? p.leaveDeduction : (p.deductions || 0);
-        const totalDed = pf + medi + leave;
-        const net = Math.max(0, base + (p.bonus || 0) - totalDed);
+        const base = p.baseSalary || 0;
+        const net = p.netSalary || 0;
+        const daysWorked = p.effectiveDays && p.totalDaysInMonth
+          ? `${p.effectiveDays} / ${p.totalDaysInMonth}`
+          : '—';
 
         totalBase += base;
-        totalMedi += medi;
-        totalPF += pf;
-        totalLeave += leave;
-        totalDedSum += totalDed;
+        totalBonus += (p.bonus || 0);
+        totalMedi += (p.mediclaimDeduction || 0);
+        totalPF += (p.pfDeduction || 0);
+        totalLeave += (p.leaveDeduction || 0);
+        totalDed += (p.deductions || 0);
         totalNet += net;
 
         const rowIndex = idx + 5;
         const row = worksheet.getRow(rowIndex);
         row.height = 26;
 
-        // Note: Status column (17) is left completely EMPTY ("") for manual entry as requested!
         row.values = [
           emp.name || '—',
           emp.employeeCode || '—',
@@ -214,33 +214,29 @@ const GeneratePayroll = () => {
           emp.designation || '—',
           monthLabel,
           base,
-          medi,
-          pf,
-          leave,
-          totalDed,
+          daysWorked,
+          p.bonus || 0,
+          p.mediclaimDeduction || 0,
+          p.pfDeduction || 0,
+          p.leaveDeduction || 0,
+          p.deductions || 0,
           net,
           bank.bankName || '—',
-          bank.branchName || '—',
-          bank.ifscCode || '—',
           bank.accountHolderName || '—',
-          bank.bankAddress || '—',
-          '' // Status left EMPTY for manual editing!
+          bank.ifscCode || '—',
+          p.status || 'Unpaid'
         ];
 
         const isEven = idx % 2 === 0;
-        const bgFill = isEven ? 'FFF8FAFC' : 'FFFFFFFF'; // Zebra striping
+        const bgFill = isEven ? 'FFF8FAFC' : 'FFFFFFFF';
 
         row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-          // Base Font
           cell.font = { name: 'Segoe UI', size: 10, color: { argb: 'FF1E293B' } };
-          
-          // Base Alignment & Fill
           cell.fill = {
             type: 'pattern',
             pattern: 'solid',
             fgColor: { argb: bgFill }
           };
-
           cell.border = {
             top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
             left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
@@ -248,38 +244,23 @@ const GeneratePayroll = () => {
             right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
           };
 
-          // Alignments & Number Formats
-          if (colNumber >= 6 && colNumber <= 11) {
+          if (colNumber >= 6 && colNumber <= 13 && colNumber !== 7) {
             cell.alignment = { horizontal: 'right', vertical: 'middle' };
             cell.numFmt = '₹#,##0';
-          } else if (colNumber === 2 || colNumber === 5 || colNumber === 14) {
-            cell.alignment = { horizontal: 'center', vertical: 'middle' };
           } else {
-            cell.alignment = { horizontal: 'left', vertical: 'middle' };
+            cell.alignment = { horizontal: colNumber === 7 ? 'center' : 'left', vertical: 'middle' };
           }
 
-          // Highlight Specific Columns:
-          // Total Deductions (Col 10): Light Red Highlight
-          if (colNumber === 10) {
-            cell.font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: 'FF991B1B' } };
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+          // Total Deductions Highlight
+          if (colNumber === 12) {
+             cell.font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: 'FF991B1B' } };
+             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
           }
 
-          // Net Salary (Col 11): Light Emerald Highlight
-          if (colNumber === 11) {
+          // Net Salary highlight
+          if (colNumber === 13) {
             cell.font = { name: 'Segoe UI', size: 10.5, bold: true, color: { argb: 'FF065F46' } };
             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } };
-          }
-
-          // Status Column (Col 17): Soft Light Amber/Yellow tint so user sees it's ready for manual input
-          if (colNumber === 17) {
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEFCE8' } };
-            cell.border = {
-              top: { style: 'dashed', color: { argb: 'FFCBD5E1' } },
-              left: { style: 'dashed', color: { argb: 'FFCBD5E1' } },
-              bottom: { style: 'dashed', color: { argb: 'FFCBD5E1' } },
-              right: { style: 'dashed', color: { argb: 'FFCBD5E1' } }
-            };
           }
         });
       });
@@ -297,18 +278,19 @@ const GeneratePayroll = () => {
       sumLabelCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
       summaryRow.getCell(6).value = totalBase;
-      summaryRow.getCell(7).value = totalMedi;
-      summaryRow.getCell(8).value = totalPF;
-      summaryRow.getCell(9).value = totalLeave;
-      summaryRow.getCell(10).value = totalDedSum;
-      summaryRow.getCell(11).value = totalNet;
+      summaryRow.getCell(8).value = totalBonus;
+      summaryRow.getCell(9).value = totalMedi;
+      summaryRow.getCell(10).value = totalPF;
+      summaryRow.getCell(11).value = totalLeave;
+      summaryRow.getCell(12).value = totalDed;
+      summaryRow.getCell(13).value = totalNet;
 
       for (let c = 6; c <= 17; c++) {
         const cell = summaryRow.getCell(c);
         cell.font = { name: 'Segoe UI', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } };
-        cell.alignment = { horizontal: c <= 11 ? 'right' : 'center', vertical: 'middle' };
-        if (c <= 11) cell.numFmt = '₹#,##0';
+        cell.alignment = { horizontal: (c >= 6 && c <= 13 && c !== 7) ? 'right' : 'center', vertical: 'middle' };
+        if (c >= 6 && c <= 13 && c !== 7) cell.numFmt = '₹#,##0';
         cell.border = {
           top: { style: 'medium', color: { argb: 'FF475569' } },
           bottom: { style: 'double', color: { argb: 'FFFFFFFF' } }
@@ -319,7 +301,7 @@ const GeneratePayroll = () => {
       worksheet.columns.forEach((col) => {
         let maxLen = 14;
         col.eachCell({ includeEmpty: false }, (cell, rowIdx) => {
-          if (rowIdx > 3 && cell.value) { // Skip title rows
+          if (rowIdx > 3 && cell.value) {
             const len = String(cell.value).length;
             if (len > maxLen) maxLen = len;
           }
@@ -349,6 +331,7 @@ const GeneratePayroll = () => {
 
   const downloadPayslip = (p) => {
     const doc = new jsPDF();
+    const emp = p.employeeId || {};
 
     doc.setFillColor(79, 70, 229);
     doc.rect(0, 0, 210, 40, 'F');
@@ -365,39 +348,43 @@ const GeneratePayroll = () => {
     doc.text('Employee Details', 14, 55);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
-    doc.text(`Name: ${p.employeeId?.name || '-'}`, 14, 65);
-    doc.text(`Email: ${p.employeeId?.email || '-'}`, 14, 72);
-    doc.text(`Department: ${p.employeeId?.department || '-'}`, 14, 79);
+    doc.text(`Name: ${emp.name || '-'}`, 14, 65);
+    doc.text(`Email: ${emp.email || '-'}`, 14, 72);
+    doc.text(`Department: ${emp.department || '-'}`, 14, 79);
 
-    const base = p.baseSalary || 0;
-    const pf = p.pfDeduction !== undefined ? p.pfDeduction : Math.round(base * 0.12);
-    const medi = p.mediclaimDeduction !== undefined ? p.mediclaimDeduction : (base > 0 ? 1000 : 0);
-    const leave = p.leaveDeduction !== undefined ? p.leaveDeduction : (p.deductions || 0);
+    const tableBody = [
+      ['Base Salary', `₹${(p.baseSalary || 0).toLocaleString()}`],
+      ['Bonus', `₹${(p.bonus || 0).toLocaleString()}`],
+      ['Mediclaim Deduction', `- ₹${(p.mediclaimDeduction || 0).toLocaleString()}`],
+      ['PF Deduction', `- ₹${(p.pfDeduction || 0).toLocaleString()}`],
+      ['Leave & Attendance Deductions', `- ₹${(p.leaveDeduction || 0).toLocaleString()}`],
+      ['Total Deductions', `- ₹${(p.deductions || 0).toLocaleString()}`],
+    ];
+
+    if (p.effectiveDays && p.totalDaysInMonth && p.effectiveDays < p.totalDaysInMonth) {
+      tableBody.push(['Days Worked', `${p.effectiveDays} / ${p.totalDaysInMonth} (Prorated)`]);
+    }
+
+    tableBody.push(
+      ['', ''],
+      ['Net Salary', `₹${(p.netSalary || 0).toLocaleString()}`],
+    );
 
     doc.autoTable({
       startY: 95,
       head: [['Component', 'Amount (₹)']],
-      body: [
-        ['Base Salary', `₹${base.toLocaleString()}`],
-        ['Bonus', `₹${(p.bonus || 0).toLocaleString()}`],
-        ['Mediclaim Deduction', `- ₹${medi.toLocaleString()}`],
-        ['PF Deduction', `- ₹${pf.toLocaleString()}`],
-        ['Leave & Attendance Deductions', `- ₹${leave.toLocaleString()}`],
-        ['Total Deductions', `- ₹${(p.deductions || (pf + medi + leave)).toLocaleString()}`],
-        ['', ''],
-        ['Net Salary', `₹${p.netSalary.toLocaleString()}`],
-      ],
+      body: tableBody,
       theme: 'grid',
       headStyles: { fillColor: [79, 70, 229], fontSize: 11 },
       bodyStyles: { fontSize: 10 },
       styles: { cellPadding: 6 },
     });
 
-    doc.save(`Payslip_${p.employeeId?.name || 'employee'}_${p.monthYear}.pdf`);
+    doc.save(`Payslip_${emp.name || 'employee'}_${p.monthYear}.pdf`);
     toast.success('PDF downloaded! 📄');
   };
 
-  const totalPayroll = payrolls.reduce((sum, p) => sum + p.netSalary, 0);
+  const totalPayroll = payrolls.reduce((sum, p) => sum + (p.netSalary || 0), 0);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -520,13 +507,13 @@ const GeneratePayroll = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="text-surface-300 font-mono">₹{p.baseSalary.toLocaleString()}</td>
-                    <td className="text-emerald-400 font-mono">+₹{p.bonus.toLocaleString()}</td>
+                    <td className="text-surface-300 font-mono">₹{(p.baseSalary || 0).toLocaleString()}</td>
+                    <td className="text-emerald-400 font-mono">+₹{(p.bonus || 0).toLocaleString()}</td>
                     <td className="text-amber-400/90 font-mono">-₹{(p.mediclaimDeduction || 0).toLocaleString()}</td>
                     <td className="text-amber-400/90 font-mono">-₹{(p.pfDeduction || 0).toLocaleString()}</td>
                     <td className="text-rose-400/90 font-mono">-₹{(p.leaveDeduction || 0).toLocaleString()}</td>
-                    <td className="text-rose-400 font-semibold font-mono">-₹{p.deductions.toLocaleString()}</td>
-                    <td className="font-bold text-primary-400 font-mono">₹{p.netSalary.toLocaleString()}</td>
+                    <td className="text-rose-400 font-semibold font-mono">-₹{(p.deductions || 0).toLocaleString()}</td>
+                    <td className="font-bold text-primary-400 font-mono">₹{(p.netSalary || 0).toLocaleString()}</td>
                     <td>
                       {isAdmin ? (
                         <select

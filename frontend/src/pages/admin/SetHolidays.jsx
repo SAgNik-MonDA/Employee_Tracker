@@ -80,7 +80,7 @@ const SetHolidays = () => {
     setEmployees((prev) =>
       prev.map((e) => {
         if (e._id === empId) {
-          return { ...e, holidayValidUntil: dateString, _isDirty: true };
+          return { ...e, holidayStartDate: dateString, _isDirty: true };
         }
         return e;
       })
@@ -93,15 +93,15 @@ const SetHolidays = () => {
     setSubmittingId(emp._id);
     try {
       // Use existing updateEmployee endpoint to update weeklyHolidays & start date
-      await API.put(`/auth/employees/${emp._id}`, {
+      const { data } = await API.put(`/auth/employee/${emp._id}`, {
         weeklyHolidays: emp.weeklyHolidays,
         holidayStartDate: emp.holidayStartDate || new Date().toISOString().split('T')[0]
       });
       toast.success(`Holidays updated for ${emp.name}`);
       
-      // Clear dirty flag
+      // Update local state with the saved data from the backend to reflect changes without refresh
       setEmployees((prev) =>
-        prev.map((e) => (e._id === emp._id ? { ...e, _isDirty: false } : e))
+        prev.map((e) => (e._id === emp._id ? { ...e, ...data, _isDirty: false } : e))
       );
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to update holidays');

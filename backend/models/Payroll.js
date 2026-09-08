@@ -39,6 +39,14 @@ const payrollSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    totalDaysInMonth: {
+      type: Number,
+      default: 30,
+    },
+    effectiveDays: {
+      type: Number,
+      default: 30,
+    },
     status: {
       type: String,
       enum: ['Paid', 'Unpaid', 'Pending'],

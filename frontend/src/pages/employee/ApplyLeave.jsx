@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import API from '../../api/axios';
 import toast from 'react-hot-toast';
+import { useNotifications } from '../../context/NotificationContext';
 import {
   HiOutlineCalendar,
   HiOutlineExclamationCircle,
@@ -46,6 +47,7 @@ const BalanceBar = ({ label, used, total, color }) => {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const ApplyLeave = () => {
+  const { notifications } = useNotifications();
   const [leaves, setLeaves]       = useState([]);
   const [balance, setBalance]     = useState(null);
   const [loading, setLoading]     = useState(true);
@@ -60,6 +62,13 @@ const ApplyLeave = () => {
   useEffect(() => {
     fetchAll();
   }, []);
+
+  // Re-fetch when a new notification arrives
+  useEffect(() => {
+    if (notifications.length > 0) {
+      fetchAll();
+    }
+  }, [notifications.length]);
 
   const fetchAll = async () => {
     try {

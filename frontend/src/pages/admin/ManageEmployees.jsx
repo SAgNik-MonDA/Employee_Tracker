@@ -252,8 +252,8 @@ const ManageEmployees = () => {
       const payload = { ...formData };
       if (editingId) {
         payload.bankDetails = bankData;
-        await API.put(`/auth/employees/${editingId}`, payload);
-        toast.success('Employee updated! ✏️');
+        await API.put(`/auth/employee/${editingId}`, payload);
+        toast.success('Employee updated! 🎉');
       } else {
         if (!formData.password) { toast.error('Password is required'); setSubmitting(false); return; }
         await API.post('/auth/register', payload);
@@ -295,7 +295,7 @@ const ManageEmployees = () => {
     if (!empToDelete) return;
     setDeletingEmp(true);
     try {
-      await API.delete(`/auth/employees/${empToDelete._id}`);
+      await API.delete(`/auth/employee/${empToDelete._id}`);
       toast.success(`Employee ${empToDelete.name} removed successfully`);
       fetchAll();
       setEmpToDelete(null);

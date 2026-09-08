@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import API from '../../api/axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
+import { useNotifications } from '../../context/NotificationContext';
 import AttendanceCameraModal from '../../components/common/AttendanceCameraModal';
 
 const MyAttendance = () => {
   const { user } = useAuth();
+  const { notifications } = useNotifications();
   const [attendance, setAttendance]     = useState([]);
   const [summary, setSummary]           = useState({ totalPresent: 0, totalAbsent: 0, totalOffline: 0, totalLeaves: 0 });
   const [todayStatus, setTodayStatus]   = useState(null);
@@ -25,6 +27,13 @@ const MyAttendance = () => {
   useEffect(() => {
     fetchAttendance();
   }, [selectedMonth, selectedYear]);
+
+  // Re-fetch when a new notification arrives
+  useEffect(() => {
+    if (notifications.length > 0) {
+      fetchAttendance();
+    }
+  }, [notifications.length]);
 
   const fetchAttendance = async () => {
     setLoading(true);

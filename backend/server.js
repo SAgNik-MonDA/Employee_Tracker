@@ -24,9 +24,16 @@ startHolidayScheduler();
 const app    = express();
 const server = http.createServer(app);
 const io     = new Server(server, { cors: { origin: '*' } });
+global.io = io; // Make io accessible globally for Notification triggers
 
-// Socket.io — Team Chat Rooms
+// Socket.io - Team Chat & Notifications
 io.on('connection', (socket) => {
+  // Join user's personal room for notifications
+  const userId = socket.handshake.query.userId;
+  if (userId) {
+    socket.join(`user-${userId}`);
+  }
+
   socket.on('join-team', (teamId) => socket.join(`team-${teamId}`));
   socket.on('team-message', async (data) => {
     // data: { teamId, senderId, senderName, senderAvatar, message }

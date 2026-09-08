@@ -2,7 +2,7 @@ const Attendance = require('../models/Attendance');
 const Leave      = require('../models/Leave');
 const Team       = require('../models/Team');
 const User       = require('../models/User');
-
+const Notification = require('../models/Notification');
 const euclideanDistance = (desc1, desc2) => {
   if (!desc1 || !desc2 || desc1.length !== desc2.length) return Infinity;
   let sum = 0;
@@ -596,6 +596,17 @@ const requestEarlyCheckout = async (req, res) => {
     attendance.earlyCheckoutReason = reason;
     await attendance.save();
 
+    // Notify Admin and HR about the early checkout request
+    const admins = await User.find({ role: { $in: ['Admin', 'HR'] } }, '_id');
+    const notifDocs = admins.map((admin) => ({
+      userId: admin._id,
+      type: 'early_checkout_requested',
+      title: 'Early Checkout Request',
+      message: `${req.user.name} has requested an early checkout for today. Reason: ${reason}`,
+      link: '/admin/early-checkouts',
+    }));
+    if (notifDocs.length > 0) await Notification.insertMany(notifDocs);
+
     res.json({ message: 'Early checkout request submitted successfully.' });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -615,6 +626,15 @@ const reviewEarlyCheckout = async (req, res) => {
 
     attendance.earlyCheckoutStatus = status;
     await attendance.save();
+
+    // Notify employee about the decision
+    await Notification.create({
+      userId: attendance.employeeId,
+      type: status === 'Approved' ? 'early_checkout_approved' : 'early_checkout_rejected',
+      title: `Early Checkout ${status}`,
+      message: `Your early checkout request for today has been ${status.toLowerCase()}.`,
+      link: '/employee/attendance',
+    });
 
     res.json({ message: `Early checkout request updated to ${status}.` });
   } catch (error) {

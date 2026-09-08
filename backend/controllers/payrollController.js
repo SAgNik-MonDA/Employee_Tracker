@@ -1,9 +1,10 @@
 const Payroll = require('../models/Payroll');
 const User = require('../models/User');
-const Attendance = require('../models/Attendance');
-const Performance = require('../models/Performance');
-const sendEmail = require('../utils/sendEmail');
 const Notification = require('../models/Notification');
+const sendEmail = require('../utils/sendEmail');
+
+// ── Helper: get the number of calendar days in a month ──────────────
+const getDaysInMonth = (month, year) => new Date(year, month, 0).getDate();
 
 // @desc    Generate payroll for all employees for a given month
 // @route   POST /api/payroll/generate
@@ -16,74 +17,61 @@ const generatePayroll = async (req, res) => {
       return res.status(400).json({ message: 'monthYear is required (MM-YYYY)' });
     }
 
-    const [month, year] = monthYear.split('-');
-    if (!month || !year) {
+    const [monthStr, yearStr] = monthYear.split('-');
+    const month = parseInt(monthStr, 10);
+    const year  = parseInt(yearStr, 10);
+
+    if (!month || !year || month < 1 || month > 12) {
       return res.status(400).json({ message: 'Invalid monthYear format. Use MM-YYYY' });
     }
 
-    // Get all employees (not Admin)
-    const employees = await User.find({ role: { $in: ['Employee', 'HR'] } });
+    const totalDaysInMonth = getDaysInMonth(month, year);
+    const lastDayOfMonth   = new Date(year, month, 0, 23, 59, 59, 999); // last instant of the month
+
+    // ── Only fetch employees who:
+    //    1. Have a basicSalary > 0
+    //    2. Joined on or before the last day of the selected month
+    //    3. Are NOT Admin role
+    const ADMIN_ROLES = ['Admin'];
+    const employees = await User.find({
+      role: { $nin: ADMIN_ROLES },
+      basicSalary: { $gt: 0 },
+      joiningDate: { $lte: lastDayOfMonth },
+    });
 
     if (employees.length === 0) {
-      return res.status(400).json({ message: 'No employees found' });
+      return res.status(400).json({ message: 'No eligible employees found for this month' });
     }
 
     const payrollResults = [];
 
     for (const emp of employees) {
-      const basicSalary = emp.basicSalary || 0;
+      const basicSalary = emp.basicSalary;
 
-      // Count absent days (days with no attendance record & no approved leave)
-      const totalWorkingDays = 30;
+      // ── Prorate for mid-month joiners ─────────────────────────────
+      const joiningDate  = new Date(emp.joiningDate);
+      const monthStart   = new Date(year, month - 1, 1);
 
-      // Count days employee was present
-      const datePrefix = `${year}-${month.padStart(2, '0')}`;
-      const attendanceRecords = await Attendance.find({
-        employeeId: emp._id,
-        date: { $regex: `^${datePrefix}` },
-        status: { $in: ['Present', 'Late'] },
-      });
+      let effectiveDays = totalDaysInMonth;
 
-      const presentDays = attendanceRecords.length;
-
-      // Count approved leave days for this month
-      const approvedLeaves = await require('../models/Leave').find({
-        employeeId: emp._id,
-        status: 'Approved',
-        startDate: { $lte: new Date(`${year}-${month.padStart(2, '0')}-31`) },
-        endDate: { $gte: new Date(`${year}-${month.padStart(2, '0')}-01`) },
-      });
-
-      let leaveDays = 0;
-      for (const leave of approvedLeaves) {
-        const start = new Date(Math.max(leave.startDate, new Date(`${year}-${month.padStart(2, '0')}-01`)));
-        const end = new Date(Math.min(leave.endDate, new Date(`${year}-${month.padStart(2, '0')}-31`)));
-        const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-        leaveDays += days;
+      if (joiningDate > monthStart) {
+        // Employee joined mid-month — count from joining day to end of month
+        effectiveDays = totalDaysInMonth - joiningDate.getDate() + 1;
       }
 
-      const absentDays = Math.max(0, totalWorkingDays - presentDays - leaveDays);
+      // Prorate salary based on effective days
+      const proratedSalary = Math.round((basicSalary / totalDaysInMonth) * effectiveDays);
 
-      // Detailed deduction calculations
-      const pfDeduction = Math.round(basicSalary * 0.12);
-      const mediclaimDeduction = basicSalary > 0 ? 1000 : 0;
-      const leaveDeduction = Math.round((basicSalary / 30) * absentDays);
-      const totalDeductions = pfDeduction + mediclaimDeduction + leaveDeduction;
+      // ── All deductions and bonus are ZERO for now ─────────────────
+      const pfDeduction        = 0;
+      const mediclaimDeduction = 0;
+      const leaveDeduction     = 0;
+      const bonus              = 0;
+      const totalDeductions    = 0;
 
-      // Check performance rating for bonus
-      const performance = await Performance.findOne({
-        employeeId: emp._id,
-        monthYear,
-      });
+      const netSalary = proratedSalary; // No deductions, no bonus
 
-      let bonus = 0;
-      if (performance && performance.kpiRating === 5) {
-        bonus = Math.round(basicSalary * 0.10); // 10% bonus for perfect rating
-      }
-
-      const netSalary = Math.max(0, basicSalary + bonus - totalDeductions);
-
-      // Upsert: Check if payroll already exists for this employee & month
+      // ── Upsert: update if exists, create if not ───────────────────
       const existingPayroll = await Payroll.findOne({
         employeeId: emp._id,
         monthYear,
@@ -91,26 +79,30 @@ const generatePayroll = async (req, res) => {
 
       let payroll;
       if (existingPayroll) {
-        existingPayroll.baseSalary = basicSalary;
-        existingPayroll.bonus = bonus;
-        existingPayroll.pfDeduction = pfDeduction;
-        existingPayroll.mediclaimDeduction = mediclaimDeduction;
-        existingPayroll.leaveDeduction = leaveDeduction;
-        existingPayroll.deductions = totalDeductions;
-        existingPayroll.netSalary = netSalary;
+        existingPayroll.baseSalary          = proratedSalary;
+        existingPayroll.bonus               = bonus;
+        existingPayroll.pfDeduction         = pfDeduction;
+        existingPayroll.mediclaimDeduction   = mediclaimDeduction;
+        existingPayroll.leaveDeduction      = leaveDeduction;
+        existingPayroll.deductions          = totalDeductions;
+        existingPayroll.netSalary           = netSalary;
+        existingPayroll.totalDaysInMonth    = totalDaysInMonth;
+        existingPayroll.effectiveDays       = effectiveDays;
         payroll = await existingPayroll.save();
         payrollResults.push({ employee: emp.name, status: 'Updated', payroll });
       } else {
         payroll = await Payroll.create({
           employeeId: emp._id,
           monthYear,
-          baseSalary: basicSalary,
+          baseSalary: proratedSalary,
           bonus,
           pfDeduction,
           mediclaimDeduction,
           leaveDeduction,
           deductions: totalDeductions,
           netSalary,
+          totalDaysInMonth,
+          effectiveDays,
           status: 'Unpaid',
         });
         payrollResults.push({ employee: emp.name, status: 'Generated', payroll });
@@ -121,7 +113,7 @@ const generatePayroll = async (req, res) => {
         userId: emp._id,
         type: 'payroll_generated',
         title: 'Payslip Updated',
-        message: `Your payslip for ${monthYear} has been generated/updated. Net salary: ₹${netSalary.toLocaleString()}.`,
+        message: `Your payslip for ${monthYear} has been generated. Net salary: ₹${netSalary.toLocaleString()}.`,
         link: '/employee/payslips',
       }).catch(() => {});
 
@@ -133,12 +125,10 @@ const generatePayroll = async (req, res) => {
           <h2>Monthly Payslip - ${monthYear}</h2>
           <p>Dear ${emp.name},</p>
           <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse;">
-            <tr><td><strong>Base Salary</strong></td><td>₹${basicSalary.toLocaleString()}</td></tr>
-            <tr><td><strong>Bonus</strong></td><td>₹${bonus.toLocaleString()}</td></tr>
-            <tr><td><strong>Mediclaim Deduction</strong></td><td>₹${mediclaimDeduction.toLocaleString()}</td></tr>
-            <tr><td><strong>PF Deduction (12%)</strong></td><td>₹${pfDeduction.toLocaleString()}</td></tr>
-            <tr><td><strong>Leave & Attendance Deductions</strong></td><td>₹${leaveDeduction.toLocaleString()}</td></tr>
-            <tr><td><strong>Total Deductions</strong></td><td>₹${totalDeductions.toLocaleString()}</td></tr>
+            <tr><td><strong>Base Salary</strong></td><td>₹${proratedSalary.toLocaleString()}</td></tr>
+            ${effectiveDays < totalDaysInMonth
+              ? `<tr><td><strong>Note</strong></td><td>Prorated for ${effectiveDays} of ${totalDaysInMonth} days</td></tr>`
+              : ''}
             <tr><td><strong>Net Salary</strong></td><td>₹${netSalary.toLocaleString()}</td></tr>
           </table>
           <p>Best regards,<br/>HR Team</p>
@@ -147,7 +137,7 @@ const generatePayroll = async (req, res) => {
     }
 
     res.status(201).json({
-      message: `Payroll processed/updated for ${payrollResults.length} employees`,
+      message: `Payroll processed for ${payrollResults.length} employees`,
       results: payrollResults,
     });
   } catch (error) {
@@ -180,28 +170,8 @@ const getAllPayroll = async (req, res) => {
       .populate('employeeId', 'name email department designation employeeCode role bankDetails basicSalary phone')
       .sort({ createdAt: -1 });
 
-    const enriched = payrolls.map((p) => {
-      const obj = p.toObject();
-      const base = obj.baseSalary || obj.employeeId?.basicSalary || 0;
-      const pf = obj.pfDeduction !== undefined && obj.pfDeduction !== null && obj.pfDeduction > 0 
-        ? obj.pfDeduction 
-        : Math.round(base * 0.12);
-      const medi = obj.mediclaimDeduction !== undefined && obj.mediclaimDeduction !== null && obj.mediclaimDeduction > 0
-        ? obj.mediclaimDeduction
-        : (base > 0 ? 1000 : 0);
-      const leave = obj.leaveDeduction !== undefined && obj.leaveDeduction !== null
-        ? obj.leaveDeduction
-        : (obj.deductions || 0);
-
-      obj.pfDeduction = pf;
-      obj.mediclaimDeduction = medi;
-      obj.leaveDeduction = leave;
-      obj.deductions = pf + medi + leave;
-      obj.netSalary = Math.max(0, base + (obj.bonus || 0) - obj.deductions);
-      return obj;
-    });
-
-    res.json(enriched);
+    // Return data as-is from database — no dummy enrichment
+    res.json(payrolls);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
@@ -235,4 +205,3 @@ module.exports = {
   getAllPayroll,
   markAsPaid,
 };
-

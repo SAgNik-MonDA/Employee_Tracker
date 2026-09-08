@@ -3,7 +3,23 @@ const User         = require('../models/User');
 const FaceResetLog = require('../models/FaceResetLog');
 const generateToken = require('../utils/generateToken');
 const sendEmail    = require('../utils/sendEmail');
-const { uploadToCloudinary } = require('../config/cloudinary');
+const { cloudinary, uploadToCloudinary } = require('../config/cloudinary');
+
+// Helper: extract Cloudinary public_id from a secure_url
+const getCloudinaryPublicId = (url) => {
+  if (!url || !url.includes('cloudinary.com')) return null;
+  try {
+    // URL format: https://res.cloudinary.com/<cloud>/image/upload/v123/folder/public_id.ext
+    const parts = url.split('/upload/');
+    if (parts.length < 2) return null;
+    const afterUpload = parts[1]; // v123/folder/public_id.ext
+    const withoutVersion = afterUpload.replace(/^v\d+\//, ''); // folder/public_id.ext
+    const publicId = withoutVersion.replace(/\.[^.]+$/, ''); // folder/public_id
+    return publicId;
+  } catch {
+    return null;
+  }
+};
 
 // ─── Helper: safe user response (no password fields) ─────────────────────────
 const userResponse = (user) => ({
@@ -741,7 +757,19 @@ const uploadAvatar = async (req, res) => {
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    // Upload image buffer directly to Cloudinary
+    // Delete old avatar from Cloudinary if exists
+    if (user.profilePicture) {
+      const oldPublicId = getCloudinaryPublicId(user.profilePicture);
+      if (oldPublicId) {
+        try {
+          await cloudinary.uploader.destroy(oldPublicId);
+        } catch (delErr) {
+          console.warn('Failed to delete old avatar from Cloudinary:', delErr.message);
+        }
+      }
+    }
+
+    // Upload new image buffer to Cloudinary
     const result = await uploadToCloudinary(req.file.buffer, {
       folder: 'employee_tracker/avatars',
       public_id: `user_avatar_${user._id}_${Date.now()}`
@@ -769,6 +797,18 @@ const deleteAvatar = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Delete from Cloudinary if URL exists
+    if (user.profilePicture) {
+      const publicId = getCloudinaryPublicId(user.profilePicture);
+      if (publicId) {
+        try {
+          await cloudinary.uploader.destroy(publicId);
+        } catch (delErr) {
+          console.warn('Failed to delete avatar from Cloudinary:', delErr.message);
+        }
+      }
+    }
 
     user.profilePicture = '';
     await user.save();
@@ -864,6 +904,19 @@ const requestFaceReset = async (req, res) => {
 
     user.faceResetRequest = 'Pending';
     await user.save();
+
+    // Notify Admin and HR about the face reset request
+    const Notification = require('../models/Notification');
+    const admins = await User.find({ role: { $in: ['Admin', 'HR'] } }, '_id');
+    const notifDocs = admins.map((admin) => ({
+      userId: admin._id,
+      type: 'face_reset_requested',
+      title: 'Face Reset Request',
+      message: `${req.user.name} has requested a Face ID reset.`,
+      link: '/admin/face-resets',
+    }));
+    if (notifDocs.length > 0) await Notification.insertMany(notifDocs);
+
     res.json({ message: 'Face reset request sent successfully.', faceResetRequest: 'Pending' });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -899,6 +952,16 @@ const reviewFaceReset = async (req, res) => {
         reviewerRole: req.user.role || 'Admin',
         reviewerEmployeeCode: req.user.employeeCode || '',
         reviewedAt: new Date(),
+      });
+
+      // Notify employee about the decision
+      const Notification = require('../models/Notification');
+      await Notification.create({
+        userId: user._id,
+        type: status === 'Approved' ? 'face_reset_approved' : 'face_reset_rejected',
+        title: `Face Reset ${status}`,
+        message: `Your request to reset your Face ID has been ${status.toLowerCase()}.`,
+        link: '/employee/profile',
       });
     }
 

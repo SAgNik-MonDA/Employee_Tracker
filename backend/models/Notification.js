@@ -22,7 +22,15 @@ const notificationSchema = new mongoose.Schema(
         'meeting_rejoin_approved',
         'shift_assigned',
         'team_expiry_warning',
-        'team_auto_archived'
+        'team_auto_archived',
+        'early_checkout_requested',
+        'early_checkout_approved',
+        'early_checkout_rejected',
+        'face_reset_requested',
+        'face_reset_approved',
+        'face_reset_rejected',
+        'general_request_submitted',
+        'general_request_reviewed'
       ],
       required: true,
     },
@@ -46,5 +54,20 @@ const notificationSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Emit real-time notification using global Socket.io instance
+notificationSchema.post('save', function (doc) {
+  if (global.io) {
+    global.io.to(`user-${doc.userId.toString()}`).emit('new-notification', doc);
+  }
+});
+
+notificationSchema.post('insertMany', function (docs) {
+  if (global.io && Array.isArray(docs)) {
+    docs.forEach(doc => {
+      global.io.to(`user-${doc.userId.toString()}`).emit('new-notification', doc);
+    });
+  }
+});
 
 module.exports = mongoose.model('Notification', notificationSchema);

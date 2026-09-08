@@ -5,9 +5,22 @@ const User = require('../models/User');
 const ShiftSchedule = require('../models/ShiftSchedule');
 const TeamHistory = require('../models/TeamHistory');
 const Notification = require('../models/Notification');
-const { uploadToCloudinary } = require('../config/cloudinary');
-const path = require('path');
-const fs = require('fs');
+const { cloudinary, uploadToCloudinary } = require('../config/cloudinary');
+
+// Helper: extract Cloudinary public_id from a secure_url
+const getCloudinaryPublicId = (url) => {
+  if (!url || !url.includes('cloudinary.com')) return null;
+  try {
+    const parts = url.split('/upload/');
+    if (parts.length < 2) return null;
+    const afterUpload = parts[1];
+    const withoutVersion = afterUpload.replace(/^v\d+\//, '');
+    const publicId = withoutVersion.replace(/\.[^.]+$/, '');
+    return publicId;
+  } catch {
+    return null;
+  }
+};
 
 const TEAM_CREATOR_DESIGNATIONS = [
   'technical lead', 'team lead', 'project manager', 'program manager',
@@ -475,9 +488,13 @@ exports.deleteDocument = async (req, res) => {
     }
 
     if (doc.type === 'file' && doc.fileUrl) {
-      const fp = path.join(__dirname, '..', doc.fileUrl);
-      if (fs.existsSync(fp)) {
-        try { fs.unlinkSync(fp); } catch (e) { console.error('Error unlinking file:', e); }
+      const publicId = getCloudinaryPublicId(doc.fileUrl);
+      if (publicId) {
+        try {
+          await cloudinary.uploader.destroy(publicId, { resource_type: 'auto' });
+        } catch (delErr) {
+          console.warn('Failed to delete document from Cloudinary:', delErr.message);
+        }
       }
     }
     team.documents.pull(req.params.docId);

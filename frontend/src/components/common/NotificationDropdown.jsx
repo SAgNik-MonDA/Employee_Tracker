@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../../context/NotificationContext';
+import { useAuth } from '../../context/AuthContext';
 import {
   HiOutlineBell,
   HiOutlineCheckCircle,
@@ -11,6 +12,8 @@ import {
   HiOutlineClipboardCheck,
   HiOutlineClock,
   HiOutlineArchive,
+  HiOutlineShieldCheck,
+  HiOutlineDocumentText,
 } from 'react-icons/hi';
 
 const typeConfig = {
@@ -56,6 +59,54 @@ const typeConfig = {
     bg: 'bg-purple-500/10',
     border: 'border-purple-500/20',
   },
+  early_checkout_requested: {
+    icon: <HiOutlineClock className="w-5 h-5" />,
+    color: 'text-orange-400',
+    bg: 'bg-orange-500/10',
+    border: 'border-orange-500/20',
+  },
+  early_checkout_approved: {
+    icon: <HiOutlineClock className="w-5 h-5" />,
+    color: 'text-emerald-400',
+    bg: 'bg-emerald-500/10',
+    border: 'border-emerald-500/20',
+  },
+  early_checkout_rejected: {
+    icon: <HiOutlineClock className="w-5 h-5" />,
+    color: 'text-rose-400',
+    bg: 'bg-rose-500/10',
+    border: 'border-rose-500/20',
+  },
+  face_reset_requested: {
+    icon: <HiOutlineShieldCheck className="w-5 h-5" />,
+    color: 'text-blue-400',
+    bg: 'bg-blue-500/10',
+    border: 'border-blue-500/20',
+  },
+  face_reset_approved: {
+    icon: <HiOutlineShieldCheck className="w-5 h-5" />,
+    color: 'text-emerald-400',
+    bg: 'bg-emerald-500/10',
+    border: 'border-emerald-500/20',
+  },
+  face_reset_rejected: {
+    icon: <HiOutlineShieldCheck className="w-5 h-5" />,
+    color: 'text-rose-400',
+    bg: 'bg-rose-500/10',
+    border: 'border-rose-500/20',
+  },
+  general_request_submitted: {
+    icon: <HiOutlineDocumentText className="w-5 h-5" />,
+    color: 'text-indigo-400',
+    bg: 'bg-indigo-500/10',
+    border: 'border-indigo-500/20',
+  },
+  general_request_reviewed: {
+    icon: <HiOutlineDocumentText className="w-5 h-5" />,
+    color: 'text-emerald-400',
+    bg: 'bg-emerald-500/10',
+    border: 'border-emerald-500/20',
+  },
 };
 
 const timeAgo = (date) => {
@@ -72,6 +123,7 @@ const timeAgo = (date) => {
 const NotificationDropdown = () => {
   const { notifications, unreadCount, loading, fetchNotifications, markRead, markAllRead } =
     useNotifications();
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
@@ -95,7 +147,16 @@ const NotificationDropdown = () => {
   const handleClick = async (notif) => {
     if (!notif.isRead) await markRead(notif._id);
     setOpen(false);
-    if (notif.link) navigate(notif.link);
+    if (notif.link && user) {
+      const isAdmin = ['Admin', 'HR', 'Payroll Manager', 'Accounts Payable (AP) Specialist', 'Chief Financial Officer (CFO)', 'CTO', 'COO', 'CEO'].includes(user.role);
+      const basePath = isAdmin ? '/admin' : '/employee';
+      
+      let link = notif.link;
+      if (link.startsWith('/employee')) link = link.replace('/employee', '');
+      if (link.startsWith('/admin')) link = link.replace('/admin', '');
+      
+      navigate(`${basePath}${link}`);
+    }
   };
 
   const handleMarkAll = async (e) => {
