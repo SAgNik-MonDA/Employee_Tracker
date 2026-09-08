@@ -132,9 +132,9 @@ export const NotificationProvider = ({ children }) => {
     intervalRef.current = setInterval(fetchUnreadCount, 30000);
 
     // Socket.io real-time connection
-    const socketUrl = import.meta.env.VITE_API_URL
-      ? import.meta.env.VITE_API_URL.replace('/api', '')
-      : window.location.origin;
+    const socketUrl = import.meta.env.DEV
+      ? window.location.origin
+      : 'https://employee-tracker-backend-6t0z.onrender.com';
 
     const socket = io(socketUrl, {
       query: { userId: currentUserId },
