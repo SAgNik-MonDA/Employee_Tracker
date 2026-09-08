@@ -148,7 +148,7 @@ npm install
 npm run dev
 ```
 
-The application will launch on `http://localhost:5173`.
+The application will launch on `[http://localhost:5173](https://employee-tracker-frontend-psi.vercel.app/)`.
 
 ---
 
