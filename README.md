@@ -7,7 +7,7 @@ Designed with modern dark-mode glassmorphism aesthetics, real-time notifications
 ---
 
 ## 🌐 Live Demo
-- **Frontend (Vercel):** [https://employee-tracker-frontend-psi.vercel.app/](https://employee-tracker-frontend-psi.vercel.app/)
+- **Frontend (Vercel):** [https://employee-tracker-frontend-psi.vercel.app/](https://employee-tracker-frontend-psi.vercel.app)
 - **Backend API (Render):** [https://employee-tracker-backend-6t0z.onrender.com](https://employee-tracker-backend-6t0z.onrender.com)
 
 ---
