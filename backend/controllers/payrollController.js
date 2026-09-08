@@ -108,17 +108,17 @@ const generatePayroll = async (req, res) => {
         payrollResults.push({ employee: emp.name, status: 'Generated', payroll });
       }
 
-      // In-app notification for the employee
-      await Notification.create({
+      // In-app notification for the employee (fire and forget)
+      Notification.create({
         userId: emp._id,
         type: 'payroll_generated',
         title: 'Payslip Updated',
         message: `Your payslip for ${monthYear} has been generated. Net salary: ₹${netSalary.toLocaleString()}.`,
         link: '/employee/payslips',
-      }).catch(() => {});
+      }).catch(err => console.error('Payroll Notif Error:', err));
 
-      // Send email notification
-      await sendEmail({
+      // Send email notification (fire and forget)
+      sendEmail({
         to: emp.email,
         subject: `Payslip Generated - ${monthYear}`,
         html: `
@@ -133,7 +133,7 @@ const generatePayroll = async (req, res) => {
           </table>
           <p>Best regards,<br/>HR Team</p>
         `,
-      }).catch(() => {});
+      }).catch(err => console.error('Payroll Email Error:', err));
     }
 
     res.status(201).json({

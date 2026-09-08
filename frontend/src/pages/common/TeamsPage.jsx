@@ -14,6 +14,8 @@ import {
   HiOutlineLockClosed, HiOutlineLockOpen, HiOutlineArchive, HiOutlineCollection
 } from 'react-icons/hi';
 
+const BACKEND_URL = import.meta.env.DEV ? 'http://localhost:5000' : 'https://employee-tracker-backend-6t0z.onrender.com';
+
 const TEAM_CREATOR_DESIGNATIONS = [
   'technical lead', 'team lead', 'project manager', 'program manager',
   'operations manager', 'director of technology',
@@ -1549,7 +1551,7 @@ const ChatTab = ({ team, user, headers }) => {
       .then(r => setMessages(r.data)).catch(console.error);
 
     // Socket
-    const socket = io('http://localhost:5000', { transports: ['websocket'] });
+    const socket = io(import.meta.env.DEV ? window.location.origin : 'https://employee-tracker-backend-6t0z.onrender.com', { transports: ['websocket'] });
     socketRef.current = socket;
     socket.on('connect', () => { setConnected(true); socket.emit('join-team', team._id); });
     socket.on('disconnect', () => setConnected(false));
@@ -1907,7 +1909,7 @@ const DocsTab = ({ team, setTeam, user, headers }) => {
                     <p className="text-xs text-surface-400 mt-1.5 line-clamp-2 font-mono bg-surface-800/50 rounded p-2">{doc.content}</p>
                   )}
                   {doc.type === 'file' && doc.fileUrl && (
-                    <a href={`http://localhost:5000${doc.fileUrl}`} target="_blank" rel="noreferrer" className="text-xs text-primary-400 hover:underline mt-1 inline-block">⬇ Download</a>
+                    <a href={`${BACKEND_URL}${doc.fileUrl}`} target="_blank" rel="noreferrer" className="text-xs text-primary-400 hover:underline mt-1 inline-block">⬇ Download</a>
                   )}
                 </div>
               </div>
@@ -2190,7 +2192,7 @@ const TeamHistoryDrawer = ({ item, user, onClose, onRequestDelete }) => {
                       </p>
                     </div>
                     {doc.fileUrl && (
-                      <a href={`http://localhost:5000${doc.fileUrl}`} target="_blank" rel="noreferrer" className="text-primary-400 hover:underline">
+                      <a href={`${BACKEND_URL}${doc.fileUrl}`} target="_blank" rel="noreferrer" className="text-primary-400 hover:underline">
                         Download
                       </a>
                     )}

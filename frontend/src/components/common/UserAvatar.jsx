@@ -6,7 +6,9 @@
  *   className   — extra tailwind classes
  *   onClick     — optional click handler
  */
-const AVATAR_BASE_URL = "http://localhost:5000/uploads/avatars/";
+const AVATAR_BASE_URL = import.meta.env.DEV 
+  ? "http://localhost:5000/uploads/avatars/" 
+  : "https://employee-tracker-backend-6t0z.onrender.com/uploads/avatars/";
 
 const sizeMap = {
   xs: "w-6 h-6 text-[10px]",
