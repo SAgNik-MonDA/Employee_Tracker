@@ -268,9 +268,10 @@ const ApplyLeave = () => {
 
           {/* Start Date */}
           <div>
-            <label className="block text-sm font-medium text-surface-300 mb-2">Start Date</label>
+            <label className="block text-sm font-medium text-surface-300 mb-2">Start Date <span className="text-rose-500">*</span></label>
             <input
               type="date"
+              required
               value={formData.startDate}
               onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
               className="input-field"
@@ -279,9 +280,10 @@ const ApplyLeave = () => {
 
           {/* End Date */}
           <div>
-            <label className="block text-sm font-medium text-surface-300 mb-2">End Date</label>
+            <label className="block text-sm font-medium text-surface-300 mb-2">End Date <span className="text-rose-500">*</span></label>
             <input
               type="date"
+              required
               value={formData.endDate}
               min={formData.startDate}
               onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
@@ -291,13 +293,14 @@ const ApplyLeave = () => {
 
           {/* Reason */}
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-surface-300 mb-2">Reason</label>
+            <label className="block text-sm font-medium text-surface-300 mb-2">Reason <span className="text-rose-500">*</span></label>
             <input
               type="text"
+              required
               value={formData.reason}
               onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
               className="input-field"
-              placeholder="Brief reason for leave"
+              placeholder="Brief reason for leave (Required)"
             />
           </div>
 

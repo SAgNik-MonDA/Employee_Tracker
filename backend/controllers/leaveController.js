@@ -56,6 +56,11 @@ const applyLeave = async (req, res) => {
   try {
     const { leaveType, startDate, endDate, reason } = req.body;
 
+    // Validate inputs
+    if (!leaveType || !startDate || !endDate || !reason) {
+      return res.status(400).json({ message: 'All fields (including reason) are required' });
+    }
+
     if (!['Casual', 'Emergency'].includes(leaveType)) {
       return res.status(400).json({ message: 'Leave type must be Casual or Emergency' });
     }
@@ -388,9 +393,9 @@ const updateLeaveStatus = async (req, res) => {
       link:    '/employee/leaves#leave-history',
     });
 
-    // Send email notification to employee
+    // Send email notification to employee (fire and forget so it doesn't block the API)
     if (leave.employeeId && leave.employeeId.email) {
-      await sendEmail({
+      sendEmail({
         to:      leave.employeeId.email,
         subject: `Leave Request ${status}`,
         html: `
