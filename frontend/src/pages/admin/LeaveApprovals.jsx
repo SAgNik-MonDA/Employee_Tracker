@@ -11,6 +11,9 @@ const LeaveApprovals = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('Pending');
 
+  const [confirmModal, setConfirmModal] = useState({ open: false, leaveId: null, action: null, employeeName: '' });
+  const [processingId, setProcessingId] = useState(null);
+
   useEffect(() => {
     fetchLeaves();
   }, [filter]);
@@ -19,7 +22,8 @@ const LeaveApprovals = () => {
     setLoading(true);
     try {
       const url = filter === 'All' ? '/leaves/all-requests' : `/leaves/all-requests?status=${filter}`;
-      const { data } = await API.get(url);
+      // Add a timestamp to bypass any caching
+      const { data } = await API.get(`${url}${filter === 'All' ? '?' : '&'}_t=${Date.now()}`);
       setLeaves(data);
     } catch (error) {
       toast.error('Failed to load leave requests');
@@ -28,13 +32,28 @@ const LeaveApprovals = () => {
     }
   };
 
-  const handleStatusUpdate = async (id, status) => {
+  const handleStatusUpdate = async () => {
+    const { leaveId, action } = confirmModal;
+    setProcessingId(leaveId);
+    
     try {
-      await API.put(`/leaves/status/${id}`, { status });
-      toast.success(`Leave ${status.toLowerCase()} successfully`);
+      await API.put(`/leaves/status/${leaveId}`, { status: action });
+      toast.success(`Leave ${action.toLowerCase()} successfully`);
+      
+      // Optimistically update the UI to instantly remove or update the row
+      if (filter === 'Pending') {
+        setLeaves(prev => prev.filter(l => l._id !== leaveId));
+      } else {
+        setLeaves(prev => prev.map(l => l._id === leaveId ? { ...l, status: action } : l));
+      }
+      
+      setConfirmModal({ open: false, leaveId: null, action: null, employeeName: '' });
+      // Fetch fresh data in the background
       fetchLeaves();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Update failed');
+    } finally {
+      setProcessingId(null);
     }
   };
 
@@ -124,18 +143,36 @@ const LeaveApprovals = () => {
                         {l.status === 'Pending' ? (
                           <div className="flex items-center gap-2">
                             <button
-                              onClick={() => handleStatusUpdate(l._id, 'Approved')}
-                              className="p-2 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
+                              onClick={() => setConfirmModal({ open: true, leaveId: l._id, action: 'Approved', employeeName: l.employeeId?.name || 'Unknown' })}
+                              disabled={processingId === l._id}
+                              className={`p-2 rounded-lg transition-colors ${
+                                processingId === l._id 
+                                  ? 'bg-surface-700 text-surface-500 cursor-not-allowed'
+                                  : 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30'
+                              }`}
                               title="Approve"
                             >
-                              <HiOutlineCheck className="w-4 h-4" />
+                              {processingId === l._id && confirmModal.action === 'Approved' ? (
+                                <div className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <HiOutlineCheck className="w-4 h-4" />
+                              )}
                             </button>
                             <button
-                              onClick={() => handleStatusUpdate(l._id, 'Rejected')}
-                              className="p-2 rounded-lg bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 transition-colors"
+                              onClick={() => setConfirmModal({ open: true, leaveId: l._id, action: 'Rejected', employeeName: l.employeeId?.name || 'Unknown' })}
+                              disabled={processingId === l._id}
+                              className={`p-2 rounded-lg transition-colors ${
+                                processingId === l._id
+                                  ? 'bg-surface-700 text-surface-500 cursor-not-allowed'
+                                  : 'bg-rose-500/20 text-rose-400 hover:bg-rose-500/30'
+                              }`}
                               title="Reject"
                             >
-                              <HiOutlineX className="w-4 h-4" />
+                              {processingId === l._id && confirmModal.action === 'Rejected' ? (
+                                <div className="w-4 h-4 border-2 border-rose-400 border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <HiOutlineX className="w-4 h-4" />
+                              )}
                             </button>
                           </div>
                         ) : (
@@ -150,6 +187,40 @@ const LeaveApprovals = () => {
           </table>
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      {confirmModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in p-4">
+          <div className="bg-surface-900 border border-surface-700 w-full max-w-sm rounded-2xl shadow-2xl p-6 animate-slide-up">
+            <h3 className="text-xl font-bold text-surface-100 mb-2">
+              Confirm {confirmModal.action === 'Approved' ? 'Approval' : 'Rejection'}
+            </h3>
+            <p className="text-surface-400 mb-6 leading-relaxed">
+              Are you sure you want to <strong>{confirmModal.action === 'Approved' ? 'approve' : 'reject'}</strong> the leave request for <strong className="text-surface-200">{confirmModal.employeeName}</strong>? This action will notify the employee.
+            </p>
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={() => setConfirmModal({ open: false, leaveId: null, action: null, employeeName: '' })}
+                disabled={processingId !== null}
+                className="px-4 py-2 rounded-xl text-sm font-medium text-surface-300 hover:bg-surface-800 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleStatusUpdate}
+                disabled={processingId !== null}
+                className={`px-4 py-2 rounded-xl text-sm font-semibold text-white shadow-lg transition-all ${
+                  confirmModal.action === 'Approved'
+                    ? 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/30'
+                    : 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/30'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                {processingId !== null ? 'Processing...' : `Yes, ${confirmModal.action === 'Approved' ? 'Approve' : 'Reject'}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
