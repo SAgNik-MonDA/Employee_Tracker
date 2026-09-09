@@ -7,7 +7,7 @@ Designed with modern dark-mode glassmorphism aesthetics, real-time notifications
 ---
 
 ## 🌐 Live Demo
-- **Frontend (Vercel):** [https://employee-tracker-frontend-psi.vercel.app](https://employee-tracker-frontend-psi.vercel.app)
+- **Frontend (Vercel):** [https://employee-tracker-project.sagnikmondal.in](https://employee-tracker-project.sagnikmondal.in)
 - **Backend API (Render):** [https://employee-tracker-backend-6t0z.onrender.com](https://employee-tracker-backend-6t0z.onrender.com)
 
 ---
@@ -148,7 +148,7 @@ npm install
 npm run dev
 ```
 
-The application will launch on `https://employee-tracker-frontend-psi.vercel.app`.
+The application will launch on `https://employee-tracker-project.sagnikmondal.in`.
 
 ---
 
