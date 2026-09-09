@@ -155,6 +155,11 @@ const NotificationDropdown = () => {
       if (link.startsWith('/employee')) link = link.replace('/employee', '');
       if (link.startsWith('/admin')) link = link.replace('/admin', '');
       
+      // Compatibility fix for old notifications in DB
+      if ((notif.type === 'leave_approved' || notif.type === 'leave_rejected') && !link.includes('#leave-history')) {
+        link += '#leave-history';
+      }
+      
       navigate(`${basePath}${link}`);
     }
   };

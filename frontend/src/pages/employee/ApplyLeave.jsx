@@ -63,16 +63,20 @@ const ApplyLeave = () => {
   });
 
   useEffect(() => {
-    if (location.hash) {
-      setTimeout(() => {
-        const id = location.hash.replace('#', '');
-        const element = document.getElementById(id);
+    if (location.hash === '#leave-history') {
+      const scrollToHistory = () => {
+        const element = document.getElementById('leave-history');
         if (element) {
-          element.scrollIntoView({ behavior: 'smooth' });
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
-      }, 300);
+      };
+
+      // Try scrolling immediately, and also after a short delay in case of DOM updates
+      scrollToHistory();
+      setTimeout(scrollToHistory, 100);
+      setTimeout(scrollToHistory, 500);
     }
-  }, [location.hash, loading]);
+  }, [location.hash, location.key, loading]);
 
   useEffect(() => {
     fetchAll();
