@@ -385,7 +385,7 @@ const updateLeaveStatus = async (req, res) => {
       type:    status === 'Approved' ? 'leave_approved' : 'leave_rejected',
       title:   `Leave ${status}`,
       message: `Your ${leave.leaveType} leave request from ${new Date(leave.startDate).toLocaleDateString()} to ${new Date(leave.endDate).toLocaleDateString()} has been ${status.toLowerCase()}.`,
-      link:    '/employee/leaves',
+      link:    '/employee/leaves#leave-history',
     });
 
     // Send email notification to employee

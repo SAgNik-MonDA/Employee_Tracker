@@ -8,6 +8,8 @@ import {
   HiOutlineInformationCircle,
 } from 'react-icons/hi';
 
+import { useLocation } from 'react-router-dom';
+
 // ─── Constants ───────────────────────────────────────────────────────────────
 const ANNUAL_LIMITS = { Casual: 24, Emergency: 16 };
 const CASUAL_MONTHLY_LIMIT = 2;
@@ -48,6 +50,7 @@ const BalanceBar = ({ label, used, total, color }) => {
 // ─── Main Component ───────────────────────────────────────────────────────────
 const ApplyLeave = () => {
   const { notifications } = useNotifications();
+  const location = useLocation();
   const [leaves, setLeaves]       = useState([]);
   const [balance, setBalance]     = useState(null);
   const [loading, setLoading]     = useState(true);
@@ -58,6 +61,18 @@ const ApplyLeave = () => {
     endDate: '',
     reason: '',
   });
+
+  useEffect(() => {
+    if (location.hash) {
+      setTimeout(() => {
+        const id = location.hash.replace('#', '');
+        const element = document.getElementById(id);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 300);
+    }
+  }, [location.hash, loading]);
 
   useEffect(() => {
     fetchAll();
@@ -295,7 +310,7 @@ const ApplyLeave = () => {
       </div>
 
       {/* ── Leave History ────────────────────────────────────────────────── */}
-      <div className="glass-card p-6">
+      <div id="leave-history" className="glass-card p-6 scroll-mt-20">
         <h2 className="text-lg font-semibold text-surface-100 mb-4">My Leave History</h2>
         <div className="table-container">
           <table className="data-table">
