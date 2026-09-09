@@ -227,7 +227,10 @@ const applyLeave = async (req, res) => {
       message: `${req.user.name} has applied for ${days}-day ${leaveType} leave from ${start.toLocaleDateString()} to ${end.toLocaleDateString()}.`,
       link: '/admin/leaves',
     }));
-    if (notifDocs.length > 0) await Notification.insertMany(notifDocs);
+    
+    if (notifDocs.length > 0) {
+      await Promise.all(notifDocs.map(doc => Notification.create(doc)));
+    }
 
     res.status(201).json(leave);
   } catch (error) {
