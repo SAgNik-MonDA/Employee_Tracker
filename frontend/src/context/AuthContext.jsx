@@ -19,7 +19,7 @@ export const AuthProvider = ({ children }) => {
     // Verify token with backend on every app load
     const verifyToken = async () => {
       try {
-        const token = localStorage.getItem('token');
+        const token = sessionStorage.getItem('token');
 
         if (!token) {
           // No token — go to login
@@ -32,14 +32,14 @@ export const AuthProvider = ({ children }) => {
 
         if (data && data.role) {
           setUser(data);
-          localStorage.setItem('user', JSON.stringify(data));
+          sessionStorage.setItem('user', JSON.stringify(data));
         } else {
           throw new Error('Invalid user data');
         }
       } catch (e) {
         // Token expired or invalid — clear everything, force login
-        localStorage.removeItem('user');
-        localStorage.removeItem('token');
+        sessionStorage.removeItem('user');
+        sessionStorage.removeItem('token');
         setUser(null);
       } finally {
         setLoading(false);
@@ -55,16 +55,16 @@ export const AuthProvider = ({ children }) => {
     const { token, ...userWithoutToken } = data;
 
     setUser(userWithoutToken);
-    localStorage.setItem('user', JSON.stringify(userWithoutToken));
-    localStorage.setItem('token', token);
+    sessionStorage.setItem('user', JSON.stringify(userWithoutToken));
+    sessionStorage.setItem('token', token);
 
     return data;
   };
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
+    sessionStorage.removeItem('user');
+    sessionStorage.removeItem('token');
   };
 
   const updateSessionUser = async () => {
@@ -72,18 +72,18 @@ export const AuthProvider = ({ children }) => {
       const { data } = await API.get('/auth/profile');
       if (data && data.role) {
         setUser(data);
-        localStorage.setItem('user', JSON.stringify(data));
+        sessionStorage.setItem('user', JSON.stringify(data));
       }
     } catch (e) {
       console.error(e);
     }
   };
 
-  // Update profile picture in state + localStorage after upload
+  // Update profile picture in state + sessionStorage after upload
   const updateProfilePicture = (filename) => {
     const updatedUser = { ...user, profilePicture: filename };
     setUser(updatedUser);
-    localStorage.setItem('user', JSON.stringify(updatedUser));
+    sessionStorage.setItem('user', JSON.stringify(updatedUser));
   };
 
   return (

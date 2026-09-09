@@ -71,7 +71,7 @@ const StatusBadge = ({ status }) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 const TeamsPage = () => {
   const { user } = useAuth();
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem('token');
   const headers = { Authorization: `Bearer ${token}` };
 
   const [teams, setTeams]               = useState([]);
