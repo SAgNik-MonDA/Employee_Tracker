@@ -1,12 +1,17 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import API from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
+import { useNotifications } from '../../context/NotificationContext';
 import toast from 'react-hot-toast';
 import { HiOutlineCheck, HiOutlineX } from 'react-icons/hi';
 
 const LeaveApprovals = () => {
   const { user } = useAuth();
+  const { notifications } = useNotifications();
+  const location = useLocation();
   const isAdmin = user?.role === 'Admin';
+  
   const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('Pending');
@@ -14,9 +19,24 @@ const LeaveApprovals = () => {
   const [confirmModal, setConfirmModal] = useState({ open: false, leaveId: null, action: null, employeeName: '' });
   const [processingId, setProcessingId] = useState(null);
 
+  // Read hash on mount or change
+  useEffect(() => {
+    if (location.hash === '#pending') setFilter('Pending');
+    if (location.hash === '#approved') setFilter('Approved');
+    if (location.hash === '#rejected') setFilter('Rejected');
+    if (location.hash === '#all') setFilter('All');
+  }, [location.hash, location.key]);
+
   useEffect(() => {
     fetchLeaves();
   }, [filter]);
+
+  // Re-fetch when a new notification arrives
+  useEffect(() => {
+    if (notifications.length > 0) {
+      fetchLeaves();
+    }
+  }, [notifications.length]);
 
   const fetchLeaves = async () => {
     setLoading(true);

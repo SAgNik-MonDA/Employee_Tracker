@@ -159,6 +159,9 @@ const NotificationDropdown = () => {
       if ((notif.type === 'leave_approved' || notif.type === 'leave_rejected') && !link.includes('#leave-history')) {
         link += '#leave-history';
       }
+      if (notif.type === 'leave_applied' && !link.includes('#pending')) {
+        link += '#pending';
+      }
       
       navigate(`${basePath}${link}`);
     }
