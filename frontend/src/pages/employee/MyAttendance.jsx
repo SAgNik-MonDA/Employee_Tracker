@@ -3,6 +3,7 @@ import API from '../../api/axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
+import { useShiftTiming } from '../../hooks/useShiftTiming';
 import AttendanceCameraModal from '../../components/common/AttendanceCameraModal';
 
 const MyAttendance = () => {
@@ -23,6 +24,8 @@ const MyAttendance = () => {
   const [earlyCheckoutModalOpen, setEarlyCheckoutModalOpen] = useState(false);
   const [earlyCheckoutReason, setEarlyCheckoutReason] = useState('');
   const [submittingEarlyCheckout, setSubmittingEarlyCheckout] = useState(false);
+
+  const { canCheckIn, canCheckOut, timeMessage } = useShiftTiming(todayStatus);
 
   useEffect(() => {
     fetchAttendance();
@@ -209,32 +212,46 @@ const MyAttendance = () => {
 
         <div className="flex flex-wrap items-center gap-4">
           {!todayStatus?.checkIn ? (
-            <button
-              onClick={handleCheckIn}
-              disabled={isTodayHoliday || !user?.faceDescriptor || user.faceDescriptor.length === 0}
-              className={`btn-success ${
-                isTodayHoliday
-                  ? 'opacity-50 cursor-not-allowed bg-surface-800 text-surface-500 border-surface-700/50 shadow-none hover:bg-surface-800'
-                  : ''
-              }`}
-              title={isTodayHoliday ? 'Check-in disabled on weekly holidays' : ''}
-            >
-              🕐 Face Check In
-            </button>
-          ) : !todayStatus?.checkOut ? (
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col gap-2">
               <button
-                onClick={handleCheckOut}
-                disabled={isTodayHoliday || !user?.faceDescriptor || user.faceDescriptor.length === 0}
-                className={`btn-danger ${
-                  isTodayHoliday
+                onClick={handleCheckIn}
+                disabled={isTodayHoliday || !user?.faceDescriptor || user.faceDescriptor.length === 0 || !canCheckIn}
+                className={`btn-success flex items-center gap-2 ${
+                  isTodayHoliday || !canCheckIn
                     ? 'opacity-50 cursor-not-allowed bg-surface-800 text-surface-500 border-surface-700/50 shadow-none hover:bg-surface-800'
                     : ''
                 }`}
-                title={isTodayHoliday ? 'Check-out disabled on weekly holidays' : ''}
+                title={isTodayHoliday ? 'Check-in disabled on weekly holidays' : !canCheckIn ? timeMessage : ''}
               >
-                🚪 Face Check Out
+                🕐 Face Check In
               </button>
+              {timeMessage && !isTodayHoliday && (
+                <span className="text-xs text-amber-400 font-medium bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20 w-fit">
+                  {timeMessage}
+                </span>
+              )}
+            </div>
+          ) : !todayStatus?.checkOut ? (
+            <div className="flex items-center gap-3">
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={handleCheckOut}
+                  disabled={isTodayHoliday || !user?.faceDescriptor || user.faceDescriptor.length === 0 || !canCheckOut}
+                  className={`btn-danger flex items-center gap-2 ${
+                    isTodayHoliday || !canCheckOut
+                      ? 'opacity-50 cursor-not-allowed bg-surface-800 text-surface-500 border-surface-700/50 shadow-none hover:bg-surface-800'
+                      : ''
+                  }`}
+                  title={isTodayHoliday ? 'Check-out disabled on weekly holidays' : !canCheckOut ? timeMessage : ''}
+                >
+                  🚪 Face Check Out
+                </button>
+                {timeMessage && !isTodayHoliday && (
+                  <span className="text-xs text-amber-400 font-medium bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20 w-fit">
+                    {timeMessage}
+                  </span>
+                )}
+              </div>
               {todayStatus?.earlyCheckoutStatus === 'None' && !isTodayHoliday && (
                 <button onClick={() => setEarlyCheckoutModalOpen(true)} className="px-3 py-1.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs font-semibold hover:bg-amber-500/20 transition-colors">
                   Request Early Check-out

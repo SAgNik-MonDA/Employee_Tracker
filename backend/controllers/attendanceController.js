@@ -110,8 +110,8 @@ const checkIn = async (req, res) => {
     if (shiftType === 'Evening') shiftStartMinutes = 14 * 60;
     if (shiftType === 'Night') shiftStartMinutes = 22 * 60;
 
-    // Reject check-ins before shift start (with a 30-min early buffer)
-    if (timeInMinutes < shiftStartMinutes - 30) {
+    // Reject check-ins before shift start (with a 5-min early buffer)
+    if (timeInMinutes < shiftStartMinutes - 5) {
       return res.status(400).json({ message: `Cannot check in yet. Your ${shiftType} shift starts at ${Math.floor(shiftStartMinutes/60)}:${String(shiftStartMinutes%60).padStart(2,'0')}.` });
     }
 

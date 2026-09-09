@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import API from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
+import { useShiftTiming } from '../../hooks/useShiftTiming';
 import StatCard from '../../components/common/StatCard';
 import ProfilePictureUploader from '../../components/common/ProfilePictureUploader';
 import BirthdayBanner from '../../components/common/BirthdayBanner';
@@ -23,6 +24,8 @@ const EmployeeDashboard = () => {
   
   const [cameraModalOpen, setCameraModalOpen] = useState(false);
   const [actionType, setActionType] = useState('check-in');
+  
+  const { canCheckIn, canCheckOut, timeMessage } = useShiftTiming(todayStatus);
 
   useEffect(() => {
     fetchDashboardData();
@@ -286,32 +289,46 @@ const EmployeeDashboard = () => {
         </div>
         <div className="flex flex-wrap gap-4 items-center">
           {!todayStatus?.checkIn ? (
-            <button
-              onClick={handleCheckIn}
-              disabled={isTodayHoliday}
-              className={`btn-success flex items-center gap-2 ${
-                isTodayHoliday
-                  ? 'opacity-50 cursor-not-allowed bg-surface-800 text-surface-500 border-surface-700/50 shadow-none hover:bg-surface-800'
-                  : ''
-              }`}
-              title={isTodayHoliday ? 'Check-in disabled on weekly holidays' : ''}
-            >
-              🕐 Check In
-            </button>
-          ) : !todayStatus?.checkOut ? (
-            <>
+            <div className="flex flex-col gap-2">
               <button
-                onClick={handleCheckOut}
-                disabled={isTodayHoliday}
-                className={`btn-danger flex items-center gap-2 ${
-                  isTodayHoliday
+                onClick={handleCheckIn}
+                disabled={isTodayHoliday || !canCheckIn}
+                className={`btn-success flex items-center gap-2 ${
+                  isTodayHoliday || !canCheckIn
                     ? 'opacity-50 cursor-not-allowed bg-surface-800 text-surface-500 border-surface-700/50 shadow-none hover:bg-surface-800'
                     : ''
                 }`}
-                title={isTodayHoliday ? 'Check-out disabled on weekly holidays' : ''}
+                title={isTodayHoliday ? 'Check-in disabled on weekly holidays' : !canCheckIn ? timeMessage : ''}
               >
-                👋 Check Out
+                🕐 Check In
               </button>
+              {timeMessage && !isTodayHoliday && (
+                <span className="text-xs text-amber-400 font-medium bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20 w-fit">
+                  {timeMessage}
+                </span>
+              )}
+            </div>
+          ) : !todayStatus?.checkOut ? (
+            <>
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={handleCheckOut}
+                  disabled={isTodayHoliday || !canCheckOut}
+                  className={`btn-danger flex items-center gap-2 ${
+                    isTodayHoliday || !canCheckOut
+                      ? 'opacity-50 cursor-not-allowed bg-surface-800 text-surface-500 border-surface-700/50 shadow-none hover:bg-surface-800'
+                      : ''
+                  }`}
+                  title={isTodayHoliday ? 'Check-out disabled on weekly holidays' : !canCheckOut ? timeMessage : ''}
+                >
+                  👋 Check Out
+                </button>
+                {timeMessage && !isTodayHoliday && (
+                  <span className="text-xs text-amber-400 font-medium bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20 w-fit">
+                    {timeMessage}
+                  </span>
+                )}
+              </div>
               {/* Emergency Checkout logic... */}
               {todayStatus.earlyCheckoutStatus === 'Approved' ? (
                 <span className="text-sm font-medium text-emerald-400 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
