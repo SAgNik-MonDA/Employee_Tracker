@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import axios from 'axios';
+import API from '../../api/axios';
 import toast from 'react-hot-toast';
 import { io } from 'socket.io-client';
 import { useAuth } from '../../context/AuthContext';
@@ -96,7 +96,7 @@ const TeamsPage = () => {
     if (!historyToDelete) return;
     setDeletingHistory(true);
     try {
-      await axios.delete(`/api/teams/history/${historyToDelete._id}`, { headers });
+      await API.delete(`/teams/history/${historyToDelete._id}`, { headers });
       toast.success(`Archived team "${historyToDelete.projectName}" deleted permanently`);
       fetchHistoryTeams();
       setHistoryToDelete(null);
@@ -221,8 +221,8 @@ const TeamsPage = () => {
   // ── Fetch ────────────────────────────────────────────────────────────────────
   const fetchTeams = useCallback(async () => {
     try {
-      const { data } = await axios.get('/api/teams', { headers });
-      setTeams(data);
+      const { data } = await API.get('/teams', { headers });
+      setTeams(Array.isArray(data) ? data : []);
     } catch(e){ console.error(e); }
     finally { setLoading(false); }
   }, []);
@@ -231,7 +231,7 @@ const TeamsPage = () => {
     if (!teamToDelete) return;
     setDeletingTeam(true);
     try {
-      await axios.delete(`/api/teams/${teamToDelete._id}`, { headers });
+      await API.delete(`/teams/${teamToDelete._id}`, { headers });
       toast.success(`Team "${teamToDelete.projectName}" deleted successfully`);
       fetchTeams();
       fetchHistoryTeams();
@@ -246,15 +246,15 @@ const TeamsPage = () => {
   const fetchHistoryTeams = useCallback(async () => {
     setLoadingHistory(true);
     try {
-      const { data } = await axios.get('/api/teams/history/all', { headers });
-      setHistoryTeams(data);
+      const { data } = await API.get('/teams/history/all', { headers });
+      setHistoryTeams(Array.isArray(data) ? data : []);
     } catch(e){ console.error(e); }
     finally { setLoadingHistory(false); }
   }, []);
 
   const fetchEmployees = useCallback(async () => {
     try {
-      const { data } = await axios.get('/api/auth/employees', { headers });
+      const { data } = await API.get('/auth/employees', { headers });
       setEmployees(Array.isArray(data) ? data : data.employees || []);
     } catch(e){ console.error(e); }
   }, []);
@@ -277,7 +277,7 @@ const TeamsPage = () => {
     }
 
     if (openId) {
-      axios.get(`/api/teams/${openId}`, { headers })
+      API.get(`/teams/${openId}`, { headers })
         .then(({ data }) => {
           setSelectedTeam(data);
           setActiveTab('overview');
@@ -291,7 +291,7 @@ const TeamsPage = () => {
 
   const openTeam = async (team, shouldExtend = false) => {
     try {
-      const { data } = await axios.get(`/api/teams/${team._id}`, { headers });
+      const { data } = await API.get(`/teams/${team._id}`, { headers });
       setSelectedTeam(data);
       setActiveTab('overview');
       setExtendHighlight(shouldExtend);
@@ -681,7 +681,7 @@ const CreateTeamModal = ({ employees, headers, onClose, onCreated }) => {
     if (!form.projectName.trim()) return alert('Project name required');
     setSubmitting(true);
     try {
-      const { data } = await axios.post('/api/teams', {
+      const { data } = await API.post('/teams', {
         ...form,
         techStack: form.techStack.split(',').map(s => s.trim()).filter(Boolean),
         teamLead: form.teamLead || undefined,
@@ -788,7 +788,7 @@ const TeamDetailDrawer = ({ team, setTeam, user, employees, headers, activeTab, 
     const prevStatus = team.status;
     setTeam(prev => ({ ...prev, status: newStatus }));
     try {
-      const { data } = await axios.put(`/api/teams/${team._id}`, { status: newStatus }, { headers });
+      const { data } = await API.put(`/teams/${team._id}`, { status: newStatus }, { headers });
       setTeam(data);
       if (onTeamUpdated) onTeamUpdated(data);
       if (onRefresh) onRefresh();
@@ -906,7 +906,7 @@ const OverviewTab = ({ team, setTeam, user, employees, headers, updateStatus, is
     const prevStatus = team.status;
     setTeam(prev => ({ ...prev, status: newStatus }));
     try {
-      const { data } = await axios.put(`/api/teams/${team._id}`, { status: newStatus }, { headers });
+      const { data } = await API.put(`/teams/${team._id}`, { status: newStatus }, { headers });
       setTeam(data);
     } catch (err) {
       setTeam(prev => ({ ...prev, status: prevStatus }));
@@ -928,7 +928,7 @@ const OverviewTab = ({ team, setTeam, user, employees, headers, updateStatus, is
   const handleSave = async () => {
     setSaving(true);
     try {
-      const { data } = await axios.put(`/api/teams/${team._id}`, {
+      const { data } = await API.put(`/teams/${team._id}`, {
         ...form,
         status: team.status,
         techStack: form.techStack.split(',').map(s => s.trim()).filter(Boolean),
@@ -1131,7 +1131,7 @@ const ProgressTab = ({ team, setTeam, user, headers }) => {
     if (!msg.trim()) return;
     setLoading(true);
     try {
-      const { data } = await axios.post(`/api/teams/${team._id}/progress`, { message: msg }, { headers });
+      const { data } = await API.post(`/teams/${team._id}/progress`, { message: msg }, { headers });
       setTeam(p => ({ ...p, progressUpdates: [...(p.progressUpdates||[]), data] }));
       setMsg('');
     } catch(e) { alert(e.response?.data?.message || 'Error'); }
@@ -1140,7 +1140,7 @@ const ProgressTab = ({ team, setTeam, user, headers }) => {
 
   const approve = async (updateId, action) => {
     try {
-      const { data } = await axios.put(`/api/teams/${team._id}/progress/${updateId}/approve`, { action }, { headers });
+      const { data } = await API.put(`/teams/${team._id}/progress/${updateId}/approve`, { action }, { headers });
       setTeam(p => ({
         ...p,
         progressUpdates: (p.progressUpdates||[]).map(u => u._id === updateId ? { ...u, ...data } : u),
@@ -1275,7 +1275,7 @@ const ShiftsTab = ({ team, setTeam, user, headers }) => {
 
       setCheckingLock(true);
       try {
-        const { data } = await axios.get(`/api/shifts/${form.employeeId}?startDate=${form.date}&endDate=${form.date}`, { headers });
+        const { data } = await API.get(`/shifts/${form.employeeId}?startDate=${form.date}&endDate=${form.date}`, { headers });
         const lockedShifts = data.filter(s => s.isLocked);
         setIsCurrentlyLocked(data.length > 0 && lockedShifts.length > 0);
       } catch (error) {
@@ -1291,7 +1291,7 @@ const ShiftsTab = ({ team, setTeam, user, headers }) => {
     if (!form.employeeId || !form.date) return toast.error('Please select member and date first');
     try {
       if (isCurrentlyLocked) {
-        const { data } = await axios.put('/api/shifts/unlock', { employeeId: form.employeeId, dates: [form.date] }, { headers });
+        const { data } = await API.put('/shifts/unlock', { employeeId: form.employeeId, dates: [form.date] }, { headers });
         toast.success(data.message || 'Shift schedule unlocked successfully! 🔓');
         setIsCurrentlyLocked(false);
         setTeam(prev => ({
@@ -1305,7 +1305,7 @@ const ShiftsTab = ({ team, setTeam, user, headers }) => {
           })
         }));
       } else {
-        const { data } = await axios.put('/api/shifts/lock', {
+        const { data } = await API.put('/shifts/lock', {
           employeeId: form.employeeId,
           dates: [form.date],
           shiftType: form.shiftType || 'Morning'
@@ -1333,7 +1333,7 @@ const ShiftsTab = ({ team, setTeam, user, headers }) => {
     if (!form.employeeId || !form.date) return toast.error('Select employee and date');
     setAdding(true);
     try {
-      const { data } = await axios.post(`/api/teams/${team._id}/shifts`, {
+      const { data } = await API.post(`/teams/${team._id}/shifts`, {
         ...form,
         isLocked: isCurrentlyLocked,
       }, { headers });
@@ -1358,7 +1358,7 @@ const ShiftsTab = ({ team, setTeam, user, headers }) => {
     }
 
     try {
-      await axios.delete(`/api/teams/${team._id}/shifts/${shift._id}`, { headers });
+      await API.delete(`/teams/${team._id}/shifts/${shift._id}`, { headers });
       setTeam(p => ({ ...p, shifts: (p.shifts||[]).filter(s => s._id !== shift._id) }));
       toast.success('Shift deleted successfully');
     } catch(e) {
@@ -1547,7 +1547,7 @@ const ChatTab = ({ team, user, headers }) => {
 
   useEffect(() => {
     // Load history
-    axios.get(`/api/teams/${team._id}/chat`, { headers })
+    API.get(`/teams/${team._id}/chat`, { headers })
       .then(r => setMessages(r.data)).catch(console.error);
 
     // Socket
@@ -1639,7 +1639,7 @@ const AttendanceTab = ({ team, user, headers }) => {
   const fetchAtt = async () => {
     setLoading(true);
     try {
-      const { data: d } = await axios.get(`/api/teams/${team._id}/attendance?month=${month}&year=${year}`, { headers });
+      const { data: d } = await API.get(`/teams/${team._id}/attendance?month=${month}&year=${year}`, { headers });
       setData(d);
     } catch(e){ 
       console.error('Attendance fetch error:', e);
@@ -1809,7 +1809,7 @@ const DocsTab = ({ team, setTeam, user, headers }) => {
     if (!content.trim()) return;
     setSaving(true);
     try {
-      const { data } = await axios.post(`/api/teams/${team._id}/documents`, { type:'text', filename: docName || 'Untitled', content }, { headers });
+      const { data } = await API.post(`/teams/${team._id}/documents`, { type:'text', filename: docName || 'Untitled', content }, { headers });
       setTeam(p => ({ ...p, documents: [...(p.documents||[]), data] }));
       setMode(null); setContent(''); setDocName('');
       toast.success('Document saved successfully');
@@ -1823,7 +1823,7 @@ const DocsTab = ({ team, setTeam, user, headers }) => {
     const fd = new FormData();
     fd.append('file', file);
     try {
-      const { data } = await axios.post(`/api/teams/${team._id}/documents`, fd, {
+      const { data } = await API.post(`/teams/${team._id}/documents`, fd, {
         headers: { ...headers, 'Content-Type': 'multipart/form-data' }
       });
       setTeam(p => ({ ...p, documents: [...(p.documents||[]), data] }));
@@ -1837,7 +1837,7 @@ const DocsTab = ({ team, setTeam, user, headers }) => {
     if (!docToDelete) return;
     setDeletingDoc(true);
     try {
-      await axios.delete(`/api/teams/${team._id}/documents/${docToDelete._id}`, { headers });
+      await API.delete(`/teams/${team._id}/documents/${docToDelete._id}`, { headers });
       setTeam(p => ({ ...p, documents: (p.documents||[]).filter(d => d._id !== docToDelete._id) }));
       toast.success('Document deleted successfully');
       setDocToDelete(null);
