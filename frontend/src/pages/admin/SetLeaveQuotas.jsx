@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import API from '../../api/axios';
 import toast from 'react-hot-toast';
 import { HiOutlineSave, HiOutlineRefresh } from 'react-icons/hi';
-import { ALL_ROLES, ROLE_DESIGNATIONS } from './ManageEmployees';
+import { ALL_ROLES, ROLE_DESIGNATIONS, GENERIC_DESIGNATIONS } from './ManageEmployees';
 
 const SetLeaveQuotas = () => {
   const [activeYear, setActiveYear] = useState(new Date().getFullYear());
@@ -49,6 +49,9 @@ const SetLeaveQuotas = () => {
         Object.values(ROLE_DESIGNATIONS).forEach(designationArray => {
           designationArray.forEach(d => designationsSet.add(d));
         });
+
+        // Add all generic fallback designations (e.g. Program Manager, Director, etc.)
+        GENERIC_DESIGNATIONS.forEach(d => designationsSet.add(d));
 
         setAllDesignations(Array.from(designationsSet).sort());
       } catch (error) {

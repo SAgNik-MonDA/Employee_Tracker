@@ -151,7 +151,7 @@ export const ROLE_DESIGNATIONS = {
 };
 
 // Fallback: designations shown when no matching role is found
-const GENERIC_DESIGNATIONS = [
+export const GENERIC_DESIGNATIONS = [
   'Trainee', 'SDE-1', 'SDE-2', 'SDE-3', 'SDE-4',
   'Software Engineer', 'Senior Software Engineer', 'Developer', 'Senior Developer',
   'Technical Lead', 'Team Lead', 'Project Manager', 'Program Manager',
