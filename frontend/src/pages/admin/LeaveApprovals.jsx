@@ -210,7 +210,7 @@ const LeaveApprovals = () => {
 
       {/* Confirmation Modal */}
       {confirmModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-950/60 backdrop-blur-sm animate-fade-in p-4">
           <div className="bg-surface-900 border border-surface-700 w-full max-w-sm rounded-2xl shadow-2xl p-6 animate-slide-up">
             <h3 className="text-xl font-bold text-surface-100 mb-2">
               Confirm {confirmModal.action === 'Approved' ? 'Approval' : 'Rejection'}

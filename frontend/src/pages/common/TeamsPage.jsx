@@ -692,7 +692,7 @@ const CreateTeamModal = ({ employees, headers, onClose, onCreated }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-surface-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="glass-card w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-slide-up">
         <div className="flex items-center justify-between p-5 border-b border-surface-700/50 sticky top-0 bg-surface-900/90 backdrop-blur z-10">
           <h2 className="text-lg font-display font-bold text-surface-100 flex items-center gap-2">
@@ -799,7 +799,7 @@ const TeamDetailDrawer = ({ team, setTeam, user, employees, headers, activeTab, 
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-start justify-center p-4 pt-6 overflow-y-auto">
+    <div className="fixed inset-0 bg-surface-950/70 backdrop-blur-sm z-50 flex items-start justify-center p-4 pt-6 overflow-y-auto">
       <div className="glass-card w-full max-w-5xl min-h-[85vh] animate-slide-up flex flex-col">
         {/* Header */}
         <div className="flex items-start justify-between p-5 border-b border-surface-700/50">
@@ -2203,7 +2203,7 @@ const TeamHistoryDrawer = ({ item, user, onClose, onRequestDelete }) => {
   const canDelete = isAdmin || isPM;
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-start justify-center p-4 pt-6 overflow-y-auto">
+    <div className="fixed inset-0 bg-surface-950/70 backdrop-blur-sm z-50 flex items-start justify-center p-4 pt-6 overflow-y-auto">
       <div className="glass-card w-full max-w-5xl min-h-[85vh] animate-slide-up flex flex-col">
         {/* Header */}
         <div className="flex items-start justify-between p-5 border-b border-surface-700/50">

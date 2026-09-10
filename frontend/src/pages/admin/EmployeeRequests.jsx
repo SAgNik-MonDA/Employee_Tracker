@@ -118,7 +118,7 @@ const EmployeeRequests = () => {
 
       {/* Custom Review Modal (Replaces browser prompt) */}
       {reviewModal.open && reviewModal.request && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-950/60 backdrop-blur-sm">
           <div className="bg-surface-900 rounded-2xl w-full max-w-md border border-surface-700 shadow-2xl overflow-hidden animate-slide-up">
             <div className="p-5 border-b border-surface-800 flex items-center justify-between">
               <h3 className="text-lg font-bold text-surface-100 flex items-center gap-2">

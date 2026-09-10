@@ -68,7 +68,7 @@ const FaceRegistrationModal = ({ isOpen, onClose, onSuccess }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-950/80 backdrop-blur-sm">
       <div className="bg-surface-900 border border-surface-700/50 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col">
         <div className="p-4 border-b border-surface-700/50 flex justify-between items-center bg-surface-800/30">
           <h3 className="font-display font-semibold text-surface-100">Set Up Face Authentication</h3>

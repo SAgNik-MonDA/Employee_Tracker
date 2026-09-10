@@ -344,7 +344,7 @@ const ProfilePictureUploader = () => {
 
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100
+          className="absolute inset-0 rounded-full bg-surface-950/50 opacity-0 group-hover:opacity-100
                      transition-opacity duration-200 flex flex-col items-center justify-center gap-1"
           title="Change profile picture"
         >

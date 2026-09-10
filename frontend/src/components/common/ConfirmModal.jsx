@@ -16,7 +16,7 @@ const ConfirmModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 bg-surface-950/75 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
       <div className="glass-card w-full max-w-md p-6 space-y-5 animate-slide-up border border-surface-700/60 shadow-2xl">
         {/* Top Header */}
         <div className="flex items-start justify-between">

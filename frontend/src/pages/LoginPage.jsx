@@ -179,7 +179,7 @@ const LoginPage = () => {
 
       {/* ── Forgot Password Modal ────────────────────────────────────────────── */}
       {showForgotModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-surface-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="glass-card w-full max-w-md animate-slide-up">
             <div className="flex items-center justify-between p-6 border-b border-surface-700/50">
               <div className="flex items-center gap-3">

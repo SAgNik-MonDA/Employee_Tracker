@@ -117,7 +117,7 @@ const MyRequests = () => {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-950/60 backdrop-blur-sm">
           <div className="bg-surface-900 rounded-2xl w-full max-w-md border border-surface-700 shadow-xl overflow-hidden animate-slide-up">
             <div className="p-6 border-b border-surface-800">
               <h3 className="text-lg font-bold text-surface-100">Submit New Request</h3>

@@ -415,7 +415,7 @@ const ProfilePage = () => {
 
       {/* ── Reset Password Modal ───────────────────────────────────────────── */}
       {showResetModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-surface-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="glass-card w-full max-w-md animate-slide-up">
             <div className="flex items-center justify-between p-6 border-b border-surface-700/50">
               <h2 className="text-xl font-display font-bold text-surface-100">🔐 Reset Password</h2>
@@ -538,7 +538,7 @@ const ProfilePage = () => {
 
       {/* ── Edit Profile Info Modal ─────────────────────────────────────────── */}
       {showProfileModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-surface-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="glass-card w-full max-w-lg animate-slide-up">
             <div className="flex items-center justify-between p-6 border-b border-surface-700/50">
               <h2 className="text-xl font-display font-bold text-surface-100">✏️ Edit Personal Info</h2>
@@ -619,7 +619,7 @@ const ProfilePage = () => {
 
       {/* ── Add Bank Details Modal — BankDetailsForm uses backend proxy ── */}
       {showBankModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-surface-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="glass-card w-full max-w-lg animate-slide-up max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-surface-700/50">
               <h2 className="text-xl font-display font-bold text-surface-100">🏦 Add Bank Details</h2>
