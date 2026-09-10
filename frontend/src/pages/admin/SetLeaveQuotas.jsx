@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import API from '../../api/axios';
 import toast from 'react-hot-toast';
 import { HiOutlineSave, HiOutlineRefresh } from 'react-icons/hi';
-import { ALL_ROLES, ROLE_DESIGNATIONS, GENERIC_DESIGNATIONS } from './ManageEmployees';
+import { GENERIC_DESIGNATIONS } from './ManageEmployees';
 
 const SetLeaveQuotas = () => {
   const [activeYear, setActiveYear] = useState(new Date().getFullYear());
@@ -35,25 +35,14 @@ const SetLeaveQuotas = () => {
         setActiveYear(yearRes.data.activeYear);
         setConfigs(configsRes.data);
 
-        // Extract unique designations from users
+        // Restrict list to exactly what was requested
         const designationsSet = new Set();
-        usersRes.data.forEach(u => {
-          if (u.designation && u.designation.trim()) designationsSet.add(u.designation.trim());
-          if (u.role) designationsSet.add(u.role);
-        });
-        
-        // Add all base roles
-        ALL_ROLES.forEach(r => designationsSet.add(r));
-
-        // Add all possible designations derived from roles
-        Object.values(ROLE_DESIGNATIONS).forEach(designationArray => {
-          designationArray.forEach(d => designationsSet.add(d));
-        });
-
-        // Add all generic fallback designations (e.g. Program Manager, Director, etc.)
         GENERIC_DESIGNATIONS.forEach(d => designationsSet.add(d));
 
-        setAllDesignations(Array.from(designationsSet).sort());
+        // Note: Removing the dynamic extraction of ALL_ROLES and ROLE_DESIGNATIONS
+        // as per user request to only show the specific screenshot list.
+
+        setAllDesignations(Array.from(designationsSet));
       } catch (error) {
         toast.error('Failed to fetch data');
       } finally {
