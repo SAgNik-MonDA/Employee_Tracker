@@ -34,12 +34,12 @@ import SetLeaveQuotas from './pages/admin/SetLeaveQuotas';
 import PerformanceReview from './pages/admin/PerformanceReview';
 import GeneratePayroll from './pages/admin/GeneratePayroll';
 
-const ADMIN_ROLES = [
+export const ADMIN_ROLES = [
   'Admin', 'HR', 'Payroll Manager', 'Accounts Payable (AP) Specialist', 
   'Chief Financial Officer (CFO)', 'CTO', 'COO', 'CEO'
 ];
 
-const EMPLOYEE_ROLES = [
+export const EMPLOYEE_ROLES = [
   'Employee',
   'Project Manager', 'Project Lead', 'General Manager', 'CIO', 'CISO',
   'Frontend Engineer', 'Backend Engineer', 'Full-Stack Engineer', 'Mobile Developer', 'QA Engineer',

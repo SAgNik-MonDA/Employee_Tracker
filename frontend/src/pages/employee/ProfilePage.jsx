@@ -43,7 +43,7 @@ const RoleBadge = ({ role }) => {
 // ─── Main Component ───────────────────────────────────────────────────────────
 const ProfilePage = () => {
   const { user, updateSessionUser } = useAuth();
-  const { notifications } = useNotifications();
+  const { notifications, socket } = useNotifications();
   const [profile, setProfile]       = useState(null);
   const [leaveBalance, setLeaveBalance] = useState(null);
   const [loading, setLoading]       = useState(true);
@@ -120,6 +120,18 @@ const ProfilePage = () => {
       fetchProfile();
     }
   }, [notifications.length]);
+
+  // Listen for real-time leave year updates
+  useEffect(() => {
+    if (!socket) return;
+    const handleSettingsUpdated = (data) => {
+      if (data.type === 'LEAVE_YEAR_UPDATED') {
+        fetchProfile(); // Refresh balance dynamically
+      }
+    };
+    socket.on('settings-updated', handleSettingsUpdated);
+    return () => socket.off('settings-updated', handleSettingsUpdated);
+  }, [socket]);
 
   const fetchProfile = async () => {
     try {

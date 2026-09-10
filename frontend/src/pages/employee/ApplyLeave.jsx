@@ -4,8 +4,10 @@ import toast from 'react-hot-toast';
 import { useNotifications } from '../../context/NotificationContext';
 import {
   HiOutlineCalendar,
-  HiOutlineExclamationCircle,
+  HiOutlineClipboardCheck,
   HiOutlineInformationCircle,
+  HiOutlineClock,
+  HiOutlineExclamationCircle,
 } from 'react-icons/hi';
 
 import { useLocation } from 'react-router-dom';
@@ -48,7 +50,7 @@ const BalanceBar = ({ label, used, total, color }) => {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const ApplyLeave = () => {
-  const { notifications } = useNotifications();
+  const { notifications, socket } = useNotifications();
   const location = useLocation();
   const [leaves, setLeaves]       = useState([]);
   const [balance, setBalance]     = useState(null);
@@ -87,6 +89,18 @@ const ApplyLeave = () => {
       fetchAll();
     }
   }, [notifications.length]);
+
+  // Listen for real-time leave year updates
+  useEffect(() => {
+    if (!socket) return;
+    const handleSettingsUpdated = (data) => {
+      if (data.type === 'LEAVE_YEAR_UPDATED') {
+        fetchAll(); // Refresh balance dynamically
+      }
+    };
+    socket.on('settings-updated', handleSettingsUpdated);
+    return () => socket.off('settings-updated', handleSettingsUpdated);
+  }, [socket]);
 
   const fetchAll = async () => {
     try {

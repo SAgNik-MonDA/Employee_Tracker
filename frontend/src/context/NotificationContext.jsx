@@ -20,6 +20,7 @@ export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [socketInstance, setSocketInstance] = useState(null);
   
   // Track currently active chat to conditionally play sound vs toast
   const [activeChatTeamId, setActiveChatTeamId] = useState(null);
@@ -179,6 +180,7 @@ export const NotificationProvider = ({ children }) => {
     });
 
     socketRef.current = socket;
+    setSocketInstance(socket);
 
     return () => {
       clearInterval(intervalRef.current);
@@ -199,7 +201,8 @@ export const NotificationProvider = ({ children }) => {
         markRead,
         markAllRead,
         activeChatTeamId,
-        setActiveChatTeamId
+        setActiveChatTeamId,
+        socket: socketInstance
       }}
     >
       {children}

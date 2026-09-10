@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import API from '../../api/axios';
 import toast from 'react-hot-toast';
 import { HiOutlineSave, HiOutlineRefresh } from 'react-icons/hi';
+import { ADMIN_ROLES, EMPLOYEE_ROLES } from '../../App';
 
 const SetLeaveQuotas = () => {
   const [activeYear, setActiveYear] = useState(new Date().getFullYear());
@@ -41,8 +42,8 @@ const SetLeaveQuotas = () => {
           if (u.role) designationsSet.add(u.role);
         });
         
-        // Add some generic ones just in case
-        ['Trainee', 'SDE-1', 'SDE-2', 'SDE-3', 'Software Engineer', 'Senior Software Engineer'].forEach(d => designationsSet.add(d));
+        // Add hardcoded roles to ensure everything is covered
+        [...ADMIN_ROLES, ...EMPLOYEE_ROLES].forEach(d => designationsSet.add(d));
 
         setAllDesignations(Array.from(designationsSet).sort());
       } catch (error) {

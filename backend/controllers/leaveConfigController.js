@@ -83,6 +83,11 @@ const setActiveLeaveYear = async (req, res) => {
       { new: true, upsert: true }
     );
 
+    // Emit real-time update to all connected clients
+    if (global.io) {
+      global.io.emit('settings-updated', { type: 'LEAVE_YEAR_UPDATED', year: parseInt(year) });
+    }
+
     res.json({ activeYear: setting.value });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
