@@ -146,6 +146,12 @@ export const NotificationProvider = ({ children }) => {
       setUnreadCount((prev) => prev + 1);
     });
 
+    // Team chat notification — play a distinct sound when someone messages in a team
+    socket.on('team-chat-notification', () => {
+      // Sound is handled by the ChatTab component when the user is inside the chat.
+      // This listener is a placeholder for future enhancements (e.g., showing a toast).
+    });
+
     socketRef.current = socket;
 
     return () => {

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import API from '../api/axios';
 import toast from 'react-hot-toast';
 import {
@@ -16,6 +17,7 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading]           = useState(false);
   const { login } = useAuth();
+  const { theme } = useTheme();
   const navigate = useNavigate();
 
   // Forgot password state
@@ -65,7 +67,7 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-surface-950">
+    <div className={`min-h-screen flex items-center justify-center relative overflow-hidden transition-colors duration-300 ${theme === 'dark' ? 'bg-surface-950' : 'bg-surface-50'}`}>
       {/* Animated background */}
       <div className="absolute inset-0">
         <div className="absolute top-1/4 -left-20 w-96 h-96 bg-primary-500/10 rounded-full blur-3xl animate-pulse" />

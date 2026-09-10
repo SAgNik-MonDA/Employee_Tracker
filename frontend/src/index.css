@@ -9,13 +9,31 @@
   box-sizing: border-box;
 }
 
+/* ── Theme Variables ────────────────────────────────────────────────────── */
+:root {
+  --bg-body: #f1f5f9;
+  --text-body: #1e293b;
+  --scrollbar-track: #e2e8f0;
+  --scrollbar-thumb: #6366f1;
+  --scrollbar-thumb-hover: #4f46e5;
+}
+
+.dark {
+  --bg-body: #0f172a;
+  --text-body: #e2e8f0;
+  --scrollbar-track: #1e293b;
+  --scrollbar-thumb: #4f46e5;
+  --scrollbar-thumb-hover: #6366f1;
+}
+
 body {
   font-family: 'Inter', system-ui, sans-serif;
-  background-color: #0f172a;
-  color: #e2e8f0;
+  background-color: var(--bg-body);
+  color: var(--text-body);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* ===== Scrollbar ===== */
@@ -25,26 +43,36 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #1e293b;
+  background: var(--scrollbar-track);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #4f46e5;
+  background: var(--scrollbar-thumb);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #6366f1;
+  background: var(--scrollbar-thumb-hover);
 }
 
 /* ===== Glass Card ===== */
 @layer components {
-  .glass-card {
+  /* ── Dark mode (default) ─────────────────────────────────────────── */
+  .dark .glass-card {
     @apply bg-surface-800/50 backdrop-blur-xl border border-surface-700/50 rounded-2xl shadow-xl;
   }
+  .dark .glass-card-hover {
+    @apply bg-surface-800/50 backdrop-blur-xl border border-surface-700/50 rounded-2xl shadow-xl
+           transition-all duration-300 hover:border-primary-500/30 hover:shadow-primary-500/10 hover:shadow-2xl hover:-translate-y-0.5;
+  }
 
-  .glass-card-hover {
-    @apply glass-card transition-all duration-300 hover:border-primary-500/30 hover:shadow-primary-500/10 hover:shadow-2xl hover:-translate-y-0.5;
+  /* ── Light mode ──────────────────────────────────────────────────── */
+  .light .glass-card {
+    @apply bg-white/80 backdrop-blur-xl border border-surface-200 rounded-2xl shadow-lg shadow-surface-200/50;
+  }
+  .light .glass-card-hover {
+    @apply bg-white/80 backdrop-blur-xl border border-surface-200 rounded-2xl shadow-lg shadow-surface-200/50
+           transition-all duration-300 hover:border-primary-400/40 hover:shadow-primary-400/15 hover:shadow-2xl hover:-translate-y-0.5;
   }
 
   .btn-primary {
@@ -58,6 +86,10 @@ body {
     @apply bg-surface-700/50 text-surface-200 font-medium px-6 py-2.5 rounded-xl border border-surface-600/50
            hover:bg-surface-600/50 hover:border-surface-500/50 transition-all duration-300
            active:scale-[0.98];
+  }
+
+  .light .btn-secondary {
+    @apply bg-surface-100 text-surface-700 border-surface-300 hover:bg-surface-200 hover:border-surface-400;
   }
 
   .btn-danger {
@@ -79,11 +111,18 @@ body {
            placeholder:text-surface-500 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20
            transition-all duration-300;
   }
+  .light .input-field {
+    @apply bg-white border-surface-300 text-surface-800 placeholder:text-surface-400
+           focus:border-primary-500 focus:ring-primary-500/20;
+  }
 
   .select-field {
     @apply w-full bg-surface-800/80 border border-surface-600/50 rounded-xl px-4 py-3 text-surface-100
            focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20
            transition-all duration-300 appearance-none cursor-pointer;
+  }
+  .light .select-field {
+    @apply bg-white border-surface-300 text-surface-800 focus:border-primary-500;
   }
 
   .badge {
@@ -133,6 +172,9 @@ body {
   .data-table thead {
     @apply bg-surface-800/80 text-surface-400 uppercase text-xs tracking-wider;
   }
+  .light .data-table thead {
+    @apply bg-surface-100 text-surface-600;
+  }
 
   .data-table th {
     @apply px-6 py-4 font-semibold;
@@ -141,8 +183,24 @@ body {
   .data-table td {
     @apply px-6 py-4 border-b border-surface-700/50;
   }
+  .light .data-table td {
+    @apply border-surface-200;
+  }
 
   .data-table tbody tr {
     @apply hover:bg-surface-700/30 transition-colors duration-200;
   }
+  .light .data-table tbody tr {
+    @apply hover:bg-primary-50/50;
+  }
+
+  /* ── Light mode badge overrides for better contrast ─────────────── */
+  .light .badge-present { @apply bg-emerald-100 text-emerald-700 border-emerald-300; }
+  .light .badge-late    { @apply bg-amber-100 text-amber-700 border-amber-300; }
+  .light .badge-absent  { @apply bg-rose-100 text-rose-700 border-rose-300; }
+  .light .badge-pending { @apply bg-amber-100 text-amber-700 border-amber-300; }
+  .light .badge-approved{ @apply bg-emerald-100 text-emerald-700 border-emerald-300; }
+  .light .badge-rejected{ @apply bg-rose-100 text-rose-700 border-rose-300; }
+  .light .badge-paid    { @apply bg-emerald-100 text-emerald-700 border-emerald-300; }
+  .light .badge-unpaid  { @apply bg-rose-100 text-rose-700 border-rose-300; }
 }

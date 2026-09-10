@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import UserAvatar from '../common/UserAvatar';
 import {
   HiOutlineHome,
@@ -17,6 +18,7 @@ import {
 
 const Sidebar = ({ isOpen, onClose }) => {
   const { user } = useAuth();
+  const { theme } = useTheme();
 
   const employeeLinks = [
     { to: '/employee/dashboard',   icon: <HiOutlineHome />,          label: 'Dashboard' },
@@ -78,6 +80,8 @@ const Sidebar = ({ isOpen, onClose }) => {
     : user?.role === 'HR' ? hrLinks
     : adminLinks;
 
+  const isDark = theme === 'dark';
+
   return (
     <>
       {/* Overlay for mobile */}
@@ -90,24 +94,28 @@ const Sidebar = ({ isOpen, onClose }) => {
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-50 h-full w-72 bg-surface-900/95 backdrop-blur-xl border-r border-surface-700/50 
-                     transform transition-transform duration-300 ease-in-out flex flex-col
-                     ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:static lg:z-auto`}
+        className={`fixed top-0 left-0 z-50 h-full w-72 backdrop-blur-xl border-r
+                     transform transition-all duration-300 ease-in-out flex flex-col
+                     ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:static lg:z-auto
+                     ${isDark
+                       ? 'bg-surface-900/95 border-surface-700/50'
+                       : 'bg-white/95 border-surface-200'
+                     }`}
       >
         {/* Logo */}
-        <div className="flex items-center justify-between p-6 border-b border-surface-700/50">
+        <div className={`flex items-center justify-between p-6 border-b ${isDark ? 'border-surface-700/50' : 'border-surface-200'}`}>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/25">
               <span className="text-white font-bold text-lg">ET</span>
             </div>
             <div>
-              <h1 className="font-display font-bold text-lg text-surface-100">Employee</h1>
+              <h1 className={`font-display font-bold text-lg ${isDark ? 'text-surface-100' : 'text-surface-800'}`}>Employee</h1>
               <p className="text-xs text-surface-500 -mt-0.5">Tracker</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="lg:hidden p-2 rounded-lg hover:bg-surface-700/50 text-surface-400 transition-colors"
+            className={`lg:hidden p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-surface-700/50 text-surface-400' : 'hover:bg-surface-100 text-surface-500'}`}
           >
             <HiOutlineX className="w-5 h-5" />
           </button>
@@ -124,7 +132,9 @@ const Sidebar = ({ isOpen, onClose }) => {
                 `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 border focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40
                  ${isActive
                    ? 'bg-primary-500/15 text-primary-400 border-primary-500/20 shadow-sm'
-                   : 'text-surface-400 hover:text-surface-200 hover:bg-surface-800/50 border-transparent'
+                   : isDark
+                     ? 'text-surface-400 hover:text-surface-200 hover:bg-surface-800/50 border-transparent'
+                     : 'text-surface-600 hover:text-surface-800 hover:bg-surface-100 border-transparent'
                  }`
               }
             >
@@ -135,11 +145,11 @@ const Sidebar = ({ isOpen, onClose }) => {
         </nav>
 
         {/* Bottom user info */}
-        <div className="p-4 border-t border-surface-700/50 bg-surface-900/95 shrink-0">
+        <div className={`p-4 border-t shrink-0 ${isDark ? 'border-surface-700/50 bg-surface-900/95' : 'border-surface-200 bg-white/95'}`}>
           <div className="flex items-center gap-3 px-3">
             <UserAvatar user={user} size="sm" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-surface-200 truncate">{user?.name}</p>
+              <p className={`text-sm font-medium truncate ${isDark ? 'text-surface-200' : 'text-surface-800'}`}>{user?.name}</p>
               <p className="text-xs text-surface-500 truncate">{user?.designation || user?.role}</p>
             </div>
           </div>

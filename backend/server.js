@@ -27,6 +27,8 @@ const io     = new Server(server, { cors: { origin: '*' } });
 global.io = io; // Make io accessible globally for Notification triggers
 
 // Socket.io - Team Chat & Notifications
+const Team = require('./models/Team');
+
 io.on('connection', (socket) => {
   // Join user's personal room for notifications
   const userId = socket.handshake.query.userId;
@@ -35,6 +37,7 @@ io.on('connection', (socket) => {
   }
 
   socket.on('join-team', (teamId) => socket.join(`team-${teamId}`));
+
   socket.on('team-message', async (data) => {
     // data: { teamId, senderId, senderName, senderAvatar, message }
     try {
@@ -43,15 +46,49 @@ io.on('connection', (socket) => {
         senderId: data.senderId,
         message: data.message,
       });
-      io.to(`team-${data.teamId}`).emit('team-message', {
+      const payload = {
         _id: msg._id,
         teamId: data.teamId,
         senderId: { _id: data.senderId, name: data.senderName, profilePicture: data.senderAvatar },
         message: data.message,
+        isEdited: false,
+        isDeleted: false,
         createdAt: msg.createdAt,
-      });
+      };
+      io.to(`team-${data.teamId}`).emit('team-message', payload);
+
+      // Send chat notification to all team members EXCEPT the sender
+      try {
+        const team = await Team.findById(data.teamId).select('members projectName');
+        if (team) {
+          const memberIds = team.members.map(m => m.toString()).filter(id => id !== data.senderId);
+          memberIds.forEach(memberId => {
+            io.to(`user-${memberId}`).emit('team-chat-notification', {
+              teamId: data.teamId,
+              teamName: team.projectName,
+              senderName: data.senderName,
+              message: data.message,
+            });
+          });
+        }
+      } catch (notifErr) { /* silent */ }
     } catch (e) { console.error('Chat error:', e.message); }
   });
+
+  // Typing indicators
+  socket.on('typing', (data) => {
+    // data: { teamId, userId, userName }
+    socket.to(`team-${data.teamId}`).emit('user-typing', {
+      userId: data.userId,
+      userName: data.userName,
+    });
+  });
+  socket.on('stop-typing', (data) => {
+    socket.to(`team-${data.teamId}`).emit('user-stop-typing', {
+      userId: data.userId,
+    });
+  });
+
   socket.on('leave-team', (teamId) => socket.leave(`team-${teamId}`));
 });
 

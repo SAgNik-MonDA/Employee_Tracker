@@ -1542,8 +1542,33 @@ const ChatTab = ({ team, user, headers }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput]       = useState('');
   const [connected, setConnected] = useState(false);
+  const [typingUsers, setTypingUsers] = useState({});
+  const [editingMsg, setEditingMsg] = useState(null); // { _id, text }
+  const [menuOpen, setMenuOpen] = useState(null); // message _id
   const socketRef = useRef(null);
   const bottomRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
+  const isTypingRef = useRef(false);
+
+  // Chat notification sound (lighter pop sound for incoming messages)
+  const playChatSound = useCallback(() => {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      const ctx = new AC();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(600, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.25);
+    } catch {}
+  }, []);
 
   useEffect(() => {
     // Load history
@@ -1555,16 +1580,58 @@ const ChatTab = ({ team, user, headers }) => {
     socketRef.current = socket;
     socket.on('connect', () => { setConnected(true); socket.emit('join-team', team._id); });
     socket.on('disconnect', () => setConnected(false));
+    
     socket.on('team-message', (msg) => {
       setMessages(prev => [...prev, msg]);
+      // Play sound for messages from others
+      if ((msg.senderId?._id || msg.senderId) !== user._id) {
+        playChatSound();
+      }
     });
+
+    // Edit & Delete real-time
+    socket.on('message-edited', (data) => {
+      setMessages(prev => prev.map(m => m._id === data._id ? { ...m, message: data.message, isEdited: true, editedAt: data.editedAt } : m));
+    });
+    socket.on('message-deleted', (data) => {
+      setMessages(prev => prev.map(m => m._id === data._id ? { ...m, isDeleted: true, message: '' } : m));
+    });
+
+    // Typing indicators
+    socket.on('user-typing', (data) => {
+      setTypingUsers(prev => ({ ...prev, [data.userId]: data.userName }));
+    });
+    socket.on('user-stop-typing', (data) => {
+      setTypingUsers(prev => { const n = { ...prev }; delete n[data.userId]; return n; });
+    });
+
     return () => { socket.emit('leave-team', team._id); socket.disconnect(); };
   }, [team._id]);
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, typingUsers]);
+
+  // Typing emit logic with debounce
+  const handleInputChange = (e) => {
+    setInput(e.target.value);
+    if (!socketRef.current) return;
+    if (!isTypingRef.current) {
+      isTypingRef.current = true;
+      socketRef.current.emit('typing', { teamId: team._id, userId: user._id, userName: user.name });
+    }
+    clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      isTypingRef.current = false;
+      socketRef.current?.emit('stop-typing', { teamId: team._id, userId: user._id });
+    }, 2000);
+  };
 
   const send = () => {
     if (!input.trim() || !socketRef.current) return;
+    // Stop typing indicator
+    isTypingRef.current = false;
+    clearTimeout(typingTimeoutRef.current);
+    socketRef.current.emit('stop-typing', { teamId: team._id, userId: user._id });
+    
     socketRef.current.emit('team-message', {
       teamId: team._id, senderId: user._id,
       senderName: user.name, senderAvatar: user.profilePicture,
@@ -1574,6 +1641,55 @@ const ChatTab = ({ team, user, headers }) => {
   };
 
   const handleKey = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } };
+
+  // Edit message
+  const startEdit = (msg) => {
+    setEditingMsg({ _id: msg._id, text: msg.message });
+    setMenuOpen(null);
+  };
+  const cancelEdit = () => setEditingMsg(null);
+  const saveEdit = async () => {
+    if (!editingMsg || !editingMsg.text.trim()) return;
+    try {
+      await API.put(`/teams/${team._id}/chat/${editingMsg._id}`, { message: editingMsg.text.trim() }, { headers });
+      setEditingMsg(null);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to edit message');
+    }
+  };
+  const handleEditKey = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveEdit(); } if (e.key === 'Escape') cancelEdit(); };
+
+  // Delete message
+  const deleteMsg = async (msgId) => {
+    setMenuOpen(null);
+    try {
+      await API.delete(`/teams/${team._id}/chat/${msgId}`, { headers });
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete message');
+    }
+  };
+
+  // Check if message is within 10 min edit window
+  const canEdit = (msg) => {
+    return Date.now() - new Date(msg.createdAt).getTime() < 10 * 60 * 1000;
+  };
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handler = () => setMenuOpen(null);
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, []);
+
+  // Typing indicator text
+  const typingNames = Object.values(typingUsers);
+  const typingText = typingNames.length === 1
+    ? `${typingNames[0]} is typing`
+    : typingNames.length === 2
+    ? `${typingNames[0]} and ${typingNames[1]} are typing`
+    : typingNames.length > 2
+    ? `${typingNames[0]} and ${typingNames.length - 1} others are typing`
+    : '';
 
   return (
     <div className="flex flex-col h-[60vh]">
@@ -1585,29 +1701,95 @@ const ChatTab = ({ team, user, headers }) => {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto space-y-3 p-3 bg-surface-900/50 rounded-xl border border-surface-700/40 mb-3">
+      <div className="flex-1 overflow-y-auto space-y-3 p-3 bg-surface-900/50 dark:bg-surface-900/50 rounded-xl border border-surface-700/40 mb-3">
         {messages.length === 0 && (
           <div className="flex items-center justify-center h-full text-surface-500 text-sm">No messages yet. Say hello! 👋</div>
         )}
         {messages.map((msg, i) => {
           const isMe = (msg.senderId?._id || msg.senderId) === user._id;
+          const isDeleted = msg.isDeleted;
+          const isEditing = editingMsg && editingMsg._id === msg._id;
+
           return (
-            <div key={msg._id || i} className={`flex gap-2.5 ${isMe ? 'flex-row-reverse' : ''}`}>
+            <div key={msg._id || i} className={`flex gap-2.5 ${isMe ? 'flex-row-reverse' : ''} group`}>
               <UserAvatar user={msg.senderId} size="xs" />
-              <div className={`max-w-[70%] ${isMe ? 'items-end' : 'items-start'} flex flex-col gap-0.5`}>
+              <div className={`max-w-[70%] ${isMe ? 'items-end' : 'items-start'} flex flex-col gap-0.5 relative`}>
                 {!isMe && (
                   <span className="text-[10px] text-surface-500 px-1">
                     {msg.senderId?.name || msg.senderName || 'Member'} {msg.senderId?.employeeCode ? `(${msg.senderId.employeeCode})` : ''}
                   </span>
                 )}
-                <div className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${isMe ? 'bg-primary-500/20 text-primary-100 rounded-tr-sm' : 'bg-surface-800 text-surface-200 rounded-tl-sm'}`}>
-                  {msg.message}
+
+                {isDeleted ? (
+                  <div className="px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed bg-surface-800/30 text-surface-500 italic border border-surface-700/30 rounded-tr-sm">
+                    🚫 This message was deleted
+                  </div>
+                ) : isEditing ? (
+                  <div className="flex flex-col gap-1.5 w-full min-w-[200px]">
+                    <input
+                      autoFocus
+                      value={editingMsg.text}
+                      onChange={e => setEditingMsg({ ...editingMsg, text: e.target.value })}
+                      onKeyDown={handleEditKey}
+                      className="input-field text-sm py-2 px-3"
+                    />
+                    <div className="flex gap-1.5 justify-end">
+                      <button onClick={cancelEdit} className="text-xs text-surface-500 hover:text-surface-300 px-2 py-1 rounded-lg hover:bg-surface-700/50 transition-colors">Cancel</button>
+                      <button onClick={saveEdit} className="text-xs text-primary-400 hover:text-primary-300 px-2 py-1 rounded-lg hover:bg-primary-500/10 transition-colors font-medium">Save ✓</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="relative group/msg">
+                    <div className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${isMe ? 'bg-primary-500/20 text-primary-100 rounded-tr-sm' : 'bg-surface-800 text-surface-200 rounded-tl-sm'}`}>
+                      {msg.message}
+                    </div>
+                    {/* Action menu for own messages */}
+                    {isMe && !isDeleted && (
+                      <div className={`absolute -left-2 top-1/2 -translate-y-1/2 -translate-x-full ${menuOpen === msg._id ? 'flex' : 'hidden group-hover/msg:flex'} items-center gap-0.5`}>
+                        {canEdit(msg) && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); startEdit(msg); }}
+                            className="p-1.5 rounded-lg bg-surface-800/80 hover:bg-surface-700 text-surface-400 hover:text-amber-400 transition-all text-xs"
+                            title="Edit (within 10 min)"
+                          >
+                            ✏️
+                          </button>
+                        )}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); deleteMsg(msg._id); }}
+                          className="p-1.5 rounded-lg bg-surface-800/80 hover:bg-surface-700 text-surface-400 hover:text-rose-400 transition-all text-xs"
+                          title="Delete"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex items-center gap-1.5 px-1">
+                  <span className="text-[10px] text-surface-600">{new Date(msg.createdAt).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</span>
+                  {msg.isEdited && !isDeleted && (
+                    <span className="text-[9px] text-surface-500 italic">(edited)</span>
+                  )}
                 </div>
-                <span className="text-[10px] text-surface-600 px-1">{new Date(msg.createdAt).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</span>
               </div>
             </div>
           );
         })}
+
+        {/* Typing indicator */}
+        {typingText && (
+          <div className="flex items-center gap-2 px-2 py-1">
+            <div className="flex gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-primary-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-primary-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
+            <span className="text-xs text-surface-500 italic">{typingText}...</span>
+          </div>
+        )}
+
         <div ref={bottomRef} />
       </div>
 
@@ -1617,7 +1799,7 @@ const ChatTab = ({ team, user, headers }) => {
           className="input-field flex-1"
           placeholder="Type a message... (Enter to send)"
           value={input}
-          onChange={e => setInput(e.target.value)}
+          onChange={handleInputChange}
           onKeyDown={handleKey}
         />
         <button onClick={send} disabled={!input.trim() || !connected} className="btn-primary px-5">Send</button>

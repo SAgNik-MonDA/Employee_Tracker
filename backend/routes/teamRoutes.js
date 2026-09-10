@@ -33,4 +33,7 @@ router.route('/:id/chat')
   .get(ctrl.getChatMessages)
   .post(ctrl.sendChatMessage);
 
+router.put('/:id/chat/:msgId', ctrl.editChatMessage);
+router.delete('/:id/chat/:msgId', ctrl.deleteChatMessage);
+
 module.exports = router;

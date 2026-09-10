@@ -1,12 +1,14 @@
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
-import { HiOutlineMenuAlt2, HiOutlineLogout } from 'react-icons/hi';
+import { HiOutlineMenuAlt2, HiOutlineLogout, HiOutlineSun, HiOutlineMoon } from 'react-icons/hi';
 import UserAvatar from '../common/UserAvatar';
 import NotificationDropdown from '../common/NotificationDropdown';
 import toast from 'react-hot-toast';
 
 const Topbar = ({ onMenuToggle }) => {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -22,7 +24,7 @@ const Topbar = ({ onMenuToggle }) => {
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-surface-900/80 backdrop-blur-xl border-b border-surface-700/50">
+    <header className="sticky top-0 z-30 bg-surface-900/80 dark:bg-surface-900/80 backdrop-blur-xl border-b border-surface-700/50 light:bg-white/80 light:border-surface-200">
       <div className="flex items-center justify-between px-4 lg:px-8 py-4">
         {/* Left */}
         <div className="flex items-center gap-4">
@@ -34,7 +36,7 @@ const Topbar = ({ onMenuToggle }) => {
           </button>
           <UserAvatar user={user} size="sm" />
           <div>
-            <h2 className="text-lg font-display font-bold text-surface-100">
+            <h2 className="text-lg font-display font-bold text-surface-100 dark:text-surface-100">
               Welcome back, {user?.name?.split(' ')[0]} 👋
             </h2>
             <p className="text-xs text-surface-500">
@@ -58,6 +60,24 @@ const Topbar = ({ onMenuToggle }) => {
               {user.employeeCode}
             </span>
           )}
+          
+          {/* Theme Toggle */}
+          <button
+            onClick={toggleTheme}
+            className="p-2.5 rounded-xl hover:bg-surface-800 text-surface-400 hover:text-surface-200 transition-all duration-300 relative group"
+            aria-label="Toggle theme"
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          >
+            <div className="relative w-5 h-5">
+              <HiOutlineSun className={`w-5 h-5 absolute inset-0 transition-all duration-500 ${
+                theme === 'dark' ? 'rotate-0 scale-100 opacity-100' : '-rotate-90 scale-0 opacity-0'
+              }`} />
+              <HiOutlineMoon className={`w-5 h-5 absolute inset-0 transition-all duration-500 ${
+                theme === 'light' ? 'rotate-0 scale-100 opacity-100' : 'rotate-90 scale-0 opacity-0'
+              }`} />
+            </div>
+          </button>
+
           <NotificationDropdown />
           <button
             onClick={handleLogout}

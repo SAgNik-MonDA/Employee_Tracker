@@ -718,3 +718,78 @@ exports.deleteTeamHistory = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+// ── Edit Chat Message (only sender, within 10 minutes) ──────────────────────
+exports.editChatMessage = async (req, res) => {
+  try {
+    const { message } = req.body;
+    if (!message || !message.trim()) {
+      return res.status(400).json({ message: 'Message cannot be empty' });
+    }
+
+    const msg = await TeamChat.findById(req.params.msgId);
+    if (!msg) return res.status(404).json({ message: 'Message not found' });
+    if (msg.senderId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'You can only edit your own messages' });
+    }
+    if (msg.isDeleted) {
+      return res.status(400).json({ message: 'Cannot edit a deleted message' });
+    }
+
+    // 10-minute edit window
+    const tenMin = 10 * 60 * 1000;
+    if (Date.now() - msg.createdAt.getTime() > tenMin) {
+      return res.status(400).json({ message: 'Edit window expired (10 minutes)' });
+    }
+
+    msg.message = message.trim();
+    msg.isEdited = true;
+    msg.editedAt = new Date();
+    await msg.save();
+
+    // Broadcast via socket
+    if (global.io) {
+      global.io.to(`team-${msg.teamId.toString()}`).emit('message-edited', {
+        _id: msg._id,
+        teamId: msg.teamId,
+        message: msg.message,
+        isEdited: true,
+        editedAt: msg.editedAt,
+      });
+    }
+
+    res.json(msg);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// ── Delete Chat Message (soft-delete, only sender) ──────────────────────────
+exports.deleteChatMessage = async (req, res) => {
+  try {
+    const msg = await TeamChat.findById(req.params.msgId);
+    if (!msg) return res.status(404).json({ message: 'Message not found' });
+    if (msg.senderId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'You can only delete your own messages' });
+    }
+    if (msg.isDeleted) {
+      return res.status(400).json({ message: 'Message already deleted' });
+    }
+
+    msg.isDeleted = true;
+    msg.message = '';
+    await msg.save();
+
+    // Broadcast via socket
+    if (global.io) {
+      global.io.to(`team-${msg.teamId.toString()}`).emit('message-deleted', {
+        _id: msg._id,
+        teamId: msg.teamId,
+      });
+    }
+
+    res.json({ message: 'Message deleted' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
