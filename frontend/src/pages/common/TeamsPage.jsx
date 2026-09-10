@@ -1740,7 +1740,7 @@ const ChatTab = ({ team, user, headers }) => {
                   </div>
                 ) : (
                   <div className="relative">
-                    <div className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${isMe ? 'bg-primary-500/20 text-primary-100 rounded-tr-sm' : 'bg-surface-800 text-surface-200 rounded-tl-sm'}`}>
+                    <div className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed border border-surface-700/30 ${isMe ? 'bg-primary-500/20 text-primary-100 rounded-tr-sm' : 'bg-surface-800 text-surface-200 rounded-tl-sm'}`}>
                       {msg.message}
                     </div>
                     {/* Action menu for own messages */}

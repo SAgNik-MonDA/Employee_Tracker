@@ -12,7 +12,7 @@
 /* ── Theme Variables ────────────────────────────────────────────────────── */
 @layer base {
   :root, .dark {
-    /* Slate Dark Mode Colors */
+    /* Surface / Slate (Dark Mode) */
     --surface-50: 248 250 252;
     --surface-100: 241 245 249;
     --surface-200: 226 232 240;
@@ -25,6 +25,15 @@
     --surface-900: 15 23 42;
     --surface-950: 2 6 23;
 
+    /* Semantic (Dark Mode Defaults) */
+    --primary-50: 238 242 255; --primary-100: 224 231 255; --primary-200: 199 210 254; --primary-300: 165 180 252; --primary-400: 129 140 248; --primary-500: 99 102 241; --primary-600: 79 70 229; --primary-700: 67 56 202; --primary-800: 55 48 163; --primary-900: 49 46 129; --primary-950: 30 27 75;
+    --amber-50: 255 251 235; --amber-100: 254 243 199; --amber-200: 253 230 138; --amber-300: 252 211 77; --amber-400: 251 191 36; --amber-500: 245 158 11; --amber-600: 217 119 6; --amber-700: 180 83 9; --amber-800: 146 64 14; --amber-900: 120 53 15; --amber-950: 69 26 3;
+    --emerald-50: 236 253 245; --emerald-100: 209 250 229; --emerald-200: 167 243 208; --emerald-300: 110 231 183; --emerald-400: 52 211 153; --emerald-500: 16 185 129; --emerald-600: 5 150 105; --emerald-700: 4 120 87; --emerald-800: 6 95 70; --emerald-900: 6 78 59; --emerald-950: 2 44 34;
+    --rose-50: 255 241 242; --rose-100: 255 228 230; --rose-200: 254 205 211; --rose-300: 253 164 175; --rose-400: 251 113 133; --rose-500: 244 63 94; --rose-600: 225 29 72; --rose-700: 190 18 60; --rose-800: 159 18 57; --rose-900: 136 19 55; --rose-950: 76 5 25;
+    --violet-50: 245 243 255; --violet-100: 237 233 254; --violet-200: 221 214 254; --violet-300: 196 181 253; --violet-400: 167 139 250; --violet-500: 139 92 246; --violet-600: 124 58 237; --violet-700: 109 40 217; --violet-800: 91 33 182; --violet-900: 76 29 149; --violet-950: 46 16 101;
+    --blue-50: 239 246 255; --blue-100: 219 234 254; --blue-200: 191 219 254; --blue-300: 147 197 253; --blue-400: 96 165 250; --blue-500: 59 130 246; --blue-600: 37 99 235; --blue-700: 29 78 216; --blue-800: 30 64 175; --blue-900: 30 58 138; --blue-950: 23 37 84;
+    --slate-50: 248 250 252; --slate-100: 241 245 249; --slate-200: 226 232 240; --slate-300: 203 213 225; --slate-400: 148 163 184; --slate-500: 100 116 139; --slate-600: 71 85 105; --slate-700: 51 65 85; --slate-800: 30 41 59; --slate-900: 15 23 42; --slate-950: 2 6 23;
+
     --bg-body: #0f172a;
     --text-body: #e2e8f0;
     --scrollbar-track: #1e293b;
@@ -33,22 +42,31 @@
   }
 
   .light {
-    /* Slate Light Mode Colors (Inverted) */
+    /* Surface / Slate (Light Mode High Contrast Inverted) */
     --surface-50: 2 6 23;
     --surface-100: 15 23 42;
     --surface-200: 30 41 59;
     --surface-300: 51 65 85;
-    --surface-400: 71 85 105;
-    --surface-500: 100 116 139;
-    --surface-600: 148 163 184;
-    --surface-700: 203 213 225;
-    --surface-800: 226 232 240;
-    --surface-900: 241 245 249;
-    --surface-950: 248 250 252;
+    --surface-400: 51 65 85;     /* Deeper text contrast */
+    --surface-500: 71 85 105;    /* Deeper text contrast */
+    --surface-600: 100 116 139;
+    --surface-700: 226 232 240;  /* Clean borders */
+    --surface-800: 255 255 255;  /* Clean white cards */
+    --surface-900: 255 255 255;  /* Clean white raised elements */
+    --surface-950: 248 250 252;  /* Slate-50 base background */
 
-    --bg-body: #f1f5f9;
-    --text-body: #1e293b;
-    --scrollbar-track: #e2e8f0;
+    /* Semantic (Light Mode Inverted) */
+    --primary-50: 30 27 75; --primary-100: 49 46 129; --primary-200: 55 48 163; --primary-300: 67 56 202; --primary-400: 79 70 229; --primary-500: 99 102 241; --primary-600: 129 140 248; --primary-700: 165 180 252; --primary-800: 199 210 254; --primary-900: 224 231 255; --primary-950: 238 242 255;
+    --amber-50: 69 26 3; --amber-100: 120 53 15; --amber-200: 146 64 14; --amber-300: 180 83 9; --amber-400: 217 119 6; --amber-500: 245 158 11; --amber-600: 251 191 36; --amber-700: 252 211 77; --amber-800: 253 230 138; --amber-900: 254 243 199; --amber-950: 255 251 235;
+    --emerald-50: 2 44 34; --emerald-100: 6 78 59; --emerald-200: 6 95 70; --emerald-300: 4 120 87; --emerald-400: 5 150 105; --emerald-500: 16 185 129; --emerald-600: 52 211 153; --emerald-700: 110 231 183; --emerald-800: 167 243 208; --emerald-900: 209 250 229; --emerald-950: 236 253 245;
+    --rose-50: 76 5 25; --rose-100: 136 19 55; --rose-200: 159 18 57; --rose-300: 190 18 60; --rose-400: 225 29 72; --rose-500: 244 63 94; --rose-600: 251 113 133; --rose-700: 253 164 175; --rose-800: 254 205 211; --rose-900: 255 228 230; --rose-950: 255 241 242;
+    --violet-50: 46 16 101; --violet-100: 76 29 149; --violet-200: 91 33 182; --violet-300: 109 40 217; --violet-400: 124 58 237; --violet-500: 139 92 246; --violet-600: 167 139 250; --violet-700: 196 181 253; --violet-800: 221 214 254; --violet-900: 237 233 254; --violet-950: 245 243 255;
+    --blue-50: 23 37 84; --blue-100: 30 58 138; --blue-200: 30 64 175; --blue-300: 29 78 216; --blue-400: 37 99 235; --blue-500: 59 130 246; --blue-600: 96 165 250; --blue-700: 147 197 253; --blue-800: 191 219 254; --blue-900: 219 234 254; --blue-950: 239 246 255;
+    --slate-50: 2 6 23; --slate-100: 15 23 42; --slate-200: 30 41 59; --slate-300: 51 65 85; --slate-400: 71 85 105; --slate-500: 100 116 139; --slate-600: 148 163 184; --slate-700: 203 213 225; --slate-800: 226 232 240; --slate-900: 241 245 249; --slate-950: 248 250 252;
+
+    --bg-body: #f8fafc;
+    --text-body: #0f172a;
+    --scrollbar-track: #f1f5f9;
     --scrollbar-thumb: #6366f1;
     --scrollbar-thumb-hover: #4f46e5;
   }
