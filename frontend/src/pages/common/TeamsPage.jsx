@@ -1739,17 +1739,17 @@ const ChatTab = ({ team, user, headers }) => {
                     </div>
                   </div>
                 ) : (
-                  <div className="relative group/msg">
+                  <div className="relative">
                     <div className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${isMe ? 'bg-primary-500/20 text-primary-100 rounded-tr-sm' : 'bg-surface-800 text-surface-200 rounded-tl-sm'}`}>
                       {msg.message}
                     </div>
                     {/* Action menu for own messages */}
                     {isMe && !isDeleted && (
-                      <div className={`absolute -left-2 top-1/2 -translate-y-1/2 -translate-x-full ${menuOpen === msg._id ? 'flex' : 'hidden group-hover/msg:flex'} items-center gap-0.5`}>
+                      <div className={`absolute -left-2 top-1/2 -translate-y-1/2 -translate-x-full ${menuOpen === msg._id ? 'flex' : 'hidden group-hover:flex'} items-center gap-1 pr-2`}>
                         {canEdit(msg) && (
                           <button
                             onClick={(e) => { e.stopPropagation(); startEdit(msg); }}
-                            className="p-1.5 rounded-lg bg-surface-800/80 hover:bg-surface-700 text-surface-400 hover:text-amber-400 transition-all text-xs"
+                            className="p-1.5 rounded-lg bg-surface-800/80 hover:bg-surface-700 text-surface-400 hover:text-amber-400 transition-all text-xs shadow-sm border border-surface-700/50"
                             title="Edit (within 10 min)"
                           >
                             ✏️
@@ -1757,7 +1757,7 @@ const ChatTab = ({ team, user, headers }) => {
                         )}
                         <button
                           onClick={(e) => { e.stopPropagation(); deleteMsg(msg._id); }}
-                          className="p-1.5 rounded-lg bg-surface-800/80 hover:bg-surface-700 text-surface-400 hover:text-rose-400 transition-all text-xs"
+                          className="p-1.5 rounded-lg bg-surface-800/80 hover:bg-surface-700 text-surface-400 hover:text-rose-400 transition-all text-xs shadow-sm border border-surface-700/50"
                           title="Delete"
                         >
                           🗑️
