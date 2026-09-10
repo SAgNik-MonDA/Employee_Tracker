@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import API from '../../api/axios';
 import toast from 'react-hot-toast';
 import { HiOutlineSave, HiOutlineRefresh } from 'react-icons/hi';
-import { GENERIC_DESIGNATIONS } from './ManageEmployees';
+import { GENERIC_DESIGNATIONS, ROLE_DESIGNATIONS } from './ManageEmployees';
 
 const SetLeaveQuotas = () => {
   const [activeYear, setActiveYear] = useState(new Date().getFullYear());
@@ -35,14 +35,18 @@ const SetLeaveQuotas = () => {
         setActiveYear(yearRes.data.activeYear);
         setConfigs(configsRes.data);
 
-        // Restrict list to exactly what was requested
+        // Use exactly all designations present in Add Employee
         const designationsSet = new Set();
+        
+        // Add all generic fallback designations
         GENERIC_DESIGNATIONS.forEach(d => designationsSet.add(d));
 
-        // Note: Removing the dynamic extraction of ALL_ROLES and ROLE_DESIGNATIONS
-        // as per user request to only show the specific screenshot list.
+        // Add all possible designations derived from roles
+        Object.values(ROLE_DESIGNATIONS).forEach(designationArray => {
+          designationArray.forEach(d => designationsSet.add(d));
+        });
 
-        setAllDesignations(Array.from(designationsSet));
+        setAllDesignations(Array.from(designationsSet).sort());
       } catch (error) {
         toast.error('Failed to fetch data');
       } finally {
