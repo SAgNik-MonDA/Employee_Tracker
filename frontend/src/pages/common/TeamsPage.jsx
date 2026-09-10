@@ -1701,7 +1701,7 @@ const ChatTab = ({ team, user, headers }) => {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto space-y-3 p-3 bg-surface-900/50 dark:bg-surface-900/50 rounded-xl border border-surface-700/40 mb-3">
+      <div className="flex-1 overflow-y-auto space-y-3 p-3 bg-surface-900/50 rounded-xl border border-surface-700/40 mb-3">
         {messages.length === 0 && (
           <div className="flex items-center justify-center h-full text-surface-500 text-sm">No messages yet. Say hello! 👋</div>
         )}

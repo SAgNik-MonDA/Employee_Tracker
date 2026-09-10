@@ -103,11 +103,11 @@ body {
 
 /* ===== Glass Card ===== */
 @layer components {
-  /* ── Dark mode (default) ─────────────────────────────────────────── */
-  .dark .glass-card {
+  /* ── Components ─────────────────────────────────────────── */
+  .glass-card {
     @apply bg-surface-800/50 backdrop-blur-xl border border-surface-700/50 rounded-2xl shadow-xl;
   }
-  .dark .glass-card-hover {
+  .glass-card-hover {
     @apply bg-surface-800/50 backdrop-blur-xl border border-surface-700/50 rounded-2xl shadow-xl
            transition-all duration-300 hover:border-primary-500/30 hover:shadow-primary-500/10 hover:shadow-2xl hover:-translate-y-0.5;
   }
