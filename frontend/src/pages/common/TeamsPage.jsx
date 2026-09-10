@@ -3,6 +3,8 @@ import API from '../../api/axios';
 import toast from 'react-hot-toast';
 import { io } from 'socket.io-client';
 import { useAuth } from '../../context/AuthContext';
+import { useNotifications } from '../../context/NotificationContext';
+import { useSearchParams } from 'react-router-dom';
 import UserAvatar from '../../components/common/UserAvatar';
 import ConfirmModal from '../../components/common/ConfirmModal';
 import {
@@ -71,6 +73,8 @@ const StatusBadge = ({ status }) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 const TeamsPage = () => {
   const { user } = useAuth();
+  const { setActiveChatTeamId } = useNotifications();
+  const [searchParams, setSearchParams] = useSearchParams();
   const token = sessionStorage.getItem('token');
   const headers = { Authorization: `Bearer ${token}` };
 
@@ -109,6 +113,30 @@ const TeamsPage = () => {
       setDeletingHistory(false);
     }
   };
+
+  // ── Sync Active Chat State with Global Notifications ─────────────────
+  useEffect(() => {
+    if (selectedTeam && activeTab === 'chat') {
+      setActiveChatTeamId(selectedTeam._id);
+    } else {
+      setActiveChatTeamId(null);
+    }
+    return () => setActiveChatTeamId(null);
+  }, [selectedTeam, activeTab, setActiveChatTeamId]);
+
+  // ── Handle Auto-Open Chat from Notifications ────────────────────────
+  useEffect(() => {
+    const openChatTeamId = searchParams.get('openChat');
+    if (openChatTeamId && teams.length > 0) {
+      const teamToOpen = teams.find(t => t._id === openChatTeamId);
+      if (teamToOpen) {
+        setSelectedTeam(teamToOpen);
+        setActiveTab('chat');
+        // Clear param so a refresh doesn't re-trigger it
+        setSearchParams(new URLSearchParams());
+      }
+    }
+  }, [searchParams, teams, setSearchParams]);
 
   const isAuthoritative = useMemo(() => {
     if (!user) return false;
