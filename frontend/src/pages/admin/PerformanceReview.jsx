@@ -12,6 +12,7 @@ const PerformanceReview = () => {
     kpiRating: 3,
     feedback: '',
   });
+  const [filterMonth, setFilterMonth] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -24,7 +25,7 @@ const PerformanceReview = () => {
         API.get('/auth/employees'),
         API.get('/performance/all'),
       ]);
-      setEmployees(empRes.data.filter((e) => e.role === 'Employee' || e.role === 'HR'));
+      setEmployees(empRes.data.filter((e) => e.role !== 'Admin'));
       setReviews(revRes.data);
     } catch (error) {
       toast.error('Failed to load data');
@@ -64,6 +65,8 @@ const PerformanceReview = () => {
     const label = d.toLocaleString('en', { month: 'long', year: 'numeric' });
     monthOptions.push({ value: val, label });
   }
+
+  const filteredReviews = filterMonth ? reviews.filter(r => r.monthYear === filterMonth) : reviews;
 
   return (
     <div className="space-y-6">
@@ -139,7 +142,19 @@ const PerformanceReview = () => {
 
       {/* Reviews List */}
       <div className="glass-card p-6">
-        <h2 className="text-lg font-semibold text-surface-100 mb-4">All Reviews</h2>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+          <h2 className="text-lg font-semibold text-surface-100">All Reviews</h2>
+          <select 
+            value={filterMonth}
+            onChange={(e) => setFilterMonth(e.target.value)}
+            className="select-field sm:w-64"
+          >
+            <option value="">All Months</option>
+            {monthOptions.map((m) => (
+              <option key={m.value} value={m.value}>{m.label}</option>
+            ))}
+          </select>
+        </div>
         <div className="table-container">
           <table className="data-table">
             <thead>
@@ -154,10 +169,10 @@ const PerformanceReview = () => {
             <tbody>
               {loading ? (
                 <tr><td colSpan={5} className="text-center py-8 text-surface-500">Loading...</td></tr>
-              ) : reviews.length === 0 ? (
-                <tr><td colSpan={5} className="text-center py-8 text-surface-500">No reviews yet</td></tr>
+              ) : filteredReviews.length === 0 ? (
+                <tr><td colSpan={5} className="text-center py-8 text-surface-500">No reviews found</td></tr>
               ) : (
-                reviews.map((r) => (
+                filteredReviews.map((r) => (
                   <tr key={r._id}>
                     <td>
                       <div className="flex items-center gap-3">
