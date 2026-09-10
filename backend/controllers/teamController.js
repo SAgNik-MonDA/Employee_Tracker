@@ -777,7 +777,7 @@ exports.deleteChatMessage = async (req, res) => {
     }
 
     msg.isDeleted = true;
-    msg.message = '';
+    msg.message = '[deleted]'; // required:true validation fails on empty string
     await msg.save();
 
     // Broadcast via socket
