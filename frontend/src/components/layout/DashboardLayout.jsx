@@ -6,12 +6,9 @@ import Topbar from './Topbar';
 
 const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { theme } = useTheme();
 
   return (
-    <div className={`flex h-screen overflow-hidden transition-colors duration-300 ${
-      theme === 'dark' ? 'bg-surface-950' : 'bg-surface-50'
-    }`}>
+    <div className="flex h-screen overflow-hidden bg-surface-950 transition-colors duration-300">
       {/* Sidebar */}
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
