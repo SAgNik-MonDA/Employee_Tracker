@@ -11,7 +11,6 @@ import {
 import { useLocation } from 'react-router-dom';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-const ANNUAL_LIMITS = { Casual: 24, Emergency: 16 };
 const CASUAL_MONTHLY_LIMIT = 2;
 
 // ─── Leave Balance Progress Bar ───────────────────────────────────────────────
@@ -178,7 +177,7 @@ const ApplyLeave = () => {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-display font-bold text-surface-100">Apply Leave</h1>
-        <p className="text-surface-500 mt-1">Submit a new leave request · Year {new Date().getFullYear()}</p>
+        <p className="text-surface-500 mt-1">Submit a new leave request · Year {balance?.year || new Date().getFullYear()}</p>
       </div>
 
       {/* ── Leave Balance Cards ─────────────────────────────────────────── */}
@@ -215,11 +214,11 @@ const ApplyLeave = () => {
           <HiOutlineInformationCircle className="w-5 h-5 text-primary-400 flex-shrink-0 mt-0.5" />
           <div className="text-xs text-surface-400 space-y-0.5">
             <p>
-              <span className="text-primary-400 font-semibold">Casual Leave:</span> Max 24 days/year · Max 2 days/month 
+              <span className="text-primary-400 font-semibold">Casual Leave:</span> Max {balance?.casual?.total || 24} days/year · Max 2 days/month 
               <br/>
               <span className="text-rose-400 font-semibold ml-1">⚠️ Casual leave must be applied at least 3 days in advance.</span>
             </p>
-            <p><span className="text-amber-400 font-semibold">Emergency Leave:</span> Max 16 days/year · Distribution: 9 months×1day, 2 months×2days, 1 month max 3days</p>
+            <p><span className="text-amber-400 font-semibold">Emergency Leave:</span> Max {balance?.emergency?.total || 16} days/year · Distribution: 9 months×1day, 2 months×2days, 1 month max 3days</p>
             <p className="text-surface-500">Leave dates must be within the same calendar month.</p>
           </div>
         </div>
@@ -237,8 +236,8 @@ const ApplyLeave = () => {
               onChange={(e) => setFormData({ ...formData, leaveType: e.target.value })}
               className="select-field"
             >
-              <option value="Casual">🟢 Casual Leave (Max {ANNUAL_LIMITS.Casual}/yr, {CASUAL_MONTHLY_LIMIT}/mo)</option>
-              <option value="Emergency">🟠 Emergency Leave (Max {ANNUAL_LIMITS.Emergency}/yr)</option>
+              <option value="Casual">🟢 Casual Leave (Max {balance?.casual?.total || 24}/yr, {CASUAL_MONTHLY_LIMIT}/mo)</option>
+              <option value="Emergency">🟠 Emergency Leave (Max {balance?.emergency?.total || 16}/yr)</option>
             </select>
           </div>
 

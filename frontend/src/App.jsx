@@ -30,6 +30,7 @@ import ManageEmployees from './pages/admin/ManageEmployees';
 import SetHolidays from './pages/admin/SetHolidays';
 import AttendanceOverview from './pages/admin/AttendanceOverview';
 import LeaveApprovals from './pages/admin/LeaveApprovals';
+import SetLeaveQuotas from './pages/admin/SetLeaveQuotas';
 import PerformanceReview from './pages/admin/PerformanceReview';
 import GeneratePayroll from './pages/admin/GeneratePayroll';
 
@@ -119,6 +120,7 @@ function App() {
         <Route path="face-resets" element={<FaceResets />} />
         <Route path="requests" element={<EmployeeRequests />} />
         <Route path="leaves" element={<LeaveApprovals />} />
+        <Route path="set-leaves" element={<SetLeaveQuotas />} />
         <Route path="performance" element={<PerformanceReview />} />
         <Route path="payroll"      element={<GeneratePayroll />} />
         <Route path="profile"      element={<ProfilePage />} />

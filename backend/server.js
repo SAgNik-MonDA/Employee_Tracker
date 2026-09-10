@@ -128,7 +128,8 @@ app.use('/api/meetings', require('./routes/meetingRoutes'));
 app.use('/api/teams',   require('./routes/teamRoutes'));
 app.use('/api/shifts', require('./routes/shiftRoutes'));
 app.use('/api/requests', require('./routes/requestRoutes'));
-
+app.use('/api/leave-configs', require('./routes/leaveConfigRoutes'));
+app.use('/api/settings', require('./routes/settingsRoutes'));
 
 // Health check
 app.get('/', (req, res) => {

@@ -2,11 +2,13 @@ const Leave = require('../models/Leave');
 const sendEmail = require('../utils/sendEmail');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
+const LeaveConfig = require('../models/LeaveConfig');
+const SystemSettings = require('../models/SystemSettings');
 
 // ─────────────────────────────────────────────
 // Constants
 // ─────────────────────────────────────────────
-const ANNUAL_LIMITS = { Casual: 24, Emergency: 16 };
+const FALLBACK_LIMITS = { Casual: 24, Emergency: 16 };
 const CASUAL_MONTHLY_LIMIT = 2; // max casual days per month
 
 // Helper: safe days value (backward compat for old records without days field)
@@ -14,11 +16,42 @@ const safeDays = (leave) =>
   leave.days ||
   Math.ceil((new Date(leave.endDate) - new Date(leave.startDate)) / (1000 * 60 * 60 * 24)) + 1;
 
+// Helper: get dynamic limits for an employee based on designation and year
+const getEmployeeLeaveLimits = async (employeeId, year) => {
+  try {
+    const user = await User.findById(employeeId);
+    if (!user) return FALLBACK_LIMITS;
+    
+    // Determine designation
+    const designation = user.designation && user.designation.trim() !== '' ? user.designation : user.role;
+    
+    // Lookup configuration
+    const config = await LeaveConfig.findOne({ designation, year });
+    if (config) {
+      return { Casual: config.casualLeaves, Emergency: config.emergencyLeaves };
+    }
+    return FALLBACK_LIMITS;
+  } catch {
+    return FALLBACK_LIMITS;
+  }
+};
+
+// Helper: get the global active leave year
+const getGlobalActiveYear = async () => {
+  try {
+    const setting = await SystemSettings.findOne({ key: 'ACTIVE_LEAVE_YEAR' });
+    if (setting) return parseInt(setting.value);
+    return new Date().getFullYear();
+  } catch {
+    return new Date().getFullYear();
+  }
+};
+
 // ─────────────────────────────────────────────
 // Shared: compute leave balance for one employee
 // ─────────────────────────────────────────────
 const computeLeaveBalance = async (employeeId, year) => {
-  const targetYear = year || new Date().getFullYear();
+  const targetYear = year || await getGlobalActiveYear();
   const yearStart = new Date(targetYear, 0, 1);
   const yearEnd   = new Date(targetYear, 11, 31, 23, 59, 59);
 
@@ -32,17 +65,20 @@ const computeLeaveBalance = async (employeeId, year) => {
   const casualUsed    = leaves.filter((l) => l.leaveType === 'Casual').reduce((s, l) => s + safeDays(l), 0);
   const emergencyUsed = leaves.filter((l) => l.leaveType === 'Emergency').reduce((s, l) => s + safeDays(l), 0);
 
+  // Fetch dynamic limits
+  const limits = await getEmployeeLeaveLimits(employeeId, targetYear);
+
   return {
     year: targetYear,
     casual: {
-      total: ANNUAL_LIMITS.Casual,
+      total: limits.Casual,
       used: casualUsed,
-      remaining: Math.max(0, ANNUAL_LIMITS.Casual - casualUsed),
+      remaining: Math.max(0, limits.Casual - casualUsed),
     },
     emergency: {
-      total: ANNUAL_LIMITS.Emergency,
+      total: limits.Emergency,
       used: emergencyUsed,
-      remaining: Math.max(0, ANNUAL_LIMITS.Emergency - emergencyUsed),
+      remaining: Math.max(0, limits.Emergency - emergencyUsed),
     },
   };
 };
@@ -99,7 +135,17 @@ const applyLeave = async (req, res) => {
     }
 
     const days  = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-    const year  = start.getFullYear();
+    
+    // We enforce leaves based on the active global year configured by admin.
+    // Ensure the requested leave falls in the active leave year.
+    const activeYear = await getGlobalActiveYear();
+    if (start.getFullYear() !== activeYear) {
+      return res.status(400).json({
+        message: `You can only apply for leaves in the active leave year: ${activeYear}`,
+      });
+    }
+
+    const year  = start.getFullYear(); // which is activeYear now
     const month = start.getMonth(); // 0-indexed (0 = Jan)
 
     // ── Annual limit check ────────────────────
@@ -114,11 +160,14 @@ const applyLeave = async (req, res) => {
     });
 
     const annualUsed = existingThisYear.reduce((s, l) => s + safeDays(l), 0);
+    
+    // Fetch dynamic limit
+    const limits = await getEmployeeLeaveLimits(req.user._id, year);
 
-    if (annualUsed + days > ANNUAL_LIMITS[leaveType]) {
+    if (annualUsed + days > limits[leaveType]) {
       return res.status(400).json({
         message: `Annual ${leaveType} leave limit exceeded. You have ${
-          ANNUAL_LIMITS[leaveType] - annualUsed
+          limits[leaveType] - annualUsed
         } day(s) remaining this year.`,
       });
     }
@@ -259,8 +308,12 @@ const getMyLeaves = async (req, res) => {
 // ─────────────────────────────────────────────
 const getMyBalance = async (req, res) => {
   try {
-    const year = parseInt(req.query.year) || new Date().getFullYear();
+    // If year is passed from query, use it, else global active year
+    const activeYear = await getGlobalActiveYear();
+    const year = parseInt(req.query.year) || activeYear;
+    
     const balance = await computeLeaveBalance(req.user._id, year);
+    // Attach limits directly to response for reference if needed
     res.json(balance);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -274,9 +327,13 @@ const getMyBalance = async (req, res) => {
 // ─────────────────────────────────────────────
 const getAllBalances = async (req, res) => {
   try {
-    const year      = parseInt(req.query.year) || new Date().getFullYear();
+    const activeYear = await getGlobalActiveYear();
+    const year      = parseInt(req.query.year) || activeYear;
     const yearStart = new Date(year, 0, 1);
     const yearEnd   = new Date(year, 11, 31, 23, 59, 59);
+
+    // Get all users to fetch dynamic limits for each
+    const users = await User.find({}).select('_id designation role');
 
     // MongoDB aggregation: sum days per (employee × leaveType)
     const aggregation = await Leave.aggregate([
@@ -290,7 +347,6 @@ const getAllBalances = async (req, res) => {
       {
         $group: {
           _id: { employeeId: '$employeeId', leaveType: '$leaveType' },
-          // Use $days if stored, fallback to date diff
           totalDays: {
             $sum: {
               $cond: [
@@ -322,17 +378,30 @@ const getAllBalances = async (req, res) => {
       if (row._id.leaveType === 'Casual')    map[id].casualUsed    = row.totalDays;
       if (row._id.leaveType === 'Emergency') map[id].emergencyUsed = row.totalDays;
     }
+    
+    // Fetch configs for the year
+    const configs = await LeaveConfig.find({ year });
+    const configMap = {}; // designation -> {Casual, Emergency}
+    configs.forEach(c => {
+      configMap[c.designation] = { Casual: c.casualLeaves, Emergency: c.emergencyLeaves };
+    });
 
     // Add totals and remaining
     const result = {};
-    for (const [id, data] of Object.entries(map)) {
+    for (const user of users) {
+      const id = user._id.toString();
+      const usedData = map[id] || { casualUsed: 0, emergencyUsed: 0 };
+      
+      const designation = user.designation && user.designation.trim() !== '' ? user.designation : user.role;
+      const limits = configMap[designation] || FALLBACK_LIMITS;
+      
       result[id] = {
-        casualUsed:        data.casualUsed,
-        casualTotal:       ANNUAL_LIMITS.Casual,
-        casualRemaining:   Math.max(0, ANNUAL_LIMITS.Casual - data.casualUsed),
-        emergencyUsed:     data.emergencyUsed,
-        emergencyTotal:    ANNUAL_LIMITS.Emergency,
-        emergencyRemaining: Math.max(0, ANNUAL_LIMITS.Emergency - data.emergencyUsed),
+        casualUsed:        usedData.casualUsed,
+        casualTotal:       limits.Casual,
+        casualRemaining:   Math.max(0, limits.Casual - usedData.casualUsed),
+        emergencyUsed:     usedData.emergencyUsed,
+        emergencyTotal:    limits.Emergency,
+        emergencyRemaining: Math.max(0, limits.Emergency - usedData.emergencyUsed),
       };
     }
 

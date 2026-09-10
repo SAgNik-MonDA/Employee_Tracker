@@ -45,6 +45,7 @@ const ProfilePage = () => {
   const { user, updateSessionUser } = useAuth();
   const { notifications } = useNotifications();
   const [profile, setProfile]       = useState(null);
+  const [leaveBalance, setLeaveBalance] = useState(null);
   const [loading, setLoading]       = useState(true);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -122,8 +123,13 @@ const ProfilePage = () => {
 
   const fetchProfile = async () => {
     try {
-      const { data } = await API.get('/auth/my-profile');
+      const [profileRes, balanceRes] = await Promise.all([
+        API.get('/auth/my-profile'),
+        API.get('/leaves/my-balance').catch(() => ({ data: null }))
+      ]);
+      const data = profileRes.data;
       setProfile(data);
+      if (balanceRes.data) setLeaveBalance(balanceRes.data);
       setDobValue(data.dateOfBirth ? data.dateOfBirth.split('T')[0] : '');
       updateSessionUser(); // Also update global auth context
     } catch (error) {
@@ -358,6 +364,19 @@ const ProfilePage = () => {
             )}
           </div>
         </div>
+
+        {/* ── Leave Balances ────────────────────────────────────────────── */}
+        {leaveBalance && (
+          <>
+            <div className="flex items-center justify-between mt-8 mb-3 border-b border-surface-700/40 pb-2">
+              <h3 className="text-sm font-semibold text-surface-400 uppercase tracking-wider">Leave Quota ({leaveBalance.year})</h3>
+            </div>
+            <div className="mb-6">
+              <InfoRow label="Casual Leaves"    value={`${leaveBalance.casual.remaining} remaining (out of ${leaveBalance.casual.total})`} />
+              <InfoRow label="Emergency Leaves" value={`${leaveBalance.emergency.remaining} remaining (out of ${leaveBalance.emergency.total})`} />
+            </div>
+          </>
+        )}
 
         {/* ── Bank Details ────────────────────────────────────────────── */}
         <div className="flex items-center justify-between mt-8 mb-3 border-b border-surface-700/40 pb-2">
