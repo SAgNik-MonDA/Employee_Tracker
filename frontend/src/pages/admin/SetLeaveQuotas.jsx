@@ -28,7 +28,7 @@ const SetLeaveQuotas = () => {
       try {
         const [yearRes, usersRes, configsRes] = await Promise.all([
           API.get('/settings/leave-year'),
-          API.get('/users'),
+          API.get('/auth/employees'),
           API.get(`/leave-configs?year=${formData.year}`)
         ]);
         
