@@ -4,6 +4,7 @@ import API from '../api/axios';
 import { useAuth } from './AuthContext';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { playPopSound, playRingSound, playGeneralNotificationSound } from '../utils/audioUtils';
 
 const NotificationContext = createContext(null);
 
@@ -33,81 +34,6 @@ export const NotificationProvider = ({ children }) => {
   const prevUnreadCountRef = useRef(0);
   const isInitialLoad = useRef(true);
   const userIdRef = useRef(null);
-
-  // ── Notification Sound (General) ────────────────────────────────────
-  const playNotificationSound = useCallback(() => {
-    try {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) return;
-      const ctx = new AC();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.1);
-
-      gain.gain.setValueAtTime(0.5, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start();
-      osc.stop(ctx.currentTime + 0.5);
-    } catch (e) {
-      console.log('Audio play failed', e);
-    }
-  }, []);
-
-  // ── Chat Pop Sound (High pitch pop for open chat) ───────────────────
-  const playChatPopSound = useCallback(() => {
-    try {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) return;
-      const ctx = new AC();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(600, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.05);
-
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start();
-      osc.stop(ctx.currentTime + 0.1);
-    } catch (e) { console.log('Audio play failed', e); }
-  }, []);
-
-  // ── Notification Ring Sound (Double chime for background chat) ──────
-  const playNotificationRing = useCallback(() => {
-    try {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) return;
-      const ctx = new AC();
-
-      const playTone = (freq, startTime, duration) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, startTime);
-        gain.gain.setValueAtTime(0.4, startTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(startTime);
-        osc.stop(startTime + duration);
-      };
-
-      playTone(523.25, ctx.currentTime, 0.2); // C5
-      playTone(659.25, ctx.currentTime + 0.15, 0.3); // E5
-    } catch (e) { console.log('Audio play failed', e); }
-  }, []);
 
   // ── Data Fetchers (no deps on user – guarded by early return) ──────
   const fetchNotifications = useCallback(async () => {
@@ -158,10 +84,10 @@ export const NotificationProvider = ({ children }) => {
     if (isInitialLoad.current) {
       isInitialLoad.current = false;
     } else if (unreadCount > prevUnreadCountRef.current) {
-      playNotificationSound();
+      playGeneralNotificationSound();
     }
     prevUnreadCountRef.current = unreadCount;
-  }, [unreadCount, playNotificationSound]);
+  }, [unreadCount]);
 
   // ── Main effect: socket + polling, keyed ONLY on user._id ──────────
   useEffect(() => {
@@ -214,7 +140,7 @@ export const NotificationProvider = ({ children }) => {
         return;
       } else {
         // Chat is CLOSED -> Play double chime and show WhatsApp-style toast
-        playNotificationRing();
+        playRingSound();
         toast.custom(
           (t) => (
             <div
@@ -261,7 +187,7 @@ export const NotificationProvider = ({ children }) => {
         socketRef.current = null;
       }
     };
-  }, [user?._id, navigate, playChatPopSound, playNotificationRing]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user?._id, navigate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <NotificationContext.Provider

@@ -5,6 +5,7 @@ import { io } from 'socket.io-client';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { useSearchParams } from 'react-router-dom';
+import { playPopSound } from '../../utils/audioUtils';
 import UserAvatar from '../../components/common/UserAvatar';
 import ConfirmModal from '../../components/common/ConfirmModal';
 import {
@@ -1579,25 +1580,6 @@ const ChatTab = ({ team, user, headers }) => {
   const isTypingRef = useRef(false);
 
   // Chat notification sound (lighter pop sound for incoming messages)
-  const playChatSound = useCallback(() => {
-    try {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) return;
-      const ctx = new AC();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(600, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.08);
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.25);
-    } catch {}
-  }, []);
-
   useEffect(() => {
     // Load history
     API.get(`/teams/${team._id}/chat`, { headers })
@@ -1613,7 +1595,7 @@ const ChatTab = ({ team, user, headers }) => {
       setMessages(prev => [...prev, msg]);
       // Play sound for messages from others
       if ((msg.senderId?._id || msg.senderId) !== user._id) {
-        playChatSound();
+        playPopSound();
       }
     });
 
