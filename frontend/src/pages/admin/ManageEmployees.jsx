@@ -59,7 +59,7 @@ const getRoleBadgeClass = (role) => {
   return 'bg-surface-700/50 text-surface-300 border border-surface-600/30';
 };
 
-const ALL_ROLES = [
+export const ALL_ROLES = [
   'Admin',
   // C-Suite (access-control roles — kept for permissions)
 
@@ -88,7 +88,7 @@ const ALL_ROLES = [
 
 // ─── Role → Designation suggestions ──────────────────────────────────────────
 // When a role is selected, the designation field shows context-aware suggestions.
-const ROLE_DESIGNATIONS = {
+export const ROLE_DESIGNATIONS = {
   // ── Engineering ──────────────────────────────────────────────────────────
   'Frontend Engineer':     ['Trainee', 'SDE-1', 'SDE-2', 'SDE-3', 'SDE-4', 'Software Engineer', 'Senior Software Engineer', 'Technical Lead', 'Team Lead', 'Project Manager'],
   'Backend Engineer':      ['Trainee', 'SDE-1', 'SDE-2', 'SDE-3', 'SDE-4', 'Software Engineer', 'Senior Software Engineer', 'Technical Lead', 'Team Lead', 'Project Manager'],
