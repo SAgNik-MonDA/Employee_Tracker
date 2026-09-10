@@ -210,8 +210,8 @@ export const NotificationProvider = ({ children }) => {
     socket.on('team-chat-notification', (payload) => {
       // payload = { teamId, teamName, senderName, message }
       if (activeChatTeamIdRef.current === payload.teamId) {
-        // Chat is OPEN -> Play small pop sound, no toast
-        playChatPopSound();
+        // Chat is OPEN -> TeamsPage handles the in-chat sound, do nothing here.
+        return;
       } else {
         // Chat is CLOSED -> Play double chime and show WhatsApp-style toast
         playNotificationRing();

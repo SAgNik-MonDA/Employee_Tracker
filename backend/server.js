@@ -57,12 +57,20 @@ io.on('connection', (socket) => {
       };
       io.to(`team-${data.teamId}`).emit('team-message', payload);
 
-      // Send chat notification to all team members EXCEPT the sender
+      // Send chat notification to all relevant team members EXCEPT the sender
       try {
-        const team = await Team.findById(data.teamId).select('members projectName');
+        const team = await Team.findById(data.teamId).select('members teamLead createdBy projectName');
         if (team) {
-          const memberIds = team.members.map(m => m.toString()).filter(id => id !== data.senderId);
-          memberIds.forEach(memberId => {
+          const notifyIds = new Set();
+          if (team.members) team.members.forEach(m => notifyIds.add(m.toString()));
+          if (team.teamLead) notifyIds.add(team.teamLead.toString());
+          if (team.createdBy) notifyIds.add(team.createdBy.toString());
+          
+          // Always send to admins who are actively viewing the team in frontend,
+          // but for background notifications we strictly notify associated users.
+          notifyIds.delete(data.senderId);
+
+          notifyIds.forEach(memberId => {
             io.to(`user-${memberId}`).emit('team-chat-notification', {
               teamId: data.teamId,
               teamName: team.projectName,
