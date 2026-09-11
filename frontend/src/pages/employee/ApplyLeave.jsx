@@ -226,14 +226,20 @@ const ApplyLeave = () => {
       <div className="glass-card p-4 border border-primary-500/20 bg-primary-500/5">
         <div className="flex gap-3">
           <HiOutlineInformationCircle className="w-5 h-5 text-primary-400 flex-shrink-0 mt-0.5" />
-          <div className="text-xs text-surface-400 space-y-0.5">
+          <div className="text-sm text-surface-300 space-y-1">
             <p>
-              <span className="text-primary-400 font-semibold">Casual Leave:</span> Max {balance?.casual?.total || 24} days/year · Max 2 days/month 
-              <br/>
-              <span className="text-rose-400 font-semibold ml-1">⚠️ Casual leave must be applied at least 3 days in advance.</span>
+              <strong className="text-indigo-400">Casual Leave:</strong> Max {balance?.casualTotal || 24} days/year • Max 2 days/month
             </p>
-            <p><span className="text-amber-400 font-semibold">Emergency Leave:</span> Max {balance?.emergency?.total || 16} days/year · Distribution: 9 months×1day, 2 months×2days, 1 month max 3days</p>
-            <p className="text-surface-500">Leave dates must be within the same calendar month.</p>
+            <p className="text-rose-400 font-medium flex items-center gap-1.5 mt-1">
+              <HiOutlineExclamationCircle className="w-4 h-4" />
+              Casual leave must be applied at least 3 days in advance.
+            </p>
+            <p className="mt-2">
+              <strong className="text-amber-400">Emergency Leave:</strong> Max {balance?.emergencyTotal || 16} days/year • Distribution: 9 months×1day, 2 months×2days, 1 month max 3days
+            </p>
+            <p className="text-surface-400 mt-1">
+              Leave dates must be within the same calendar month.
+            </p>
           </div>
         </div>
       </div>
@@ -250,8 +256,8 @@ const ApplyLeave = () => {
               onChange={(e) => setFormData({ ...formData, leaveType: e.target.value })}
               className="select-field"
             >
-              <option value="Casual">🟢 Casual Leave (Max {balance?.casual?.total || 24}/yr, {CASUAL_MONTHLY_LIMIT}/mo)</option>
-              <option value="Emergency">🟠 Emergency Leave (Max {balance?.emergency?.total || 16}/yr)</option>
+              <option value="Casual">Casual Leave (Max {balance?.casualTotal || 24}/yr, 2/mo)</option>
+              <option value="Emergency">Emergency Leave (Max {balance?.emergencyTotal || 16}/yr)</option>
             </select>
           </div>
 

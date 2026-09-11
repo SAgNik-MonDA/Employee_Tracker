@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import API from '../../api/axios';
 import toast from 'react-hot-toast';
-import { HiOutlineSave, HiOutlineRefresh, HiOutlineLockClosed, HiOutlineLockOpen } from 'react-icons/hi';
+import { HiOutlineSave, HiOutlineRefresh, HiOutlineLockClosed, HiOutlineLockOpen, HiOutlineInformationCircle } from 'react-icons/hi';
 import { GENERIC_DESIGNATIONS, ROLE_DESIGNATIONS, ALL_DEPARTMENTS } from './ManageEmployees';
 
 const SetLeaveQuotas = () => {
