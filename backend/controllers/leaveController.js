@@ -22,29 +22,16 @@ const getEmployeeLeaveLimits = async (employeeId, year) => {
     const user = await User.findById(employeeId);
     if (!user) return FALLBACK_LIMITS;
     
-    const des = user.designation && user.designation.trim() !== '' ? user.designation : null;
-    const role = user.role;
+    const effectiveDesignation = user.designation && user.designation.trim() !== '' ? user.designation : user.role;
     const dept = user.department || '';
 
-    // Priority 1: Exact Designation + Department
-    if (des) {
-      let config = await LeaveConfig.findOne({ designation: des, department: dept, year });
-      if (config) return { Casual: config.casualLeaves, Emergency: config.emergencyLeaves };
+    // Priority 1: Exact Effective Designation + Department
+    let config = await LeaveConfig.findOne({ designation: effectiveDesignation, department: dept, year });
+    if (config) return { Casual: config.casualLeaves, Emergency: config.emergencyLeaves };
       
-      // Priority 2: Designation + ANY Department
-      config = await LeaveConfig.findOne({ designation: des, year });
-      if (config) return { Casual: config.casualLeaves, Emergency: config.emergencyLeaves };
-    }
-
-    // Priority 3: Exact Role + Department
-    if (role) {
-      let config = await LeaveConfig.findOne({ designation: role, department: dept, year });
-      if (config) return { Casual: config.casualLeaves, Emergency: config.emergencyLeaves };
-      
-      // Priority 4: Role + ANY Department
-      config = await LeaveConfig.findOne({ designation: role, year });
-      if (config) return { Casual: config.casualLeaves, Emergency: config.emergencyLeaves };
-    }
+    // Priority 2: Effective Designation + ANY Department
+    config = await LeaveConfig.findOne({ designation: effectiveDesignation, year });
+    if (config) return { Casual: config.casualLeaves, Emergency: config.emergencyLeaves };
 
     return FALLBACK_LIMITS;
   } catch {
@@ -408,22 +395,16 @@ const getAllBalances = async (req, res) => {
       const id = user._id.toString();
       const usedData = map[id] || { casualUsed: 0, emergencyUsed: 0 };
       
-      const des = user.designation && user.designation.trim() !== '' ? user.designation : null;
-      const role = user.role;
+      const effectiveDesignation = user.designation && user.designation.trim() !== '' ? user.designation : user.role;
       const dept = user.department || '';
 
-      let limits = null;
-
-      // Helper function to find limits in configMap
-      const findLimits = (d, p) => {
-        if (!d) return null;
-        if (configMap[`${d}_${p}`]) return configMap[`${d}_${p}`];
-        const fallbackKey = Object.keys(configMap).find(k => k.startsWith(`${d}_`));
-        return fallbackKey ? configMap[fallbackKey] : null;
-      };
-
-      // Try priorities
-      limits = findLimits(des, dept) || findLimits(role, dept) || FALLBACK_LIMITS;
+      // Try exact designation_department match first, then fallback to designation_ANY
+      let limits = configMap[`${effectiveDesignation}_${dept}`];
+      if (!limits) {
+        // Find any config that starts with this designation
+        const fallbackKey = Object.keys(configMap).find(k => k.startsWith(`${effectiveDesignation}_`));
+        limits = fallbackKey ? configMap[fallbackKey] : FALLBACK_LIMITS;
+      }
       
       result[id] = {
         casualUsed:        usedData.casualUsed,

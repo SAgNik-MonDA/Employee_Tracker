@@ -42,9 +42,12 @@ const upsertConfig = async (req, res) => {
       { new: true, upsert: true, runValidators: true }
     );
 
-    // Find all users with this designation and department
+    // Find all users with this effective designation and department
     const users = await User.find({ 
-      $or: [{ designation }, { role: designation }],
+      $or: [
+        { designation },
+        { designation: { $in: [null, ''] }, role: designation }
+      ],
       department 
     });
 
