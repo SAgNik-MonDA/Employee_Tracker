@@ -7,9 +7,11 @@ import ProfilePictureUploader from '../../components/common/ProfilePictureUpload
 import BirthdayBanner from '../../components/common/BirthdayBanner';
 import AttendanceCameraModal from '../../components/common/AttendanceCameraModal';
 import toast from 'react-hot-toast';
+import { useNotifications } from '../../context/NotificationContext';
 
 const EmployeeDashboard = () => {
   const { user } = useAuth();
+  const { socket } = useNotifications();
   const [stats, setStats] = useState({
     totalPresent: 0,
     totalLeaves: 0,
@@ -30,6 +32,18 @@ const EmployeeDashboard = () => {
   useEffect(() => {
     fetchDashboardData();
   }, []);
+
+  // Listen for real-time leave year updates
+  useEffect(() => {
+    if (!socket) return;
+    const handleSettingsUpdated = (data) => {
+      if (data.type === 'LEAVE_YEAR_UPDATED') {
+        fetchDashboardData();
+      }
+    };
+    socket.on('settings-updated', handleSettingsUpdated);
+    return () => socket.off('settings-updated', handleSettingsUpdated);
+  }, [socket]);
 
   const fetchDashboardData = async () => {
     try {

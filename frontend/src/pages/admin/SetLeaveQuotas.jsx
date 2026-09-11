@@ -112,6 +112,7 @@ const SetLeaveQuotas = () => {
     try {
       await API.put('/settings/leave-year', { year: activeYear });
       toast.success(`Global Active Leave Year set to ${activeYear}`);
+      setFormData(prev => ({ ...prev, year: parseInt(activeYear) }));
     } catch (error) {
       toast.error('Failed to update active year');
     }
