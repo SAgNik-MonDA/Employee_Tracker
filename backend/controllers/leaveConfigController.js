@@ -60,7 +60,12 @@ const upsertConfig = async (req, res) => {
           year: config.year
         }
       }));
-      await Notification.insertMany(notifications);
+      const docs = await Notification.insertMany(notifications);
+      if (global.io) {
+        docs.forEach(doc => {
+          global.io.to(`user-${doc.userId.toString()}`).emit('new-notification', doc);
+        });
+      }
     }
 
     res.json(config);

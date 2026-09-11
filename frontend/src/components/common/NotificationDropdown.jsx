@@ -14,6 +14,7 @@ import {
   HiOutlineArchive,
   HiOutlineShieldCheck,
   HiOutlineDocumentText,
+  HiOutlineBriefcase,
 } from 'react-icons/hi';
 
 const typeConfig = {
@@ -107,6 +108,12 @@ const typeConfig = {
     bg: 'bg-emerald-500/10',
     border: 'border-emerald-500/20',
   },
+  leave_quota_assigned: {
+    icon: <HiOutlineBriefcase className="w-5 h-5" />,
+    color: 'text-primary-400',
+    bg: 'bg-primary-500/10',
+    border: 'border-primary-500/20',
+  },
 };
 
 const timeAgo = (date) => {
@@ -121,7 +128,7 @@ const timeAgo = (date) => {
 };
 
 const NotificationDropdown = () => {
-  const { notifications, unreadCount, loading, fetchNotifications, markRead, markAllRead } =
+  const { notifications, unreadCount, loading, fetchNotifications, markRead, markAllRead, openLeaveQuotaModal } =
     useNotifications();
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
@@ -147,6 +154,12 @@ const NotificationDropdown = () => {
   const handleClick = async (notif) => {
     if (!notif.isRead) await markRead(notif._id);
     setOpen(false);
+
+    if (notif.type === 'leave_quota_assigned') {
+      openLeaveQuotaModal(notif.metadata || { casualLeaves: 0, emergencyLeaves: 0, year: new Date().getFullYear() });
+      return;
+    }
+
     if (notif.link && user) {
       const isAdmin = ['Admin', 'HR', 'Payroll Manager', 'Accounts Payable (AP) Specialist', 'Chief Financial Officer (CFO)', 'CTO', 'COO', 'CEO'].includes(user.role);
       const basePath = isAdmin ? '/admin' : '/employee';
