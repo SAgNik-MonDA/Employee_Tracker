@@ -13,8 +13,8 @@ const SetLeaveQuotas = () => {
     designation: '',
     department: '',
     year: new Date().getFullYear(),
-    casualLeaves: 0,
-    emergencyLeaves: 0,
+    casualLeaves: '',
+    emergencyLeaves: '',
   });
 
   const [allDesignations, setAllDesignations] = useState([]);
@@ -83,6 +83,28 @@ const SetLeaveQuotas = () => {
     
     fetchInitialData();
   }, [formData.year]);
+
+  // Auto-fill inputs when designation or department changes
+  useEffect(() => {
+    if (formData.designation && formData.department && configs.length > 0) {
+      const existingConfig = configs.find(
+        c => c.designation === formData.designation && c.department === formData.department
+      );
+      if (existingConfig) {
+        setFormData(prev => ({
+          ...prev,
+          casualLeaves: existingConfig.casualLeaves,
+          emergencyLeaves: existingConfig.emergencyLeaves
+        }));
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          casualLeaves: '',
+          emergencyLeaves: ''
+        }));
+      }
+    }
+  }, [formData.designation, formData.department, configs]);
 
   const handleGlobalYearSave = async () => {
     try {
@@ -200,7 +222,7 @@ const SetLeaveQuotas = () => {
               <input
                 type="number"
                 value={formData.casualLeaves}
-                onChange={(e) => setFormData({ ...formData, casualLeaves: parseInt(e.target.value) || 0 })}
+                onChange={(e) => setFormData({ ...formData, casualLeaves: e.target.value === '' ? '' : parseInt(e.target.value) })}
                 className="input-field"
                 min="0"
                 disabled={isLocked}
@@ -211,7 +233,7 @@ const SetLeaveQuotas = () => {
               <input
                 type="number"
                 value={formData.emergencyLeaves}
-                onChange={(e) => setFormData({ ...formData, emergencyLeaves: parseInt(e.target.value) || 0 })}
+                onChange={(e) => setFormData({ ...formData, emergencyLeaves: e.target.value === '' ? '' : parseInt(e.target.value) })}
                 className="input-field"
                 min="0"
                 disabled={isLocked}
@@ -296,6 +318,24 @@ const SetLeaveQuotas = () => {
               </table>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Disclaimer */}
+      <div className="glass-card p-6 border border-surface-700 mt-6 bg-surface-800/30">
+        <div className="flex items-start gap-3">
+          <HiOutlineInformationCircle className="w-5 h-5 text-indigo-400 mt-0.5" />
+          <div className="text-sm text-surface-300 space-y-1">
+            <p>
+              <strong className="text-indigo-400">Casual Leave:</strong> Max 24 days/year • Max 2 days/month
+            </p>
+            <p>
+              <strong className="text-amber-400">Emergency Leave:</strong> Max 16 days/year • Distribution: 9 months×1day, 2 months×2days, 1 month max 3days
+            </p>
+            <p className="text-surface-400 mt-2">
+              Leave dates must be within the same calendar month.
+            </p>
+          </div>
         </div>
       </div>
     </div>

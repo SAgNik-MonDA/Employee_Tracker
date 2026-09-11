@@ -26,7 +26,11 @@ const getEmployeeLeaveLimits = async (employeeId, year) => {
     const designation = user.designation && user.designation.trim() !== '' ? user.designation : user.role;
     
     // Lookup configuration
-    const config = await LeaveConfig.findOne({ designation, department: user.department, year });
+    let config = await LeaveConfig.findOne({ designation, department: user.department || '', year });
+    if (!config) {
+      // Graceful fallback to any config for this designation if exact department not found
+      config = await LeaveConfig.findOne({ designation, year });
+    }
     if (config) {
       return { Casual: config.casualLeaves, Emergency: config.emergencyLeaves };
     }
@@ -393,7 +397,13 @@ const getAllBalances = async (req, res) => {
       const usedData = map[id] || { casualUsed: 0, emergencyUsed: 0 };
       
       const designation = user.designation && user.designation.trim() !== '' ? user.designation : user.role;
-      const limits = configMap[`${designation}_${user.department}`] || FALLBACK_LIMITS;
+      // Try exact designation_department match first, then fallback to designation_ANY
+      let limits = configMap[`${designation}_${user.department || ''}`];
+      if (!limits) {
+        // Find any config that starts with this designation
+        const fallbackKey = Object.keys(configMap).find(k => k.startsWith(`${designation}_`));
+        limits = fallbackKey ? configMap[fallbackKey] : FALLBACK_LIMITS;
+      }
       
       result[id] = {
         casualUsed:        usedData.casualUsed,
