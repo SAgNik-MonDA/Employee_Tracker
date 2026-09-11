@@ -35,7 +35,9 @@ const SetLeaveQuotas = () => {
           API.get(`/leave-configs?year=${formData.year}`)
         ]);
         
-        setActiveYear(yearRes.data.activeYear);
+        const currentActiveYear = parseInt(yearRes.data.activeYear);
+        setActiveYear(currentActiveYear);
+        setFormData(prev => ({ ...prev, year: currentActiveYear }));
         setConfigs(configsRes.data);
 
         // Use exactly all designations present in Add Employee
