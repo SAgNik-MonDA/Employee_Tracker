@@ -26,7 +26,7 @@ const getEmployeeLeaveLimits = async (employeeId, year) => {
     const designation = user.designation && user.designation.trim() !== '' ? user.designation : user.role;
     
     // Lookup configuration
-    const config = await LeaveConfig.findOne({ designation, year });
+    const config = await LeaveConfig.findOne({ designation, department: user.department, year });
     if (config) {
       return { Casual: config.casualLeaves, Emergency: config.emergencyLeaves };
     }
@@ -381,9 +381,9 @@ const getAllBalances = async (req, res) => {
     
     // Fetch configs for the year
     const configs = await LeaveConfig.find({ year });
-    const configMap = {}; // designation -> {Casual, Emergency}
+    const configMap = {}; // designation_department -> {Casual, Emergency}
     configs.forEach(c => {
-      configMap[c.designation] = { Casual: c.casualLeaves, Emergency: c.emergencyLeaves };
+      configMap[`${c.designation}_${c.department}`] = { Casual: c.casualLeaves, Emergency: c.emergencyLeaves };
     });
 
     // Add totals and remaining
@@ -393,7 +393,7 @@ const getAllBalances = async (req, res) => {
       const usedData = map[id] || { casualUsed: 0, emergencyUsed: 0 };
       
       const designation = user.designation && user.designation.trim() !== '' ? user.designation : user.role;
-      const limits = configMap[designation] || FALLBACK_LIMITS;
+      const limits = configMap[`${designation}_${user.department}`] || FALLBACK_LIMITS;
       
       result[id] = {
         casualUsed:        usedData.casualUsed,

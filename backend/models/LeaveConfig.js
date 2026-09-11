@@ -7,6 +7,11 @@ const leaveConfigSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    department: {
+      type: String,
+      required: true,
+      trim: true,
+    },
     year: {
       type: Number,
       required: true,
@@ -25,7 +30,7 @@ const leaveConfigSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Ensure only one config per designation per year
-leaveConfigSchema.index({ designation: 1, year: 1 }, { unique: true });
+// Ensure only one config per designation per department per year
+leaveConfigSchema.index({ designation: 1, department: 1, year: 1 }, { unique: true });
 
 module.exports = mongoose.model('LeaveConfig', leaveConfigSchema);

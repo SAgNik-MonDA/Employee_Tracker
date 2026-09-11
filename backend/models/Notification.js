@@ -30,7 +30,8 @@ const notificationSchema = new mongoose.Schema(
         'face_reset_approved',
         'face_reset_rejected',
         'general_request_submitted',
-        'general_request_reviewed'
+        'general_request_reviewed',
+        'leave_quota_assigned'
       ],
       required: true,
     },
@@ -42,6 +43,10 @@ const notificationSchema = new mongoose.Schema(
     message: {
       type: String,
       required: true,
+    },
+    metadata: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
     },
     link: {
       type: String,

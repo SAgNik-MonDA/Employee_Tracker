@@ -1,5 +1,7 @@
 const LeaveConfig = require('../models/LeaveConfig');
 const SystemSettings = require('../models/SystemSettings');
+const Notification = require('../models/Notification');
+const User = require('../models/User');
 
 // ─────────────────────────────────────────────
 // @desc    Get leave configurations for a specific year
@@ -23,14 +25,14 @@ const getConfigsByYear = async (req, res) => {
 // ─────────────────────────────────────────────
 const upsertConfig = async (req, res) => {
   try {
-    const { designation, year, casualLeaves, emergencyLeaves } = req.body;
+    const { designation, department, year, casualLeaves, emergencyLeaves } = req.body;
 
-    if (!designation || !year) {
-      return res.status(400).json({ message: 'Designation and Year are required' });
+    if (!designation || !department || !year) {
+      return res.status(400).json({ message: 'Designation, Department, and Year are required' });
     }
 
     const config = await LeaveConfig.findOneAndUpdate(
-      { designation, year: parseInt(year) },
+      { designation, department, year: parseInt(year) },
       { 
         $set: { 
           casualLeaves: parseInt(casualLeaves) || 0, 
@@ -39,6 +41,27 @@ const upsertConfig = async (req, res) => {
       },
       { new: true, upsert: true, runValidators: true }
     );
+
+    // Find all users with this designation and department
+    const users = await User.find({ 
+      $or: [{ designation }, { role: designation }],
+      department 
+    });
+
+    if (users.length > 0) {
+      const notifications = users.map(user => ({
+        userId: user._id,
+        type: 'leave_quota_assigned',
+        title: 'Leave Quota Assigned',
+        message: `Your leave quota for ${year} has been updated. Click to view breakdown.`,
+        metadata: {
+          casualLeaves: config.casualLeaves,
+          emergencyLeaves: config.emergencyLeaves,
+          year: config.year
+        }
+      }));
+      await Notification.insertMany(notifications);
+    }
 
     res.json(config);
   } catch (error) {

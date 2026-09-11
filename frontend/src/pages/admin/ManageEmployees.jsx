@@ -176,7 +176,7 @@ const getDesignationsForRole = (role) => {
 };
 
 
-const ALL_DEPARTMENTS = [
+export const ALL_DEPARTMENTS = [
   'Engineering', 'Technical', 'Marketing', 'Finance', 'Human Resources',
   'Executive Leadership Team', 'Product', 'Design', 'Sales', 'Operations',
   'Customer Success', 'Legal', 'IT', 'Data & Analytics', 'Security',

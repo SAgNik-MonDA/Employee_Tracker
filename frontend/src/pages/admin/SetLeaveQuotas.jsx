@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import API from '../../api/axios';
 import toast from 'react-hot-toast';
-import { HiOutlineSave, HiOutlineRefresh } from 'react-icons/hi';
-import { GENERIC_DESIGNATIONS, ROLE_DESIGNATIONS } from './ManageEmployees';
+import { HiOutlineSave, HiOutlineRefresh, HiOutlineLockClosed, HiOutlineLockOpen } from 'react-icons/hi';
+import { GENERIC_DESIGNATIONS, ROLE_DESIGNATIONS, ALL_DEPARTMENTS } from './ManageEmployees';
 
 const SetLeaveQuotas = () => {
   const [activeYear, setActiveYear] = useState(new Date().getFullYear());
@@ -11,12 +11,15 @@ const SetLeaveQuotas = () => {
   
   const [formData, setFormData] = useState({
     designation: '',
+    department: '',
     year: new Date().getFullYear(),
     casualLeaves: 0,
     emergencyLeaves: 0,
   });
 
   const [allDesignations, setAllDesignations] = useState([]);
+  const [designationToDeptMap, setDesignationToDeptMap] = useState({});
+  const [isLocked, setIsLocked] = useState(false);
 
   useEffect(() => {
     // Generate a unique list of designations for the dropdown
@@ -47,6 +50,30 @@ const SetLeaveQuotas = () => {
         });
 
         setAllDesignations(Array.from(designationsSet).sort());
+
+        // Smart Suggestion Logic: Map designation -> available departments based on actual employees
+        const map = {};
+        usersRes.data.forEach(u => {
+          const des = u.designation && u.designation.trim() !== '' ? u.designation : u.role;
+          if (des && u.department) {
+            if (!map[des]) map[des] = new Set();
+            map[des].add(u.department);
+          }
+        });
+        
+        // Convert Sets to Arrays
+        const finalMap = {};
+        Object.keys(map).forEach(k => {
+          finalMap[k] = Array.from(map[k]).sort();
+        });
+        setDesignationToDeptMap(finalMap);
+
+        // Add all possible designations derived from roles
+        Object.values(ROLE_DESIGNATIONS).forEach(designationArray => {
+          designationArray.forEach(d => designationsSet.add(d));
+        });
+
+        setAllDesignations(Array.from(designationsSet).sort());
       } catch (error) {
         toast.error('Failed to fetch data');
       } finally {
@@ -68,8 +95,11 @@ const SetLeaveQuotas = () => {
 
   const handleConfigSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.designation) {
-      return toast.error('Please select a designation');
+    if (!isLocked) {
+      return toast.error('Please lock the quota first before saving.');
+    }
+    if (!formData.designation || !formData.department) {
+      return toast.error('Please select both a designation and a department');
     }
 
     try {
@@ -78,8 +108,9 @@ const SetLeaveQuotas = () => {
       // Refresh configs
       const res = await API.get(`/leave-configs?year=${formData.year}`);
       setConfigs(res.data);
-      // Reset form fields but keep year and designation
+      // Reset form fields but keep year, designation, and department
       setFormData(prev => ({ ...prev, casualLeaves: 0, emergencyLeaves: 0 }));
+      setIsLocked(false);
     } catch (error) {
       toast.error('Failed to update leave quota');
     }
@@ -128,20 +159,41 @@ const SetLeaveQuotas = () => {
                 value={formData.year}
                 onChange={(e) => setFormData({ ...formData, year: parseInt(e.target.value) || new Date().getFullYear() })}
                 className="input-field"
+                disabled={isLocked}
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-surface-300 mb-2">Designation</label>
               <select
                 value={formData.designation}
-                onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, designation: e.target.value, department: '' })}
                 className="select-field"
+                disabled={isLocked}
               >
                 <option value="">-- Select Designation --</option>
                 {allDesignations.map(d => (
                   <option key={d} value={d}>{d}</option>
                 ))}
               </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-surface-300 mb-2">Department</label>
+              <select
+                value={formData.department}
+                onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                className="select-field"
+                disabled={isLocked || !formData.designation}
+              >
+                <option value="">-- Select Department --</option>
+                {(designationToDeptMap[formData.designation] && designationToDeptMap[formData.designation].length > 0 
+                  ? designationToDeptMap[formData.designation] 
+                  : ALL_DEPARTMENTS).map(d => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+              {formData.designation && (!designationToDeptMap[formData.designation] || designationToDeptMap[formData.designation].length === 0) && (
+                <p className="text-xs text-amber-500 mt-1">No employees found for this designation. Showing all departments.</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-surface-300 mb-2">Casual Leaves</label>
@@ -151,6 +203,7 @@ const SetLeaveQuotas = () => {
                 onChange={(e) => setFormData({ ...formData, casualLeaves: parseInt(e.target.value) || 0 })}
                 className="input-field"
                 min="0"
+                disabled={isLocked}
               />
             </div>
             <div>
@@ -161,11 +214,35 @@ const SetLeaveQuotas = () => {
                 onChange={(e) => setFormData({ ...formData, emergencyLeaves: parseInt(e.target.value) || 0 })}
                 className="input-field"
                 min="0"
+                disabled={isLocked}
               />
             </div>
-            <button type="submit" className="btn-primary w-full flex items-center justify-center gap-2">
-              <HiOutlineSave className="w-5 h-5" /> Save Quota
-            </button>
+            <div className="flex gap-3 pt-2">
+              <button 
+                type="button" 
+                onClick={() => setIsLocked(!isLocked)}
+                className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-xl font-medium transition-all duration-300 ${
+                  isLocked 
+                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50 hover:bg-amber-500/30' 
+                  : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 hover:bg-emerald-500/30'
+                }`}
+              >
+                {isLocked ? <HiOutlineLockOpen className="w-5 h-5" /> : <HiOutlineLockClosed className="w-5 h-5" />}
+                {isLocked ? 'Unlock Quota' : 'Lock Quota'}
+              </button>
+              
+              <button 
+                type="submit" 
+                disabled={!isLocked}
+                className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-xl font-medium transition-all duration-300 ${
+                  isLocked
+                  ? 'bg-primary-600 text-white hover:bg-primary-500 shadow-lg shadow-primary-500/30'
+                  : 'bg-surface-800 text-surface-500 cursor-not-allowed border border-surface-700'
+                }`}
+              >
+                <HiOutlineSave className="w-5 h-5" /> Save Quota
+              </button>
+            </div>
           </form>
         </div>
 
