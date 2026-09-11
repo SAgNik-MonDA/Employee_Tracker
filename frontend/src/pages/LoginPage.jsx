@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import API from '../api/axios';
 import toast from 'react-hot-toast';
@@ -7,6 +8,7 @@ import {
   HiOutlineMail, HiOutlineLockClosed,
   HiOutlineEye, HiOutlineEyeOff, HiOutlineX,
   HiOutlineArrowLeft, HiOutlineIdentification,
+  HiOutlineSun, HiOutlineMoon
 } from 'react-icons/hi';
 
 const LoginPage = () => {
@@ -16,6 +18,7 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading]           = useState(false);
   const { login } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   // Forgot password state
@@ -73,6 +76,25 @@ const LoginPage = () => {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary-600/5 rounded-full blur-3xl" />
       </div>
       <div className="absolute inset-0 bg-[linear-gradient(rgba(99,102,241,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(99,102,241,0.03)_1px,transparent_1px)] bg-[size:64px_64px]" />
+
+      {/* Theme Toggle */}
+      <div className="absolute top-6 right-6 z-50">
+        <button
+          onClick={toggleTheme}
+          className="p-3 rounded-xl bg-surface-900/50 border border-surface-700/50 backdrop-blur-md hover:bg-surface-800 text-surface-400 hover:text-surface-200 transition-all duration-300 shadow-xl"
+          aria-label="Toggle theme"
+          title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+        >
+          <div className="relative w-6 h-6">
+            <HiOutlineSun className={`w-6 h-6 absolute inset-0 transition-all duration-500 ${
+              theme === 'dark' ? 'rotate-0 scale-100 opacity-100' : '-rotate-90 scale-0 opacity-0'
+            }`} />
+            <HiOutlineMoon className={`w-6 h-6 absolute inset-0 transition-all duration-500 ${
+              theme === 'light' ? 'rotate-0 scale-100 opacity-100' : 'rotate-90 scale-0 opacity-0'
+            }`} />
+          </div>
+        </button>
+      </div>
 
       {/* Login Card */}
       <div className="relative z-10 w-full max-w-md mx-4 animate-slide-up">
