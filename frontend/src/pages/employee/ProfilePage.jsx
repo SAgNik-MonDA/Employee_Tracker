@@ -12,6 +12,7 @@ import toast from 'react-hot-toast';
 import {
   HiOutlineLockClosed, HiOutlineEye, HiOutlineEyeOff,
   HiOutlineX, HiOutlineCheck, HiOutlinePencil, HiOutlinePlus,
+  HiOutlineQrcode, HiOutlineDownload,
 } from 'react-icons/hi';
 
 
@@ -73,6 +74,11 @@ const ProfilePage = () => {
 
   // Face Registration
   const [showFaceModal, setShowFaceModal] = useState(false);
+
+  // QR Code
+  const [qrDataUrl, setQrDataUrl]       = useState(null);
+  const [qrLoading, setQrLoading]       = useState(false);
+  const [showQrModal, setShowQrModal]   = useState(false);
 
 
   // DOB editing
@@ -390,6 +396,36 @@ const ProfilePage = () => {
           </>
         )}
 
+        {/* ── My QR Code ────────────────────────────────────────────── */}
+        <div className="flex items-center justify-between mt-8 mb-3 border-b border-surface-700/40 pb-2">
+          <h3 className="text-sm font-semibold text-surface-400 uppercase tracking-wider">My QR Login Code</h3>
+          <button
+            onClick={async () => {
+              setShowQrModal(true);
+              if (!qrDataUrl) {
+                setQrLoading(true);
+                try {
+                  const { data } = await API.get('/auth/my-qr-code');
+                  setQrDataUrl(data.qrDataUrl);
+                } catch {
+                  toast.error('Failed to load QR code');
+                } finally {
+                  setQrLoading(false);
+                }
+              }
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-500/10 text-primary-400 hover:bg-primary-500/20 text-xs font-medium transition-colors"
+          >
+            <HiOutlineQrcode className="w-4 h-4" />
+            View QR Code
+          </button>
+        </div>
+        <div className="mb-6">
+          <p className="text-sm text-surface-500">
+            Your personal QR code can be used for instant login without entering credentials.
+          </p>
+        </div>
+
         {/* ── Bank Details ────────────────────────────────────────────── */}
         <div className="flex items-center justify-between mt-8 mb-3 border-b border-surface-700/40 pb-2">
           <h3 className="text-sm font-semibold text-surface-400 uppercase tracking-wider">Bank Details</h3>
@@ -697,6 +733,74 @@ const ProfilePage = () => {
         onClose={() => setShowFaceModal(false)}
         onSuccess={fetchProfile}
       />
+
+      {/* ── QR Code Modal ────────────────────────────────────────────────────── */}
+      {showQrModal && (
+        <div className="fixed inset-0 bg-surface-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="glass-card w-full max-w-sm animate-slide-up">
+            <div className="flex items-center justify-between p-6 border-b border-surface-700/50">
+              <h2 className="text-lg font-display font-bold text-surface-100 flex items-center gap-2">
+                <HiOutlineQrcode className="w-5 h-5 text-primary-400" />
+                My QR Login Code
+              </h2>
+              <button onClick={() => setShowQrModal(false)} className="p-2 rounded-lg hover:bg-surface-700 text-surface-400">
+                <HiOutlineX className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 text-center">
+              {qrLoading ? (
+                <div className="py-12">
+                  <div className="w-10 h-10 border-3 border-surface-600 border-t-primary-400 rounded-full animate-spin mx-auto mb-3" />
+                  <p className="text-sm text-surface-400">Generating QR code...</p>
+                </div>
+              ) : qrDataUrl ? (
+                <>
+                  <div className="bg-white rounded-2xl p-4 inline-block mb-4 shadow-xl">
+                    <img src={qrDataUrl} alt="My QR Code" className="w-52 h-52" />
+                  </div>
+                  <p className="text-sm text-surface-400 mb-6">
+                    Scan this code on the login page to sign in instantly.
+                  </p>
+                  <div className="flex gap-3">
+                    <a
+                      href={qrDataUrl}
+                      download={`${profile?.employeeCode || 'QR'}_login_code.png`}
+                      className="btn-primary flex-1 flex items-center justify-center gap-2"
+                    >
+                      <HiOutlineDownload className="w-4 h-4" />
+                      Download
+                    </a>
+                    <button
+                      onClick={() => {
+                        const w = window.open('', '_blank');
+                        w.document.write(`
+                          <html><head><title>QR Code - ${profile?.name || 'Employee'}</title></head>
+                          <body style="display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#fff;">
+                            <div style="text-align:center;">
+                              <h2 style="font-family:sans-serif;color:#1e1b4b;">Employee Tracker - QR Login</h2>
+                              <p style="font-family:sans-serif;color:#64748b;">${profile?.name} (${profile?.employeeCode})</p>
+                              <img src="${qrDataUrl}" style="width:300px;height:300px;margin:20px auto;" />
+                              <p style="font-family:sans-serif;color:#94a3b8;font-size:12px;">Scan to login instantly</p>
+                            </div>
+                          </body></html>
+                        `);
+                        w.document.close();
+                        w.print();
+                      }}
+                      className="btn-secondary flex-1 flex items-center justify-center gap-2"
+                    >
+                      🖨️ Print
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-red-400 py-12">Failed to load QR code. Please try again.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

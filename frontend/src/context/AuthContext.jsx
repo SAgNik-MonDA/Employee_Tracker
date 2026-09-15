@@ -61,6 +61,18 @@ export const AuthProvider = ({ children }) => {
     return data;
   };
 
+  const loginWithQr = async (qrPayload) => {
+    const { data } = await API.post('/auth/qr-login', { qrPayload });
+
+    const { token, ...userWithoutToken } = data;
+
+    setUser(userWithoutToken);
+    sessionStorage.setItem('user', JSON.stringify(userWithoutToken));
+    sessionStorage.setItem('token', token);
+
+    return data;
+  };
+
   const logout = () => {
     setUser(null);
     sessionStorage.removeItem('user');
@@ -87,7 +99,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading, updateProfilePicture, updateSessionUser }}>
+    <AuthContext.Provider value={{ user, login, loginWithQr, logout, loading, updateProfilePicture, updateSessionUser }}>
       {children}
     </AuthContext.Provider>
   );

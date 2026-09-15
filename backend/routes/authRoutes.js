@@ -20,6 +20,8 @@ const {
   requestFaceReset,
   reviewFaceReset,
   getFaceResetHistory,
+  qrLogin,
+  getMyQrCode,
 } = require('../controllers/authController');
 
 const { protect }         = require('../middleware/authMiddleware');
@@ -29,6 +31,7 @@ const upload              = require('../middleware/uploadMiddleware');
 // ── Authentication & Admin Routes ────────────────────────────────────────────
 router.post('/register',                 protect, authorizeRoles('Admin', 'HR'), registerUser);
 router.post('/login',                    loginUser);
+router.post('/qr-login',                 qrLogin);
 router.get('/employees',                 protect, authorizeRoles('Admin', 'HR', 'Manager', 'PM', 'TL'), getAllEmployees);
 router.put('/employee/:id',              protect, authorizeRoles('Admin', 'HR'), updateEmployee);
 router.delete('/employee/:id',           protect, authorizeRoles('Admin'), deleteEmployee);
@@ -48,6 +51,7 @@ router.post('/save-face',                protect, saveFaceDescriptor);
 router.post('/request-face-reset',       protect, requestFaceReset);
 router.put('/approve-face-reset/:id',    protect, authorizeRoles('Admin', 'HR'), reviewFaceReset);
 router.get('/face-resets/history',       protect, authorizeRoles('Admin', 'HR'), getFaceResetHistory);
+router.get('/my-qr-code',               protect, getMyQrCode);
 
 
 // ── Profile picture ──────────────────────────────────────────────────────────

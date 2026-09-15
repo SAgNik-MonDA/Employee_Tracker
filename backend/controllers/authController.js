@@ -1,9 +1,11 @@
 const crypto       = require('crypto');
+const jwt          = require('jsonwebtoken');
 const User         = require('../models/User');
 const FaceResetLog = require('../models/FaceResetLog');
 const generateToken = require('../utils/generateToken');
 const sendEmail    = require('../utils/sendEmail');
 const { cloudinary, uploadToCloudinary } = require('../config/cloudinary');
+const { generateQrToken, buildQrPayload, generateQrDataUrl, generateQrPdf } = require('../utils/generateQR');
 
 // Helper: extract Cloudinary public_id from a secure_url
 const getCloudinaryPublicId = (url) => {
@@ -123,11 +125,20 @@ const registerUser = async (req, res) => {
       isFirstLogin:     true,
     });
 
-    // ── Send registration credentials email ──────────────────────────────────
+    // ── Generate QR Code for the new employee ─────────────────────────────────
+    const qrToken = generateQrToken(user._id);
+    user.qrLoginToken = qrToken;
+    await user.save({ validateBeforeSave: false });
+
+    const qrPayload = buildQrPayload(user._id, qrToken);
+    const qrDataUrl = await generateQrDataUrl(qrPayload);
+    const pdfBuffer = await generateQrPdf(user, qrDataUrl, password);
+
+    // ── Send registration credentials email with QR PDF attached ─────────────
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     sendEmail({
       to: cleanEmail,
-      subject: '🎉 Welcome to Employee Tracker — Your Account Details',
+      subject: '🎉 Welcome to Employee Tracker — Your Account & QR Login Card',
       html: `
         <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:560px;margin:0 auto;background:#0f172a;color:#e2e8f0;border-radius:12px;overflow:hidden;">
           <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:32px 32px 24px;">
@@ -155,17 +166,30 @@ const registerUser = async (req, res) => {
               </table>
             </div>
 
+            <div style="background:#1e293b;border:1px solid #334155;border-radius:10px;padding:20px;margin-bottom:20px;text-align:center;">
+              <p style="color:#a78bfa;font-weight:600;font-size:14px;margin:0 0 8px;">📱 QR Code Login</p>
+              <p style="color:#94a3b8;font-size:12px;margin:0 0 12px;">Scan the QR code from the attached PDF on the login page for instant access — no password needed!</p>
+              <img src="${qrDataUrl}" alt="QR Code" style="width:160px;height:160px;border-radius:8px;" />
+            </div>
+
             <a href="${frontendUrl}/login" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;margin-bottom:24px;">
               🚀 Login to Dashboard
             </a>
 
             <p style="color:#ef4444;font-size:12px;margin:0;border-top:1px solid #334155;padding-top:16px;">
-              ⚠️ Please keep your password safe. You can change it from your profile after logging in.
+              ⚠️ Please keep your password and QR code safe. The attached PDF contains your personal QR login card.
             </p>
           </div>
         </div>
       `,
-    }).catch(() => {});
+      attachments: [
+        {
+          filename: `${finalEmployeeCode}_QR_Login_Card.pdf`,
+          content: pdfBuffer,
+          contentType: 'application/pdf',
+        },
+      ],
+    }).catch((err) => { console.error('Registration email error:', err); });
 
     res.status(201).json({
       ...userResponse(user),
@@ -999,6 +1023,79 @@ const getFaceResetHistory = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// @desc    QR Code Login — verify scanned QR payload and issue session token
+// @route   POST /api/auth/qr-login
+// @access  Public
+// ─────────────────────────────────────────────────────────────────────────────
+const qrLogin = async (req, res) => {
+  try {
+    const { qrPayload } = req.body;
+    if (!qrPayload) {
+      return res.status(400).json({ message: 'QR payload is required' });
+    }
+
+    // 1. Verify the JWT signature
+    let decoded;
+    try {
+      decoded = jwt.verify(qrPayload, process.env.JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ message: 'Invalid or tampered QR code' });
+    }
+
+    const { sub: userId, qrToken } = decoded;
+    if (!userId || !qrToken) {
+      return res.status(401).json({ message: 'Malformed QR code payload' });
+    }
+
+    // 2. Find user and compare token
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(401).json({ message: 'User not found' });
+    }
+
+    if (user.qrLoginToken !== qrToken) {
+      return res.status(401).json({ message: 'QR code is invalid or has been revoked' });
+    }
+
+    // 3. Issue session JWT (same as normal login)
+    res.json({
+      ...userResponse(user),
+      token: generateToken(user._id, user.role),
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// @desc    Get the current user's QR code image (data URL)
+// @route   GET /api/auth/my-qr-code
+// @access  Private
+// ─────────────────────────────────────────────────────────────────────────────
+const getMyQrCode = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Generate QR token if it doesn't exist (legacy users)
+    if (!user.qrLoginToken) {
+      const qrToken = generateQrToken(user._id);
+      user.qrLoginToken = qrToken;
+      await user.save({ validateBeforeSave: false });
+    }
+
+    const qrPayload = buildQrPayload(user._id, user.qrLoginToken);
+    const qrDataUrl = await generateQrDataUrl(qrPayload);
+
+    res.json({ qrDataUrl });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
@@ -1019,6 +1116,6 @@ module.exports = {
   requestFaceReset,
   reviewFaceReset,
   getFaceResetHistory,
+  qrLogin,
+  getMyQrCode,
 };
-
-

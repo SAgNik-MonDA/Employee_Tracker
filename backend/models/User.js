@@ -134,6 +134,13 @@ const userSchema = new mongoose.Schema(
       default: 'None'
     },
 
+    // QR Code Login
+    qrLoginToken: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+
     // Forgot-password flow
 
     resetPasswordToken: {
