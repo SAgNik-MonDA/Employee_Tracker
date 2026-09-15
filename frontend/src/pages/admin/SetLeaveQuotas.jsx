@@ -305,6 +305,7 @@ const SetLeaveQuotas = () => {
                 <thead>
                   <tr className="border-b border-surface-700 text-surface-400 text-xs uppercase tracking-wider">
                     <th className="pb-3 pl-4 font-medium">Designation</th>
+                    <th className="pb-3 font-medium">Department</th>
                     <th className="pb-3 font-medium text-center">Casual</th>
                     <th className="pb-3 pr-4 font-medium text-center">Emergency</th>
                   </tr>
@@ -313,6 +314,7 @@ const SetLeaveQuotas = () => {
                   {configs.map((c) => (
                     <tr key={c._id} className="hover:bg-surface-800/30 transition-colors">
                       <td className="py-3 pl-4 text-sm text-surface-200 font-medium">{c.designation}</td>
+                      <td className="py-3 text-sm text-surface-400">{c.department}</td>
                       <td className="py-3 text-sm text-emerald-400 text-center font-semibold">{c.casualLeaves}</td>
                       <td className="py-3 pr-4 text-sm text-amber-400 text-center font-semibold">{c.emergencyLeaves}</td>
                     </tr>
