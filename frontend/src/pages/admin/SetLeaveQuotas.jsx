@@ -1,7 +1,14 @@
 import { useState, useEffect } from 'react';
 import API from '../../api/axios';
 import toast from 'react-hot-toast';
-import { HiOutlineSave, HiOutlineRefresh, HiOutlineLockClosed, HiOutlineLockOpen, HiOutlineInformationCircle } from 'react-icons/hi';
+import { 
+  HiOutlineSave, 
+  HiOutlineLockClosed, 
+  HiOutlineLockOpen, 
+  HiOutlineRefresh, 
+  HiOutlineInformationCircle,
+  HiOutlinePencil
+} from 'react-icons/hi';
 import { GENERIC_DESIGNATIONS, ROLE_DESIGNATIONS, ALL_DEPARTMENTS } from './ManageEmployees';
 
 const SetLeaveQuotas = () => {
@@ -139,6 +146,15 @@ const SetLeaveQuotas = () => {
     } catch (error) {
       toast.error('Failed to update leave quota');
     }
+  };
+
+  const handleEdit = (config) => {
+    setFormData(prev => ({
+      ...prev,
+      designation: config.designation,
+      department: config.department
+    }));
+    setIsLocked(false);
   };
 
   return (
@@ -307,7 +323,8 @@ const SetLeaveQuotas = () => {
                     <th className="pb-3 pl-4 font-medium">Designation</th>
                     <th className="pb-3 font-medium">Department</th>
                     <th className="pb-3 font-medium text-center">Casual</th>
-                    <th className="pb-3 pr-4 font-medium text-center">Emergency</th>
+                    <th className="pb-3 font-medium text-center">Emergency</th>
+                    <th className="pb-3 pr-4 font-medium text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-surface-700/50">
@@ -316,7 +333,16 @@ const SetLeaveQuotas = () => {
                       <td className="py-3 pl-4 text-sm text-surface-200 font-medium">{c.designation}</td>
                       <td className="py-3 text-sm text-surface-400">{c.department}</td>
                       <td className="py-3 text-sm text-emerald-400 text-center font-semibold">{c.casualLeaves}</td>
-                      <td className="py-3 pr-4 text-sm text-amber-400 text-center font-semibold">{c.emergencyLeaves}</td>
+                      <td className="py-3 text-sm text-amber-400 text-center font-semibold">{c.emergencyLeaves}</td>
+                      <td className="py-3 pr-4 text-right">
+                        <button 
+                          onClick={() => handleEdit(c)}
+                          className="p-1.5 text-surface-400 hover:text-indigo-400 hover:bg-indigo-400/10 rounded-md transition-colors"
+                          title="Edit Quota"
+                        >
+                          <HiOutlinePencil className="w-4 h-4" />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
