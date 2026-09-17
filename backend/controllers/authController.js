@@ -42,6 +42,8 @@ const userResponse = (user) => ({
   mediclaimAmount:  user.mediclaimAmount  || 0,
   totalPfAccumulated:        user.totalPfAccumulated        || 0,
   totalMediclaimAccumulated: user.totalMediclaimAccumulated || 0,
+  pfId:             user.pfId             || 'Not Generated',
+  mediclaimId:      user.mediclaimId      || 'Not Generated',
   joiningDate:      user.joiningDate,
   dateOfBirth:      user.dateOfBirth      || null,
   profilePicture:   user.profilePicture   || '',
@@ -128,6 +130,8 @@ const registerUser = async (req, res) => {
       currentAddress:   currentAddress   || '',
       bankDetails:      bankDetails      || { bankName: '', branchName: '', ifscCode: '', bankAddress: '', accountHolderName: '', accountNumber: '' },
       joiningDate:      joiningDate      || Date.now(),
+      pfId:             `PF-${new Date().getFullYear()}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`,
+      mediclaimId:      `MED-${new Date().getFullYear()}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`,
       isFirstLogin:     true,
     });
 

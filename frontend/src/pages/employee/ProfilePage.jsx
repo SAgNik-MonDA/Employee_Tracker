@@ -344,6 +344,8 @@ const ProfilePage = () => {
               <div className="pt-4 mt-2 border-t border-surface-600/40">
                 <h3 className="text-sm font-semibold text-surface-400 uppercase tracking-wider mb-3">Financial Details</h3>
               </div>
+              <InfoRow label="PF ID"               value={profile.pfId || 'Not Generated'} mono />
+              <InfoRow label="Mediclaim ID"        value={profile.mediclaimId || 'Not Generated'} mono />
               <InfoRow label="Basic Salary"        value={`₹${(profile.basicSalary || 0).toLocaleString()}`} />
               <InfoRow label="PF Deduction"        value={`₹${(profile.pfAmount || 0).toLocaleString()}`} />
               <InfoRow label="Mediclaim Deduction"  value={`₹${(profile.mediclaimAmount || 0).toLocaleString()}`} />
@@ -447,7 +449,7 @@ const ProfilePage = () => {
           </p>
         </div>
 
-        <WithdrawalRequestsSection profile={profile} />
+        <WithdrawalRequestsSection profile={profile} fetchProfile={fetchProfile} />
 
         {/* ── Bank Details ────────────────────────────────────────────── */}
         <div className="flex items-center justify-between mt-8 mb-3 border-b border-surface-700/40 pb-2">

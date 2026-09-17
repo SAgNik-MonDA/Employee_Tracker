@@ -102,6 +102,16 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    pfId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    mediclaimId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
     joiningDate: {
       type: Date,
       default: Date.now,

@@ -49,8 +49,11 @@ const MyPayslips = () => {
     doc.text(`Email: ${user?.email || '-'}`, 14, 72);
     doc.text(`Department: ${user?.department || '-'}`, 14, 79);
     doc.text(`Designation: ${user?.designation || '-'}`, 14, 86);
+    doc.text(`PF ID: ${user?.pfId || 'Not Generated'}`, 14, 93);
+    doc.text(`Mediclaim ID: ${user?.mediclaimId || 'Not Generated'}`, 14, 100);
 
     // Salary Table
+    const startY = 110;
     const tableBody = [
       ['Base Salary', `₹${(payslip.baseSalary || 0).toLocaleString()}`],
       ['Bonus', `₹${(payslip.bonus || 0).toLocaleString()}`],
@@ -70,7 +73,7 @@ const MyPayslips = () => {
     );
 
     doc.autoTable({
-      startY: 100,
+      startY: startY,
       head: [['Component', 'Amount (₹)']],
       body: tableBody,
       theme: 'grid',
