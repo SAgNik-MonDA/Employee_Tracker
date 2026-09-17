@@ -31,7 +31,7 @@ const StatCard = ({ icon, label, value, color = 'primary', trend }) => {
           </span>
         )}
       </div>
-      <h3 className="text-3xl font-bold font-display text-surface-100 mb-1">{value}</h3>
+      <h3 className="text-2xl lg:text-3xl font-bold font-display text-surface-100 mb-1 truncate" title={value}>{value}</h3>
       <p className="text-sm text-surface-400 font-medium">{label}</p>
     </div>
   );
