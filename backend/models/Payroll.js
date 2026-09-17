@@ -11,6 +11,11 @@ const payrollSchema = new mongoose.Schema(
       type: String, // MM-YYYY
       required: true,
     },
+    type: {
+      type: String,
+      enum: ['Regular', 'Withdrawal'],
+      default: 'Regular',
+    },
     baseSalary: {
       type: Number,
       required: true,
@@ -56,7 +61,7 @@ const payrollSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// One payroll record per employee per month
-payrollSchema.index({ employeeId: 1, monthYear: 1 }, { unique: true });
+// One payroll record per employee per month per type
+payrollSchema.index({ employeeId: 1, monthYear: 1, type: 1 }, { unique: true });
 
 module.exports = mongoose.model('Payroll', payrollSchema);

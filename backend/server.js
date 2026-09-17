@@ -131,6 +131,7 @@ app.use('/api/requests', require('./routes/requestRoutes'));
 app.use('/api/leave-configs', require('./routes/leaveConfigRoutes'));
 app.use('/api/settings', require('./routes/settingsRoutes'));
 app.use('/api/salary-structures', require('./routes/salaryStructureRoutes'));
+app.use('/api/withdrawals', require('./routes/withdrawalRoutes'));
 
 // Health check
 app.get('/', (req, res) => {

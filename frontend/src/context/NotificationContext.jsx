@@ -170,6 +170,41 @@ export const NotificationProvider = ({ children }) => {
           ),
           { duration: 6000, position: 'top-right' }
         );
+      } else if (['withdrawal_request_submitted', 'withdrawal_status_update'].includes(notif.type)) {
+        playRingSound();
+        toast.custom(
+          (t) => (
+            <div
+              className={`${
+                t.visible ? 'animate-enter' : 'animate-leave'
+              } max-w-sm w-full bg-surface-800 shadow-lg rounded-xl pointer-events-auto flex ring-1 ring-surface-700 cursor-pointer overflow-hidden transform hover:-translate-y-1 hover:shadow-xl transition-all duration-200 border-l-4 border-l-amber-500`}
+              onClick={() => {
+                toast.dismiss(t.id);
+                const basePath = notif.type === 'withdrawal_request_submitted' ? '/admin/withdrawals' : '/employee/profile';
+                navigate(basePath);
+              }}
+            >
+              <div className="flex-1 w-0 p-4">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0 pt-0.5">
+                    <div className="h-10 w-10 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400">
+                      <HiOutlineInformationCircle className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <div className="ml-3 flex-1">
+                    <p className="text-sm font-bold text-surface-100 mb-0.5">
+                      {notif.title}
+                    </p>
+                    <p className="text-sm text-surface-300 line-clamp-2">
+                      {notif.message}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ),
+          { duration: 6000, position: 'top-right' }
+        );
       }
     });
 

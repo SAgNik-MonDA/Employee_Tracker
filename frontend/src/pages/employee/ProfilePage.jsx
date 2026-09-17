@@ -6,6 +6,7 @@ import ProfilePictureUploader from '../../components/common/ProfilePictureUpload
 import BankDetailsForm from '../../components/common/BankDetailsForm';
 import BirthdayBanner from '../../components/common/BirthdayBanner';
 import FaceRegistrationModal from '../../components/common/FaceRegistrationModal';
+import WithdrawalRequestsSection from '../../components/employee/WithdrawalRequestsSection';
 
 import toast from 'react-hot-toast';
 
@@ -445,6 +446,8 @@ const ProfilePage = () => {
             Your personal QR code can be used for instant login without entering credentials.
           </p>
         </div>
+
+        <WithdrawalRequestsSection profile={profile} />
 
         {/* ── Bank Details ────────────────────────────────────────────── */}
         <div className="flex items-center justify-between mt-8 mb-3 border-b border-surface-700/40 pb-2">
