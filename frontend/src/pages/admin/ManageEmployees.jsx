@@ -214,7 +214,7 @@ const ManageEmployees = () => {
 
   const emptyForm = {
     name: '', email: '', password: '', role: '',
-    designation: '', department: '', basicSalary: '',
+    designation: '', department: '', basicSalary: '', pfAmount: '', mediclaimAmount: '',
     employeeCode: '', phone: '', alternatePhone: '',
     permanentAddress: '', currentAddress: '', joiningDate: '',
     weeklyHolidays: [],
@@ -239,6 +239,8 @@ const ManageEmployees = () => {
           setFormData(prev => ({
             ...prev,
             basicSalary: data.basicSalary,
+            pfAmount: data.pfAmount,
+            mediclaimAmount: data.mediclaimAmount,
           }));
         }
       } catch { /* silent — non-critical */ }
@@ -297,7 +299,7 @@ const ManageEmployees = () => {
     setFormData({
       name: emp.name, email: emp.email, password: '',
       role: emp.role || '', designation: emp.designation || '',
-      department: emp.department || '', basicSalary: emp.basicSalary || '',
+      department: emp.department || '', basicSalary: emp.basicSalary || '', pfAmount: emp.pfAmount || '', mediclaimAmount: emp.mediclaimAmount || '',
       employeeCode: emp.employeeCode || '', phone: emp.phone || '',
       alternatePhone: emp.alternatePhone || '',
       permanentAddress: emp.permanentAddress || '',
@@ -620,6 +622,22 @@ const ManageEmployees = () => {
                 </div>
               </div>
 
+              {/* PF and Mediclaim */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-sm font-medium text-surface-300 mb-1.5">PF Amount (₹)</label>
+                  <input type="number" value={formData.pfAmount}
+                    onChange={(e) => setFormData({ ...formData, pfAmount: Number(e.target.value) })}
+                    className="input-field" placeholder="1800" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-surface-300 mb-1.5">Mediclaim (₹)</label>
+                  <input type="number" value={formData.mediclaimAmount}
+                    onChange={(e) => setFormData({ ...formData, mediclaimAmount: Number(e.target.value) })}
+                    className="input-field" placeholder="500" />
+                </div>
+              </div>
+
               {/* Date of Joining */}
               <div>
                 <label className="block text-sm font-medium text-surface-300 mb-1.5">Date of Joining</label>
@@ -720,6 +738,8 @@ const ManageEmployees = () => {
                   <InfoRow label="Current Address"   value={selectedEmp.currentAddress} />
                   <InfoRow label="Permanent Address" value={selectedEmp.permanentAddress} />
                   <InfoRow label="Basic Salary"      value={selectedEmp.basicSalary ? `₹${selectedEmp.basicSalary.toLocaleString()}` : null} />
+                  <InfoRow label="PF Amount"         value={selectedEmp.pfAmount ? `₹${selectedEmp.pfAmount.toLocaleString()}` : '₹0'} />
+                  <InfoRow label="Mediclaim"         value={selectedEmp.mediclaimAmount ? `₹${selectedEmp.mediclaimAmount.toLocaleString()}` : '₹0'} />
                   <InfoRow label="Date of Joining"   value={selectedEmp.joiningDate ? new Date(selectedEmp.joiningDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : null} />
                   <InfoRow label="Date of Birth"     value={selectedEmp.dateOfBirth ? new Date(selectedEmp.dateOfBirth).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : null} />
                 </div>

@@ -58,7 +58,7 @@ const registerUser = async (req, res) => {
   try {
     const {
       name, email, password, role,
-      designation, department, basicSalary,
+      designation, department, basicSalary, pfAmount, mediclaimAmount,
       employeeCode, phone, alternatePhone,
       permanentAddress, currentAddress, bankDetails, joiningDate,
     } = req.body;
@@ -115,6 +115,8 @@ const registerUser = async (req, res) => {
       designation:      designation      || '',
       department:       department       || '',
       basicSalary:      basicSalary      || 0,
+      pfAmount:         pfAmount         || 0,
+      mediclaimAmount:  mediclaimAmount  || 0,
       employeeCode:     finalEmployeeCode,
       phone:            phone            || '',
       alternatePhone:   alternatePhone   || '',
@@ -638,7 +640,7 @@ const updateEmployee = async (req, res) => {
 
     const {
       name, email, role, designation, department,
-      basicSalary, employeeCode, phone, alternatePhone,
+      basicSalary, pfAmount, mediclaimAmount, employeeCode, phone, alternatePhone,
       permanentAddress, currentAddress, bankDetails, joiningDate, password,
       weeklyHolidays, holidayStartDate, holidayValidUntil,
     } = req.body;
@@ -656,6 +658,8 @@ const updateEmployee = async (req, res) => {
     user.designation  = designation  !== undefined ? designation  : user.designation;
     user.department   = department   !== undefined ? department   : user.department;
     user.basicSalary  = basicSalary  !== undefined ? basicSalary  : user.basicSalary;
+    user.pfAmount     = pfAmount     !== undefined ? pfAmount     : user.pfAmount;
+    user.mediclaimAmount = mediclaimAmount !== undefined ? mediclaimAmount : user.mediclaimAmount;
     user.employeeCode = employeeCode !== undefined ? employeeCode : user.employeeCode;
     user.phone        = phone        !== undefined ? phone        : user.phone;
     user.alternatePhone = alternatePhone !== undefined ? alternatePhone : user.alternatePhone;

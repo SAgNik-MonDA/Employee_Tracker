@@ -86,6 +86,14 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    pfAmount: {
+      type: Number,
+      default: 0,
+    },
+    mediclaimAmount: {
+      type: Number,
+      default: 0,
+    },
     joiningDate: {
       type: Date,
       default: Date.now,
