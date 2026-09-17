@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import {
   HiOutlineSave, HiOutlineRefresh, HiOutlinePencil,
   HiOutlineTrash, HiOutlineCurrencyRupee,
+  HiOutlineLockOpen, HiOutlineLockClosed,
 } from 'react-icons/hi';
 import { ALL_ROLES, ROLE_DESIGNATIONS, GENERIC_DESIGNATIONS } from './ManageEmployees';
 
@@ -24,6 +25,7 @@ const SetSalary = () => {
   const [structures, setStructures] = useState([]);
   const [loading, setLoading]       = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [isLocked, setIsLocked]     = useState(false);
 
   const [formData, setFormData] = useState({
     role: '',
@@ -74,6 +76,9 @@ const SetSalary = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!isLocked) {
+      return toast.error('Please lock the structure first before saving.');
+    }
     if (!formData.role || !formData.designation) {
       return toast.error('Please select both Role and Designation');
     }
@@ -87,6 +92,7 @@ const SetSalary = () => {
       toast.success('Salary structure saved successfully');
       fetchStructures();
       setFormData({ role: '', designation: '', basicSalary: '', pfAmount: '', mediclaimAmount: '' });
+      setIsLocked(false);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to save salary structure');
     } finally {
@@ -143,6 +149,7 @@ const SetSalary = () => {
                 value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value, designation: '' })}
                 className="input-field"
+                disabled={isLocked}
               >
                 <option value="">-- Select Role --</option>
                 {ALL_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
@@ -164,6 +171,7 @@ const SetSalary = () => {
                 onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
                 className="input-field"
                 placeholder={formData.role ? 'Type or select designation...' : 'Select role first'}
+                disabled={isLocked}
               />
               <datalist id="salary-designations">
                 {getDesignationsForRole(formData.role).map(d => <option key={d} value={d} />)}
@@ -180,6 +188,7 @@ const SetSalary = () => {
                 className="input-field"
                 placeholder="e.g. 50000"
                 min="0"
+                disabled={isLocked}
               />
             </div>
 
@@ -194,6 +203,7 @@ const SetSalary = () => {
                   className="input-field"
                   placeholder="e.g. 1800"
                   min="0"
+                  disabled={isLocked}
                 />
               </div>
               <div>
@@ -205,28 +215,47 @@ const SetSalary = () => {
                   className="input-field"
                   placeholder="e.g. 500"
                   min="0"
+                  disabled={isLocked}
                 />
               </div>
             </div>
 
             {/* Submit */}
-            <button
-              type="submit"
-              disabled={submitting}
-              className="btn-primary w-full flex items-center justify-center gap-2 py-3 disabled:opacity-50"
-            >
-              {submitting ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <HiOutlineSave className="w-4 h-4" />
-                  Save Salary Structure
-                </>
-              )}
-            </button>
+            <div className="flex gap-3 pt-2">
+              <button 
+                type="button" 
+                onClick={() => setIsLocked(!isLocked)}
+                className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-xl font-medium transition-all duration-300 ${
+                  isLocked 
+                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50 hover:bg-amber-500/30' 
+                  : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 hover:bg-emerald-500/30'
+                }`}
+              >
+                {isLocked ? <HiOutlineLockOpen className="w-5 h-5" /> : <HiOutlineLockClosed className="w-5 h-5" />}
+                {isLocked ? 'Unlock Structure' : 'Lock Structure'}
+              </button>
+              
+              <button 
+                type="submit" 
+                disabled={!isLocked || submitting}
+                className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-xl font-medium transition-all duration-300 ${
+                  isLocked
+                  ? 'bg-primary-600 text-white hover:bg-primary-500 shadow-lg shadow-primary-500/30'
+                  : 'bg-surface-800 text-surface-500 cursor-not-allowed border border-surface-700'
+                } ${submitting ? 'opacity-50' : ''}`}
+              >
+                {submitting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <HiOutlineSave className="w-5 h-5" /> Save Structure
+                  </>
+                )}
+              </button>
+            </div>
           </form>
         </div>
 
