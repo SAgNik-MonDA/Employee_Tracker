@@ -225,6 +225,29 @@ const ManageEmployees = () => {
   const [bankData, setBankData]               = useState(emptyBank);
   const [showBankSection, setShowBankSection] = useState(false);
 
+  // Auto-fetch salary from salary structures when role + designation change (new employee only)
+  useEffect(() => {
+    if (editingId) return; // Don't overwrite when editing an existing employee
+    if (!formData.role || !formData.designation) return;
+
+    const fetchSalary = async () => {
+      try {
+        const { data } = await API.get('/salary-structures/lookup', {
+          params: { role: formData.role, designation: formData.designation },
+        });
+        if (data.found) {
+          setFormData(prev => ({
+            ...prev,
+            basicSalary: data.basicSalary,
+          }));
+        }
+      } catch { /* silent — non-critical */ }
+    };
+
+    const timer = setTimeout(fetchSalary, 300);
+    return () => clearTimeout(timer);
+  }, [formData.role, formData.designation, editingId]);
+
   useEffect(() => { fetchAll(); }, []);
 
   const fetchAll = async () => {

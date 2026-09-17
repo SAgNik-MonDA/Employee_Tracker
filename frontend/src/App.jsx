@@ -33,6 +33,7 @@ import LeaveApprovals from './pages/admin/LeaveApprovals';
 import SetLeaveQuotas from './pages/admin/SetLeaveQuotas';
 import PerformanceReview from './pages/admin/PerformanceReview';
 import GeneratePayroll from './pages/admin/GeneratePayroll';
+import SetSalary from './pages/admin/SetSalary';
 
 export const ADMIN_ROLES = [
   'Admin', 'HR', 'Payroll Manager', 'Accounts Payable (AP) Specialist', 
@@ -123,6 +124,7 @@ function App() {
         <Route path="set-leaves" element={<SetLeaveQuotas />} />
         <Route path="performance" element={<PerformanceReview />} />
         <Route path="payroll"      element={<GeneratePayroll />} />
+        <Route path="set-salary"   element={<SetSalary />} />
         <Route path="profile"      element={<ProfilePage />} />
         <Route index element={<Navigate to="dashboard" replace />} />
       </Route>

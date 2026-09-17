@@ -47,6 +47,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: '/admin/set-leaves',   icon: <HiOutlineCalendar />,       label: 'Set Leave Quotas' },
     { to: '/admin/performance',  icon: <HiOutlineChartBar />,       label: 'Performance Review' },
     { to: '/admin/payroll',      icon: <HiOutlineDocumentText />,   label: 'Generate Payroll' },
+    { to: '/admin/set-salary',   icon: <HiOutlineCurrencyRupee />, label: 'Set Salary' },
     { to: '/admin/profile',      icon: <HiOutlineUser />,           label: 'My Profile' },
   ];
 
@@ -67,6 +68,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: '/admin/my-leave',     icon: <HiOutlineCalendar />,       label: 'Apply Leave' },
     { to: '/admin/performance',  icon: <HiOutlineChartBar />,       label: 'Performance Review' },
     { to: '/admin/payroll',      icon: <HiOutlineDocumentText />,   label: 'View Payroll' },
+    { to: '/admin/set-salary',   icon: <HiOutlineCurrencyRupee />, label: 'Set Salary' },
     { to: '/admin/profile',      icon: <HiOutlineUser />,           label: 'My Profile' },
   ];
 
