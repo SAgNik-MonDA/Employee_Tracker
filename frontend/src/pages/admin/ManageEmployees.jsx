@@ -737,13 +737,30 @@ const ManageEmployees = () => {
                   <InfoRow label="Alternate Phone"   value={selectedEmp.alternatePhone} />
                   <InfoRow label="Current Address"   value={selectedEmp.currentAddress} />
                   <InfoRow label="Permanent Address" value={selectedEmp.permanentAddress} />
-                  <InfoRow label="Basic Salary"      value={selectedEmp.basicSalary ? `₹${selectedEmp.basicSalary.toLocaleString()}` : null} />
-                  <InfoRow label="PF Amount"         value={selectedEmp.pfAmount ? `₹${selectedEmp.pfAmount.toLocaleString()}` : '₹0'} />
-                  <InfoRow label="Mediclaim"         value={selectedEmp.mediclaimAmount ? `₹${selectedEmp.mediclaimAmount.toLocaleString()}` : '₹0'} />
                   <InfoRow label="Date of Joining"   value={selectedEmp.joiningDate ? new Date(selectedEmp.joiningDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : null} />
                   <InfoRow label="Date of Birth"     value={selectedEmp.dateOfBirth ? new Date(selectedEmp.dateOfBirth).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : null} />
                 </div>
               </div>
+
+              {/* Financial Details */}
+              {selectedEmp.basicSalary > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-surface-400 uppercase tracking-wider mb-3">Financial Details</h3>
+                  <div className="mb-4">
+                    <InfoRow label="Basic Salary"       value={`₹${(selectedEmp.basicSalary || 0).toLocaleString()}`} />
+                    <InfoRow label="PF Deduction"       value={`₹${(selectedEmp.pfAmount || 0).toLocaleString()}`} />
+                    <InfoRow label="Mediclaim Deduction" value={`₹${(selectedEmp.mediclaimAmount || 0).toLocaleString()}`} />
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 py-3 border-b border-surface-700/40 last:border-0">
+                      <span className="text-sm text-emerald-400 sm:w-44 flex-shrink-0 font-semibold">Net Salary</span>
+                      <span className="text-sm font-bold text-emerald-300">
+                        ₹{((selectedEmp.basicSalary || 0) - (selectedEmp.pfAmount || 0) - (selectedEmp.mediclaimAmount || 0)).toLocaleString()}
+                      </span>
+                    </div>
+                    <InfoRow label="Total PF Accumulated"       value={`₹${(selectedEmp.totalPfAccumulated || 0).toLocaleString()}`} />
+                    <InfoRow label="Total Mediclaim Accumulated" value={`₹${(selectedEmp.totalMediclaimAccumulated || 0).toLocaleString()}`} />
+                  </div>
+                </div>
+              )}
 
               {/* Bank Details — authorized roles + Finance dept */}
               {canSeeBankDetails && (

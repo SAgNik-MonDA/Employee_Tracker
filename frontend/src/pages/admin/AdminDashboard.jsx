@@ -15,6 +15,7 @@ const AdminDashboard = () => {
   const [deptSalary, setDeptSalary] = useState([]);
   const [pendingEarlyCheckouts, setPendingEarlyCheckouts] = useState([]);
   const [pendingFaceResets, setPendingFaceResets] = useState([]);
+  const [financeStats, setFinanceStats] = useState({ totalBasic: 0, totalNet: 0, totalPf: 0, totalMediclaim: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -39,6 +40,19 @@ const AdminDashboard = () => {
       const todayAtt = todayAttendanceRes.data;
       setPendingEarlyCheckouts(earlyCheckoutRes.data);
       setPendingFaceResets(employees.filter(e => e.faceResetRequest === 'Pending'));
+
+      // Financial overview
+      let totalBasic = 0, totalNet = 0, totalPf = 0, totalMediclaim = 0;
+      employees.forEach(e => {
+        const bs  = e.basicSalary || 0;
+        const pf  = e.pfAmount || 0;
+        const mc  = e.mediclaimAmount || 0;
+        totalBasic     += bs;
+        totalNet       += (bs - pf - mc);
+        totalPf        += e.totalPfAccumulated || 0;
+        totalMediclaim += e.totalMediclaimAccumulated || 0;
+      });
+      setFinanceStats({ totalBasic, totalNet, totalPf, totalMediclaim });
 
       // Stats
       const presentCount = todayAtt.filter((a) => a.status === 'Present' || a.status === 'Late').length;
@@ -126,6 +140,14 @@ const AdminDashboard = () => {
         <StatCard icon="✅" label="Present Today" value={stats.presentToday} color="emerald" />
         <StatCard icon="📋" label="Pending Leaves" value={stats.pendingLeaves} color="amber" />
         <StatCard icon="💰" label="Payroll This Month" value={`₹${stats.payrollThisMonth.toLocaleString()}`} color="cyan" />
+      </div>
+
+      {/* Financial Overview Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard icon="💼" label="Total Basic Salary" value={`₹${financeStats.totalBasic.toLocaleString()}`} color="violet" />
+        <StatCard icon="💸" label="Total Net Salary" value={`₹${financeStats.totalNet.toLocaleString()}`} color="emerald" />
+        <StatCard icon="🏦" label="Total PF Fund" value={`₹${financeStats.totalPf.toLocaleString()}`} color="amber" />
+        <StatCard icon="🏥" label="Total Mediclaim Fund" value={`₹${financeStats.totalMediclaim.toLocaleString()}`} color="cyan" />
       </div>
 
       {/* Charts */}

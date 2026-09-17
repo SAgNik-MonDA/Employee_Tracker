@@ -291,6 +291,56 @@ const EmployeeDashboard = () => {
         </div>
       )}
 
+      {/* Salary Breakdown */}
+      {user && (user.basicSalary > 0) && (
+        <div className="glass-card p-6">
+          <h2 className="text-lg font-display font-bold text-surface-100 mb-4">
+            💰 Salary Breakdown
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Monthly Structure */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-surface-400 uppercase tracking-wider mb-2">Monthly Structure</h3>
+              <div className="flex justify-between items-center py-2 border-b border-surface-700/40">
+                <span className="text-sm text-surface-400">Basic Salary</span>
+                <span className="text-sm font-semibold text-surface-200">₹{(user.basicSalary || 0).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-surface-700/40">
+                <span className="text-sm text-surface-400">PF Deduction</span>
+                <span className="text-sm font-semibold text-rose-400">- ₹{(user.pfAmount || 0).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-surface-700/40">
+                <span className="text-sm text-surface-400">Mediclaim Deduction</span>
+                <span className="text-sm font-semibold text-rose-400">- ₹{(user.mediclaimAmount || 0).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center py-3 bg-emerald-500/10 rounded-lg px-3 border border-emerald-500/20">
+                <span className="text-sm font-bold text-emerald-400">Net Salary</span>
+                <span className="text-base font-bold text-emerald-300">₹{((user.basicSalary || 0) - (user.pfAmount || 0) - (user.mediclaimAmount || 0)).toLocaleString()}</span>
+              </div>
+            </div>
+
+            {/* Cumulative Safety Fund */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-surface-400 uppercase tracking-wider mb-2">Cumulative Safety Fund</h3>
+              <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-lg">🏦</span>
+                  <span className="text-sm font-semibold text-amber-300">Total PF Accumulated</span>
+                </div>
+                <span className="text-2xl font-bold text-amber-200">₹{(user.totalPfAccumulated || 0).toLocaleString()}</span>
+              </div>
+              <div className="p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/20">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-lg">🏥</span>
+                  <span className="text-sm font-semibold text-cyan-300">Total Mediclaim Accumulated</span>
+                </div>
+                <span className="text-2xl font-bold text-cyan-200">₹{(user.totalMediclaimAccumulated || 0).toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Quick Actions & Shift Info */}
       <div className="glass-card p-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">

@@ -62,14 +62,17 @@ const generatePayroll = async (req, res) => {
       // Prorate salary based on effective days
       const proratedSalary = Math.round((basicSalary / totalDaysInMonth) * effectiveDays);
 
-      // ── All deductions and bonus are ZERO for now ─────────────────
-      const pfDeduction        = 0;
-      const mediclaimDeduction = 0;
+      // ── Compute real PF & Mediclaim deductions (prorated) ─────────
+      const rawPf        = emp.pfAmount || 0;
+      const rawMediclaim = emp.mediclaimAmount || 0;
+
+      const pfDeduction        = Math.round((rawPf / totalDaysInMonth) * effectiveDays);
+      const mediclaimDeduction = Math.round((rawMediclaim / totalDaysInMonth) * effectiveDays);
       const leaveDeduction     = 0;
       const bonus              = 0;
-      const totalDeductions    = 0;
+      const totalDeductions    = pfDeduction + mediclaimDeduction + leaveDeduction;
 
-      const netSalary = proratedSalary; // No deductions, no bonus
+      const netSalary = proratedSalary - totalDeductions + bonus;
 
       // ── Upsert: update if exists, create if not ───────────────────
       const existingPayroll = await Payroll.findOne({
@@ -77,8 +80,16 @@ const generatePayroll = async (req, res) => {
         monthYear,
       });
 
+      // Track whether this is a brand-new payroll (to avoid double accumulation on re-generate)
+      let isNewPayroll = false;
+      let prevPf = 0;
+      let prevMediclaim = 0;
+
       let payroll;
       if (existingPayroll) {
+        prevPf        = existingPayroll.pfDeduction || 0;
+        prevMediclaim = existingPayroll.mediclaimDeduction || 0;
+
         existingPayroll.baseSalary          = proratedSalary;
         existingPayroll.bonus               = bonus;
         existingPayroll.pfDeduction         = pfDeduction;
@@ -91,6 +102,7 @@ const generatePayroll = async (req, res) => {
         payroll = await existingPayroll.save();
         payrollResults.push({ employee: emp.name, status: 'Updated', payroll });
       } else {
+        isNewPayroll = true;
         payroll = await Payroll.create({
           employeeId: emp._id,
           monthYear,
@@ -106,6 +118,19 @@ const generatePayroll = async (req, res) => {
           status: 'Unpaid',
         });
         payrollResults.push({ employee: emp.name, status: 'Generated', payroll });
+      }
+
+      // ── Accumulate PF & Mediclaim on User (delta-safe for re-generation) ──
+      const pfDelta        = pfDeduction - prevPf;
+      const mediclaimDelta = mediclaimDeduction - prevMediclaim;
+
+      if (pfDelta !== 0 || mediclaimDelta !== 0) {
+        await User.findByIdAndUpdate(emp._id, {
+          $inc: {
+            totalPfAccumulated:        pfDelta,
+            totalMediclaimAccumulated: mediclaimDelta,
+          },
+        });
       }
 
       // In-app notification for the employee (fire and forget)
@@ -129,7 +154,9 @@ const generatePayroll = async (req, res) => {
             ${effectiveDays < totalDaysInMonth
               ? `<tr><td><strong>Note</strong></td><td>Prorated for ${effectiveDays} of ${totalDaysInMonth} days</td></tr>`
               : ''}
-            <tr><td><strong>Net Salary</strong></td><td>₹${netSalary.toLocaleString()}</td></tr>
+            <tr><td><strong>PF Deduction</strong></td><td>- ₹${pfDeduction.toLocaleString()}</td></tr>
+            <tr><td><strong>Mediclaim Deduction</strong></td><td>- ₹${mediclaimDeduction.toLocaleString()}</td></tr>
+            <tr style="background:#f0fdf4;"><td><strong>Net Salary</strong></td><td><strong>₹${netSalary.toLocaleString()}</strong></td></tr>
           </table>
           <p>Best regards,<br/>HR Team</p>
         `,
@@ -167,7 +194,7 @@ const getAllPayroll = async (req, res) => {
     if (monthYear) filter.monthYear = monthYear;
 
     const payrolls = await Payroll.find(filter)
-      .populate('employeeId', 'name email department designation employeeCode role bankDetails basicSalary phone')
+      .populate('employeeId', 'name email department designation employeeCode role bankDetails basicSalary pfAmount mediclaimAmount totalPfAccumulated totalMediclaimAccumulated phone')
       .sort({ createdAt: -1 });
 
     // Return data as-is from database — no dummy enrichment

@@ -337,6 +337,26 @@ const ProfilePage = () => {
           <InfoRow label="Permanent Address" value={profile?.permanentAddress} />
           <InfoRow label="Date of Joining" value={profile?.joiningDate ? new Date(profile.joiningDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : null} />
 
+          {/* Financial Details */}
+          {profile?.basicSalary > 0 && (
+            <>
+              <div className="pt-4 mt-2 border-t border-surface-600/40">
+                <h3 className="text-sm font-semibold text-surface-400 uppercase tracking-wider mb-3">Financial Details</h3>
+              </div>
+              <InfoRow label="Basic Salary"        value={`₹${(profile.basicSalary || 0).toLocaleString()}`} />
+              <InfoRow label="PF Deduction"        value={`₹${(profile.pfAmount || 0).toLocaleString()}`} />
+              <InfoRow label="Mediclaim Deduction"  value={`₹${(profile.mediclaimAmount || 0).toLocaleString()}`} />
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 py-3 border-b border-surface-700/40 last:border-0">
+                <span className="text-sm text-emerald-400 sm:w-44 flex-shrink-0 font-semibold">Net Salary</span>
+                <span className="text-sm font-bold text-emerald-300">
+                  ₹{((profile.basicSalary || 0) - (profile.pfAmount || 0) - (profile.mediclaimAmount || 0)).toLocaleString()}
+                </span>
+              </div>
+              <InfoRow label="Total PF Accumulated"        value={`₹${(profile.totalPfAccumulated || 0).toLocaleString()}`} />
+              <InfoRow label="Total Mediclaim Accumulated"  value={`₹${(profile.totalMediclaimAccumulated || 0).toLocaleString()}`} />
+            </>
+          )}
+
           {/* Date of Birth — EDITABLE */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 py-3 border-b border-surface-700/40">
             <span className="text-sm text-surface-500 sm:w-44 flex-shrink-0">Date of Birth</span>
