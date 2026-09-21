@@ -625,6 +625,8 @@ const reviewEarlyCheckout = async (req, res) => {
     if (!attendance) return res.status(404).json({ message: 'Attendance record not found.' });
 
     attendance.earlyCheckoutStatus = status;
+    attendance.earlyCheckoutReviewedBy = req.user._id;
+    attendance.earlyCheckoutReviewedAt = new Date();
     await attendance.save();
 
     // Notify employee about the decision
@@ -648,21 +650,50 @@ const reviewEarlyCheckout = async (req, res) => {
 const getPendingEarlyCheckouts = async (req, res) => {
   try {
     const statuses = ['Pending_TL', 'Pending_PM'];
-    const requests = await Attendance.find({ earlyCheckoutStatus: { $in: statuses } }).populate('employeeId', 'name profilePicture designation');
+    const requests = await Attendance.find({ earlyCheckoutStatus: { $in: statuses } })
+      .populate('employeeId', 'name profilePicture designation employeeCode role')
+      .sort({ createdAt: -1 });
     res.json(requests);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
-// @desc    Get all early check-out requests (history)
+// @desc    Get all early check-out requests (history) with stats & month filter
 // @route   GET /api/attendance/early-checkout/all
 // @access  Private (TL, PM, Admin, HR)
 const getAllEarlyCheckouts = async (req, res) => {
   try {
-    const statuses = ['Pending_TL', 'Pending_PM', 'Approved', 'Rejected'];
-    const requests = await Attendance.find({ earlyCheckoutStatus: { $in: statuses } }).populate('employeeId', 'name profilePicture designation');
-    res.json(requests);
+    const { month, year } = req.query;
+    const allStatuses = ['Pending_TL', 'Pending_PM', 'Approved', 'Rejected'];
+
+    // Build filter
+    const filter = { earlyCheckoutStatus: { $in: allStatuses } };
+    if (month && year) {
+      const monthStr = month.toString().padStart(2, '0');
+      filter.date = { $regex: `^${year}-${monthStr}` };
+    } else if (year) {
+      filter.date = { $regex: `^${year}` };
+    }
+
+    const requests = await Attendance.find(filter)
+      .populate('employeeId', 'name profilePicture designation employeeCode role')
+      .populate('earlyCheckoutReviewedBy', 'name role employeeCode')
+      .sort({ createdAt: -1 });
+
+    // Compute stats from ALL records (unfiltered) for the banner
+    const allRequests = await Attendance.find({ earlyCheckoutStatus: { $in: allStatuses } })
+      .select('earlyCheckoutStatus')
+      .lean();
+
+    const stats = {
+      pending: allRequests.filter(r => ['Pending_TL', 'Pending_PM'].includes(r.earlyCheckoutStatus)).length,
+      approved: allRequests.filter(r => r.earlyCheckoutStatus === 'Approved').length,
+      rejected: allRequests.filter(r => r.earlyCheckoutStatus === 'Rejected').length,
+      total: allRequests.length,
+    };
+
+    res.json({ requests, stats });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }

@@ -45,6 +45,15 @@ const attendanceSchema = new mongoose.Schema(
     earlyCheckoutReason: {
       type: String,
       default: ''
+    },
+    earlyCheckoutReviewedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    earlyCheckoutReviewedAt: {
+      type: Date,
+      default: null,
     }
   },
   { timestamps: true }
