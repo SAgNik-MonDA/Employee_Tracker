@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import API from '../../api/axios';
 import toast from 'react-hot-toast';
 import {
@@ -16,6 +16,22 @@ const FaceResets = () => {
   const [history, setHistory] = useState([]);
   const [stats, setStats] = useState({ approved: 0, rejected: 0, total: 0 });
   const [loading, setLoading] = useState(true);
+
+  // Month-wise filter state
+  const [filterMonth, setFilterMonth] = useState('All');
+  const [filterYear, setFilterYear] = useState(new Date().getFullYear().toString());
+
+  const filteredHistory = useMemo(() => {
+    return history.filter(item => {
+      if (!item.reviewedAt) return true;
+      const reqDate = new Date(item.reviewedAt);
+      const matchYear = filterYear === 'All' || reqDate.getFullYear().toString() === filterYear;
+      const matchMonth = filterMonth === 'All' || (reqDate.getMonth() + 1).toString() === filterMonth;
+      return matchYear && matchMonth;
+    });
+  }, [history, filterMonth, filterYear]);
+
+  const currentYear = new Date().getFullYear();
 
   useEffect(() => {
     fetchData();
@@ -171,13 +187,39 @@ const FaceResets = () => {
 
       {/* Face Reset History Section */}
       <div className="space-y-4">
-        <h2 className="text-lg font-bold text-surface-100 flex items-center gap-2">
-          <HiOutlineRefresh className="w-5 h-5 text-primary-400" />
-          Face Reset History Log
-        </h2>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <h2 className="text-lg font-bold text-surface-100 flex items-center gap-2">
+            <HiOutlineRefresh className="w-5 h-5 text-primary-400" />
+            Face Reset History Log
+          </h2>
+          <div className="flex gap-2">
+            <select
+              value={filterMonth}
+              onChange={e => setFilterMonth(e.target.value)}
+              className="input-field py-1.5 px-3 text-xs h-auto min-h-0 bg-surface-800 border-surface-700/50 rounded-lg"
+            >
+              <option value="All">All Months</option>
+              {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                <option key={m} value={m}>
+                  {new Date(2000, m - 1).toLocaleString('default', { month: 'short' })}
+                </option>
+              ))}
+            </select>
+            <select
+              value={filterYear}
+              onChange={e => setFilterYear(e.target.value)}
+              className="input-field py-1.5 px-3 text-xs h-auto min-h-0 bg-surface-800 border-surface-700/50 rounded-lg"
+            >
+              <option value="All">All Years</option>
+              {[currentYear, currentYear - 1, currentYear - 2].map(y => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+          </div>
+        </div>
 
         <div className="glass-card p-6">
-          {history.length === 0 ? (
+          {filteredHistory.length === 0 ? (
             <div className="text-center py-10 text-surface-500 text-sm">
               No face reset history recorded yet.
             </div>
@@ -193,7 +235,7 @@ const FaceResets = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-surface-700/30 text-surface-300">
-                  {history.map(item => {
+                  {filteredHistory.map(item => {
                     const isApproved = item.status === 'Approved';
                     const emp = item.employee || {};
                     const reviewer = item.reviewedBy || {};
