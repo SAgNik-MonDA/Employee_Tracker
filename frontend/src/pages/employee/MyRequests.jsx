@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { HiOutlineDocumentText, HiOutlinePlus } from 'react-icons/hi';
+import { HiOutlineDocumentText, HiOutlinePlus, HiOutlineShieldCheck, HiOutlineCurrencyRupee } from 'react-icons/hi';
 import API from '../../api/axios';
 import toast from 'react-hot-toast';
 import { useNotifications } from '../../context/NotificationContext';
+import MediclaimSection from '../../components/employee/MediclaimSection';
+import WithdrawalRequestsSection from '../../components/employee/WithdrawalRequestsSection';
 
 const MyRequests = () => {
   const { notifications } = useNotifications();
+  const [activeCategory, setActiveCategory] = useState('general'); // 'general' | 'mediclaim' | 'pf'
+  const [profile, setProfile] = useState(null);
   const [requests, setRequests] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -27,8 +31,18 @@ const MyRequests = () => {
     }
   };
 
+  const fetchProfile = async () => {
+    try {
+      const { data } = await API.get('/auth/profile');
+      setProfile(data);
+    } catch (error) {
+      console.error('Failed to load profile in MyRequests', error);
+    }
+  };
+
   useEffect(() => {
     fetchRequests();
+    fetchProfile();
   }, []);
 
   // Re-fetch when a new notification arrives
@@ -60,61 +74,109 @@ const MyRequests = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-surface-100">My Requests</h2>
-          <p className="text-surface-400">Submit and track your requests</p>
-        </div>
-        <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2">
-          <HiOutlinePlus className="w-5 h-5" />
-          <span>New Request</span>
+      {/* ── Category Switcher Tabs ──────────────────────────────────── */}
+      <div className="flex flex-wrap gap-2 border-b border-surface-700/60 pb-3">
+        <button
+          onClick={() => setActiveCategory('general')}
+          className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${
+            activeCategory === 'general'
+              ? 'bg-primary-600 text-white shadow-md shadow-primary-500/25'
+              : 'bg-surface-800 text-surface-400 hover:text-surface-200 border border-surface-700/50'
+          }`}
+        >
+          <HiOutlineDocumentText className="w-4 h-4" />
+          <span>General Requests (IT / Shift / Other)</span>
+        </button>
+
+        <button
+          onClick={() => setActiveCategory('mediclaim')}
+          className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${
+            activeCategory === 'mediclaim'
+              ? 'bg-teal-500 text-white shadow-md shadow-teal-500/25'
+              : 'bg-surface-800 text-surface-400 hover:text-surface-200 border border-surface-700/50'
+          }`}
+        >
+          <HiOutlineShieldCheck className="w-4 h-4" />
+          <span>🏥 Mediclaim Claims</span>
+        </button>
+
+        <button
+          onClick={() => setActiveCategory('pf')}
+          className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${
+            activeCategory === 'pf'
+              ? 'bg-amber-500 text-white shadow-md shadow-amber-500/25'
+              : 'bg-surface-800 text-surface-400 hover:text-surface-200 border border-surface-700/50'
+          }`}
+        >
+          <HiOutlineCurrencyRupee className="w-4 h-4" />
+          <span>🏦 PF Withdrawals</span>
         </button>
       </div>
 
-      <div className="bg-surface-800 border border-surface-700 rounded-xl overflow-hidden shadow-sm">
-        {requests.length === 0 ? (
-          <div className="p-8 text-center text-surface-400">
-            No requests found.
+      {/* ── View Rendering ─────────────────────────────────────────── */}
+      {activeCategory === 'mediclaim' ? (
+        <MediclaimSection profile={profile} fetchProfile={fetchProfile} />
+      ) : activeCategory === 'pf' ? (
+        <WithdrawalRequestsSection profile={profile} fetchProfile={fetchProfile} />
+      ) : (
+        <>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-bold text-surface-100">My Requests</h2>
+              <p className="text-surface-400">Submit and track hardware, software, shift change and IT requests</p>
+            </div>
+            <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2">
+              <HiOutlinePlus className="w-5 h-5" />
+              <span>New Request</span>
+            </button>
           </div>
-        ) : (
-          <div className="divide-y divide-surface-700">
-            {requests.map(req => {
-              let statusClass = 'bg-amber-500/10 text-amber-400';
-              if (req.status === 'Approved') statusClass = 'bg-emerald-500/10 text-emerald-400';
-              if (req.status === 'Rejected') statusClass = 'bg-rose-500/10 text-rose-400';
 
-              return (
-                <div key={req._id} className="p-4 sm:px-6 hover:bg-surface-800/80 transition-colors">
-                  <div className="flex items-center justify-between gap-4 mb-2">
-                    <div className="flex items-center gap-3">
-                      <span className="text-lg font-medium text-surface-200">{req.requestType}</span>
-                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${statusClass}`}>
-                        {req.status}
-                      </span>
+          <div className="bg-surface-800 border border-surface-700 rounded-xl overflow-hidden shadow-sm">
+            {requests.length === 0 ? (
+              <div className="p-8 text-center text-surface-400">
+                No requests found.
+              </div>
+            ) : (
+              <div className="divide-y divide-surface-700">
+                {requests.map(req => {
+                  let statusClass = 'bg-amber-500/10 text-amber-400';
+                  if (req.status === 'Approved') statusClass = 'bg-emerald-500/10 text-emerald-400';
+                  if (req.status === 'Rejected') statusClass = 'bg-rose-500/10 text-rose-400';
+
+                  return (
+                    <div key={req._id} className="p-4 sm:px-6 hover:bg-surface-800/80 transition-colors">
+                      <div className="flex items-center justify-between gap-4 mb-2">
+                        <div className="flex items-center gap-3">
+                          <span className="text-lg font-medium text-surface-200">{req.requestType}</span>
+                          <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${statusClass}`}>
+                            {req.status}
+                          </span>
+                        </div>
+                        <span className="text-sm text-surface-400">
+                          For: {new Date(req.shiftDate || req.dateRequestedFor).toLocaleDateString('en-GB')}
+                        </span>
+                      </div>
+                      {req.requestType === 'Shift Change' && (
+                        <div className="mb-2 text-xs font-semibold text-primary-400 flex items-center gap-2 bg-primary-500/10 border border-primary-500/20 px-3 py-1.5 rounded-lg w-fit flex-wrap">
+                          <span>📅 Shift Date: {new Date(req.shiftDate || req.dateRequestedFor).toLocaleDateString('en-GB')}</span>
+                          {req.currentShift && <span>• Current: {req.currentShift}</span>}
+                          {req.desiredShift && <span>➜ Desired: {req.desiredShift}</span>}
+                        </div>
+                      )}
+                      <p className="text-sm text-surface-300">{req.reason}</p>
+                      {req.reviewNotes && (
+                        <div className="mt-2 p-3 bg-surface-900 rounded-lg border border-surface-700">
+                          <p className="text-xs text-surface-400"><strong>Note:</strong> {req.reviewNotes}</p>
+                        </div>
+                      )}
                     </div>
-                    <span className="text-sm text-surface-400">
-                      For: {new Date(req.shiftDate || req.dateRequestedFor).toLocaleDateString('en-GB')}
-                    </span>
-                  </div>
-                  {req.requestType === 'Shift Change' && (
-                    <div className="mb-2 text-xs font-semibold text-primary-400 flex items-center gap-2 bg-primary-500/10 border border-primary-500/20 px-3 py-1.5 rounded-lg w-fit flex-wrap">
-                      <span>📅 Shift Date: {new Date(req.shiftDate || req.dateRequestedFor).toLocaleDateString('en-GB')}</span>
-                      {req.currentShift && <span>• Current: {req.currentShift}</span>}
-                      {req.desiredShift && <span>➜ Desired: {req.desiredShift}</span>}
-                    </div>
-                  )}
-                  <p className="text-sm text-surface-300">{req.reason}</p>
-                  {req.reviewNotes && (
-                    <div className="mt-2 p-3 bg-surface-900 rounded-lg border border-surface-700">
-                      <p className="text-xs text-surface-400"><strong>Note:</strong> {req.reviewNotes}</p>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      )}
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-950/60 backdrop-blur-sm">

@@ -23,6 +23,7 @@ import ApplyLeave from './pages/employee/ApplyLeave';
 import MyPerformance from './pages/employee/MyPerformance';
 import MyPayslips from './pages/employee/MyPayslips';
 import ProfilePage from './pages/employee/ProfilePage';
+import MediclaimPage from './pages/employee/MediclaimPage';
 
 // Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -98,6 +99,7 @@ function App() {
         <Route path="shifts"      element={<MyShifts />} />
         <Route path="performance" element={<MyPerformance />} />
         <Route path="payslips"    element={<MyPayslips />} />
+        <Route path="mediclaim"   element={<MediclaimPage />} />
         <Route path="profile"     element={<ProfilePage />} />
         <Route index element={<Navigate to="dashboard" replace />} />
       </Route>

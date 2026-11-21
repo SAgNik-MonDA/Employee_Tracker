@@ -26,6 +26,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: '/employee/attendance',  icon: <HiOutlineClock />,         label: 'My Attendance' },
     { to: '/employee/leaves',      icon: <HiOutlineCalendar />,      label: 'Apply Leave' },
     { to: '/employee/requests',    icon: <HiOutlineDocumentText />,   label: 'My Requests' },
+    { to: '/employee/mediclaim',   icon: <HiOutlineShieldCheck />,    label: 'Mediclaim & PF' },
     { to: '/employee/shifts',      icon: <HiOutlineClock />,         label: 'My Shifts' },
     { to: '/employee/performance', icon: <HiOutlineChartBar />,      label: 'My Performance' },
     { to: '/employee/payslips',    icon: <HiOutlineCurrencyRupee />, label: 'My Payslips' },

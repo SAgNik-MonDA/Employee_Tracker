@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { HiOutlineShieldCheck, HiOutlineCurrencyRupee, HiOutlineArrowRight } from 'react-icons/hi';
 import API from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import { useShiftTiming } from '../../hooks/useShiftTiming';
@@ -231,6 +233,79 @@ const EmployeeDashboard = () => {
         <StatCard icon="📅" label="Total Leaves Taken" value={stats.totalLeaves} color="amber" />
         <StatCard icon="⭐" label="Current KPI Rating" value={stats.currentRating === '-' ? 'Not Reviewed' : `${stats.currentRating}/5`} color="violet" />
         <StatCard icon="💰" label="Last Salary" value={stats.lastSalary} color="cyan" />
+      </div>
+
+      {/* ── Health & Provident Benefits Section ──────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Mediclaim Card */}
+        <div className="glass-card p-6 border-l-4 border-teal-500 bg-gradient-to-br from-teal-950/20 via-surface-900/90 to-surface-900/90 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2.5 rounded-xl bg-teal-500/15 text-teal-400 border border-teal-500/30">
+                  <HiOutlineShieldCheck className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-surface-100 text-base">Mediclaim Health Benefit</h3>
+                  <p className="text-xs text-surface-400">Corporate health insurance &amp; emergency coverage</p>
+                </div>
+              </div>
+              <span className="text-xs font-mono px-2 py-0.5 rounded bg-surface-800 text-teal-300 border border-teal-500/30">
+                {user?.mediclaimId || 'MED-Pending'}
+              </span>
+            </div>
+
+            <div className="my-4">
+              <span className="text-xs font-semibold text-surface-400 uppercase tracking-wider">Available Medical Fund</span>
+              <p className="text-3xl font-extrabold text-teal-300 font-mono mt-0.5">
+                ₹{(user?.totalMediclaimAccumulated || 0).toLocaleString()}
+              </p>
+            </div>
+          </div>
+
+          <Link
+            to="/employee/mediclaim"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-400 hover:to-emerald-500 text-white font-semibold text-sm shadow-md shadow-teal-500/20 transition-all active:scale-95"
+          >
+            <span>Claim Mediclaim Reimbursement</span>
+            <HiOutlineArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+
+        {/* PF Card */}
+        <div className="glass-card p-6 border-l-4 border-amber-500 bg-gradient-to-br from-amber-950/20 via-surface-900/90 to-surface-900/90 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2.5 rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                  <HiOutlineCurrencyRupee className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-surface-100 text-base">Provident Fund (PF)</h3>
+                  <p className="text-xs text-surface-400">Employee retirement &amp; savings accumulation</p>
+                </div>
+              </div>
+              <span className="text-xs font-mono px-2 py-0.5 rounded bg-surface-800 text-amber-300 border border-amber-500/30">
+                {user?.pfId || 'PF-Pending'}
+              </span>
+            </div>
+
+            <div className="my-4">
+              <span className="text-xs font-semibold text-surface-400 uppercase tracking-wider">Accumulated PF Balance</span>
+              <p className="text-3xl font-extrabold text-amber-300 font-mono mt-0.5">
+                ₹{(user?.totalPfAccumulated || 0).toLocaleString()}
+              </p>
+            </div>
+          </div>
+
+          <Link
+            to="/employee/mediclaim"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white font-semibold text-sm shadow-md shadow-amber-500/20 transition-all active:scale-95"
+          >
+            <span>Request PF Withdrawal</span>
+            <HiOutlineArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
       </div>
 
       {/* Leave Balance Section */}

@@ -16,6 +16,7 @@ import {
   HiOutlineInformationCircle,
 } from 'react-icons/hi';
 import { submitWithdrawal, getMyWithdrawals, downloadSettlementPayslip } from '../../api/withdrawalAPI';
+import { useAuth } from '../../context/AuthContext';
 
 const PURPOSE_OPTIONS = [
   'Medical Emergencies',
@@ -30,6 +31,8 @@ const PURPOSE_OPTIONS = [
 ];
 
 const MediclaimSection = ({ profile, fetchProfile }) => {
+  const { user } = useAuth();
+  const activeProfile = profile || user;
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -101,7 +104,7 @@ const MediclaimSection = ({ profile, fetchProfile }) => {
       return toast.error('Please enter a valid amount.');
     }
 
-    const availableBalance = profile?.totalMediclaimAccumulated || 0;
+    const availableBalance = activeProfile?.totalMediclaimAccumulated || 0;
     if (numericAmount > availableBalance) {
       return toast.error(`Requested amount exceeds your available Mediclaim balance (₹${availableBalance.toLocaleString()}).`);
     }
@@ -195,7 +198,7 @@ const MediclaimSection = ({ profile, fetchProfile }) => {
     );
   }, [filteredRequests]);
 
-  const availableBalance = profile?.totalMediclaimAccumulated || 0;
+  const availableBalance = activeProfile?.totalMediclaimAccumulated || 0;
 
   return (
     <div className="mt-8 mb-8 space-y-6">
@@ -256,11 +259,11 @@ const MediclaimSection = ({ profile, fetchProfile }) => {
               <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Mediclaim ID</p>
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-xl font-bold font-mono text-surface-100 tracking-wider truncate">
-                  {profile?.mediclaimId || 'Not Generated'}
+                  {activeProfile?.mediclaimId || 'Not Generated'}
                 </span>
-                {profile?.mediclaimId && (
+                {activeProfile?.mediclaimId && (
                   <button
-                    onClick={() => handleCopyId(profile.mediclaimId)}
+                    onClick={() => handleCopyId(activeProfile.mediclaimId)}
                     title="Copy Mediclaim ID"
                     className="p-1 rounded text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/20 transition-colors"
                   >
@@ -283,11 +286,11 @@ const MediclaimSection = ({ profile, fetchProfile }) => {
               <p className="text-xs font-semibold uppercase tracking-wider text-violet-400">PF Account ID</p>
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-xl font-bold font-mono text-surface-100 tracking-wider truncate">
-                  {profile?.pfId || 'Not Generated'}
+                  {activeProfile?.pfId || 'Not Generated'}
                 </span>
-                {profile?.pfId && (
+                {activeProfile?.pfId && (
                   <button
-                    onClick={() => handleCopyId(profile.pfId)}
+                    onClick={() => handleCopyId(activeProfile.pfId)}
                     title="Copy PF ID"
                     className="p-1 rounded text-violet-400 hover:text-violet-300 hover:bg-violet-500/20 transition-colors"
                   >
@@ -317,7 +320,7 @@ const MediclaimSection = ({ profile, fetchProfile }) => {
                 <div>
                   <h3 className="font-display font-bold text-lg text-surface-100">Submit Mediclaim Request</h3>
                   <p className="text-xs text-teal-400 font-mono">
-                    Policy ID: {profile?.mediclaimId || 'Pending Assignment'}
+                    Policy ID: {activeProfile?.mediclaimId || 'Pending Assignment'}
                   </p>
                 </div>
               </div>
@@ -339,7 +342,7 @@ const MediclaimSection = ({ profile, fetchProfile }) => {
                 </div>
                 <div className="text-right">
                   <span className="text-xs text-surface-400">Employee Code:</span>
-                  <p className="text-xs font-mono font-medium text-surface-200">{profile?.employeeCode || '—'}</p>
+                  <p className="text-xs font-mono font-medium text-surface-200">{activeProfile?.employeeCode || '—'}</p>
                 </div>
               </div>
 
@@ -593,7 +596,7 @@ const MediclaimSection = ({ profile, fetchProfile }) => {
                           {isApproved ? 'Approved & Settled' : req.status}
                         </span>
                         <span className="text-xs text-surface-400 font-mono">
-                          MED ID: {req.mediclaimId || profile?.mediclaimId || '—'}
+                          MED ID: {req.mediclaimId || activeProfile?.mediclaimId || '—'}
                         </span>
                       </div>
 

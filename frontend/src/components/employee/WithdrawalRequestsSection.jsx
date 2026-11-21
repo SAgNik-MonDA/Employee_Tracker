@@ -2,8 +2,11 @@ import { useState, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { HiOutlineCurrencyRupee, HiOutlineDocumentText, HiOutlineClock, HiOutlineShieldCheck } from 'react-icons/hi';
 import { submitWithdrawal, getMyWithdrawals } from '../../api/withdrawalAPI';
+import { useAuth } from '../../context/AuthContext';
 
 const WithdrawalRequestsSection = ({ profile, fetchProfile }) => {
+  const { user } = useAuth();
+  const activeProfile = profile || user;
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -52,7 +55,7 @@ const WithdrawalRequestsSection = ({ profile, fetchProfile }) => {
       return toast.error('Enter a valid amount');
     }
 
-    const availablePf = profile?.totalPfAccumulated || 0;
+    const availablePf = activeProfile?.totalPfAccumulated || 0;
     if (numAmount > availablePf) {
       return toast.error(`Amount exceeds available PF balance (₹${availablePf.toLocaleString()})`);
     }
@@ -102,11 +105,7 @@ const WithdrawalRequestsSection = ({ profile, fetchProfile }) => {
     );
   }, [filteredRequests]);
 
-  const availablePf = profile?.totalPfAccumulated || 0;
-
-  if (!profile || (!profile.totalPfAccumulated && requests.length === 0)) {
-    return null;
-  }
+  const availablePf = activeProfile?.totalPfAccumulated || 0;
 
   return (
     <div className="mt-8 mb-6">
@@ -116,7 +115,7 @@ const WithdrawalRequestsSection = ({ profile, fetchProfile }) => {
           Provident Fund (PF) Withdrawal Portal
         </h3>
         <span className="text-xs font-mono px-2 py-0.5 rounded bg-surface-800 text-surface-300 border border-surface-700">
-          PF ID: {profile?.pfId || 'Not Generated'}
+          PF ID: {activeProfile?.pfId || 'Not Generated'}
         </span>
       </div>
 
