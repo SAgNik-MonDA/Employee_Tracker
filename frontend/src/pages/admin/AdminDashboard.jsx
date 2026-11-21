@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import { HiOutlineShieldCheck, HiOutlineCurrencyRupee, HiOutlineArrowRight } from 'react-icons/hi';
 import API from '../../api/axios';
 import StatCard from '../../components/common/StatCard';
 import BirthdayBanner from '../../components/common/BirthdayBanner';
@@ -15,6 +18,7 @@ const AdminDashboard = () => {
   const [deptSalary, setDeptSalary] = useState([]);
   const [pendingEarlyCheckouts, setPendingEarlyCheckouts] = useState([]);
   const [pendingFaceResets, setPendingFaceResets] = useState([]);
+  const [pendingWithdrawals, setPendingWithdrawals] = useState([]);
   const [financeStats, setFinanceStats] = useState({ totalBasic: 0, totalNet: 0, totalPf: 0, totalMediclaim: 0 });
   const [loading, setLoading] = useState(true);
 
@@ -28,18 +32,20 @@ const AdminDashboard = () => {
       const now = new Date();
       const monthYear = `${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`;
 
-      const [employeesRes, todayAttendanceRes, leavesRes, payrollRes, earlyCheckoutRes] = await Promise.all([
+      const [employeesRes, todayAttendanceRes, leavesRes, payrollRes, earlyCheckoutRes, withdrawalsRes] = await Promise.all([
         API.get('/auth/employees'),
         API.get(`/attendance/all?date=${today}`),
         API.get('/leaves/all-requests?status=Pending'),
         API.get(`/payroll/all?monthYear=${monthYear}`),
         API.get('/attendance/early-checkout/pending').catch(() => ({ data: [] })),
+        API.get('/withdrawals/all').catch(() => ({ data: [] })),
       ]);
 
       const employees = employeesRes.data;
       const todayAtt = todayAttendanceRes.data;
       setPendingEarlyCheckouts(earlyCheckoutRes.data);
       setPendingFaceResets(employees.filter(e => e.faceResetRequest === 'Pending'));
+      setPendingWithdrawals(withdrawalsRes.data.filter(w => w.status === 'Pending'));
 
       // Financial overview
       let totalBasic = 0, totalNet = 0, totalPf = 0, totalMediclaim = 0;
@@ -146,8 +152,12 @@ const AdminDashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard icon="💼" label="Total Basic Salary" value={`₹${financeStats.totalBasic.toLocaleString()}`} color="violet" />
         <StatCard icon="💸" label="Total Net Salary" value={`₹${financeStats.totalNet.toLocaleString()}`} color="emerald" />
-        <StatCard icon="🏦" label="Total PF Fund" value={`₹${financeStats.totalPf.toLocaleString()}`} color="amber" />
-        <StatCard icon="🏥" label="Total Mediclaim Fund" value={`₹${financeStats.totalMediclaim.toLocaleString()}`} color="cyan" />
+        <Link to="/admin/pf-withdrawals" className="block transform hover:-translate-y-1 transition-transform group">
+          <StatCard icon="🏦" label="Total PF Fund (View Requests ➔)" value={`₹${financeStats.totalPf.toLocaleString()}`} color="amber" />
+        </Link>
+        <Link to="/admin/mediclaim-requests" className="block transform hover:-translate-y-1 transition-transform group">
+          <StatCard icon="🏥" label="Total Mediclaim Fund (View Claims ➔)" value={`₹${financeStats.totalMediclaim.toLocaleString()}`} color="cyan" />
+        </Link>
       </div>
 
       {/* Charts */}
@@ -223,6 +233,126 @@ const AdminDashboard = () => {
             <div className="h-64 flex items-center justify-center text-surface-500">No payroll data available</div>
           )}
         </div>
+      </div>
+
+      {/* ── Pending Mediclaim & PF Withdrawal Requests ────────────────── */}
+      <div className="glass-card p-6 md:col-span-2 mt-6 border-l-4 border-teal-500">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+          <div className="flex items-center gap-2.5">
+            <span className="p-2 rounded-xl bg-teal-500/10 text-teal-400">
+              <HiOutlineShieldCheck className="w-6 h-6" />
+            </span>
+            <div>
+              <h2 className="text-lg font-bold text-surface-100 flex items-center gap-2">
+                Pending Mediclaim &amp; PF Withdrawal Requests
+                {pendingWithdrawals.length > 0 && (
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono font-bold">
+                    {pendingWithdrawals.length} New
+                  </span>
+                )}
+              </h2>
+              <p className="text-xs text-surface-400">Employee medical emergency claims and provident fund withdrawals</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Link
+              to="/admin/mediclaim-requests"
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 border border-teal-500/30 transition-colors flex items-center gap-1"
+            >
+              Mediclaim Portal <HiOutlineArrowRight className="w-3.5 h-3.5" />
+            </Link>
+            <Link
+              to="/admin/pf-withdrawals"
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition-colors flex items-center gap-1"
+            >
+              PF Portal <HiOutlineArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </div>
+
+        {pendingWithdrawals.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-surface-400 bg-surface-800/30 rounded-xl border border-surface-700/40">
+            <span className="text-3xl mb-2">🎉</span>
+            <p className="text-sm font-medium text-surface-300">No pending Mediclaim or PF requests.</p>
+            <p className="text-xs text-surface-500 mt-0.5">All employee benefit disbursement claims are fully settled.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {pendingWithdrawals.slice(0, 5).map((req) => {
+              const isMediclaim = req.type === 'Mediclaim';
+              const emp = req.employeeId || {};
+              const linkUrl = isMediclaim ? '/admin/mediclaim-requests' : '/admin/pf-withdrawals';
+
+              return (
+                <div
+                  key={req._id}
+                  className="p-4 rounded-xl bg-surface-800/40 border border-surface-700/50 hover:border-surface-600 transition-all flex flex-col md:flex-row gap-4 items-start md:items-center justify-between"
+                >
+                  <div className="flex items-start gap-3 flex-1">
+                    <div
+                      className={`p-2.5 rounded-xl flex-shrink-0 ${
+                        isMediclaim
+                          ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20'
+                          : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                      }`}
+                    >
+                      {isMediclaim ? (
+                        <HiOutlineShieldCheck className="w-5 h-5" />
+                      ) : (
+                        <HiOutlineCurrencyRupee className="w-5 h-5" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <span className="font-semibold text-surface-100">{emp.name || 'Employee'}</span>
+                        <span className="text-xs font-mono px-2 py-0.5 rounded bg-surface-800 text-surface-400 border border-surface-700">
+                          {emp.employeeCode || 'N/A'}
+                        </span>
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                            isMediclaim
+                              ? 'bg-teal-500/10 text-teal-300 border border-teal-500/20'
+                              : 'bg-amber-500/10 text-amber-300 border border-amber-500/20'
+                          }`}
+                        >
+                          {req.type}
+                        </span>
+                        <span className="text-xs font-mono text-cyan-400">
+                          ID: {isMediclaim ? (req.mediclaimId || emp.mediclaimId) : (req.pfId || emp.pfId)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-surface-300">
+                        <strong className="text-emerald-400 font-mono font-bold text-sm">
+                          ₹{req.amount?.toLocaleString('en-IN')}
+                        </strong>{' '}
+                        • Reason: <span className="text-surface-200">{req.reason || req.diseaseName || 'Emergency'}</span>
+                        {req.purpose && <span className="text-surface-400 ml-1">[{req.purpose}]</span>}
+                      </p>
+                    </div>
+                  </div>
+
+                  <Link
+                    to={linkUrl}
+                    className="flex-shrink-0 px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5"
+                  >
+                    Review &amp; Settle <HiOutlineArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              );
+            })}
+            {pendingWithdrawals.length > 5 && (
+              <div className="text-center pt-2">
+                <Link
+                  to="/admin/withdrawals"
+                  className="text-xs text-teal-400 hover:text-teal-300 font-semibold underline"
+                >
+                  View all {pendingWithdrawals.length} pending claims &rarr;
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Pending Early Check-outs ───────────────────────────────────── */}

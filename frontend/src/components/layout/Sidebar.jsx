@@ -12,6 +12,7 @@ import {
   HiOutlineClipboardCheck,
   HiOutlineUser,
   HiOutlineVideoCamera,
+  HiOutlineShieldCheck,
   HiOutlineX,
 } from 'react-icons/hi';
 
@@ -48,7 +49,8 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: '/admin/performance',  icon: <HiOutlineChartBar />,       label: 'Performance Review' },
     { to: '/admin/payroll',      icon: <HiOutlineDocumentText />,   label: 'Generate Payroll' },
     { to: '/admin/set-salary',   icon: <HiOutlineCurrencyRupee />, label: 'Set Salary' },
-    { to: '/admin/withdrawals',  icon: <HiOutlineCurrencyRupee />, label: 'Withdrawals' },
+    { to: '/admin/mediclaim-requests', icon: <HiOutlineShieldCheck />,  label: 'Mediclaim Requests' },
+    { to: '/admin/pf-withdrawals',     icon: <HiOutlineCurrencyRupee />, label: 'PF Withdrawals' },
     { to: '/admin/profile',      icon: <HiOutlineUser />,           label: 'My Profile' },
   ];
 
@@ -70,7 +72,8 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: '/admin/performance',  icon: <HiOutlineChartBar />,       label: 'Performance Review' },
     { to: '/admin/payroll',      icon: <HiOutlineDocumentText />,   label: 'View Payroll' },
     { to: '/admin/set-salary',   icon: <HiOutlineCurrencyRupee />, label: 'Set Salary' },
-    { to: '/admin/withdrawals',  icon: <HiOutlineCurrencyRupee />, label: 'Withdrawals' },
+    { to: '/admin/mediclaim-requests', icon: <HiOutlineShieldCheck />,  label: 'Mediclaim Requests' },
+    { to: '/admin/pf-withdrawals',     icon: <HiOutlineCurrencyRupee />, label: 'PF Withdrawals' },
     { to: '/admin/profile',      icon: <HiOutlineUser />,           label: 'My Profile' },
   ];
 

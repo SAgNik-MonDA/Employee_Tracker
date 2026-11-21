@@ -126,7 +126,9 @@ function App() {
         <Route path="performance" element={<PerformanceReview />} />
         <Route path="payroll"      element={<GeneratePayroll />} />
         <Route path="set-salary"   element={<SetSalary />} />
-        <Route path="withdrawals"  element={<Withdrawals />} />
+        <Route path="withdrawals"  element={<Withdrawals defaultType="All" />} />
+        <Route path="mediclaim-requests" element={<Withdrawals defaultType="Mediclaim" />} />
+        <Route path="pf-withdrawals" element={<Withdrawals defaultType="PF" />} />
         <Route path="profile"      element={<ProfilePage />} />
         <Route index element={<Navigate to="dashboard" replace />} />
       </Route>
