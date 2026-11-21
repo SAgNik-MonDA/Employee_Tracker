@@ -104,7 +104,7 @@ const GeneratePayroll = () => {
       });
 
       // 1. Main Title Banner (Row 1)
-      worksheet.mergeCells('A1:Q1');
+      worksheet.mergeCells('A1:S1');
       const titleCell = worksheet.getCell('A1');
       titleCell.value = `MONTHLY SALARY PAYROLL REPORT — ${monthLabel.toUpperCase()}`;
       titleCell.font = { name: 'Segoe UI', size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
@@ -117,7 +117,7 @@ const GeneratePayroll = () => {
       worksheet.getRow(1).height = 42;
 
       // 2. Subtitle Meta Row (Row 2)
-      worksheet.mergeCells('A2:Q2');
+      worksheet.mergeCells('A2:S2');
       const metaCell = worksheet.getCell('A2');
       metaCell.value = `Generated Date: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}  |  Total Employees: ${recordsToExport.length}  |  Confidential & Proprietary`;
       metaCell.font = { name: 'Segoe UI', size: 10, italic: true, color: { argb: 'FFE2E8F0' } };
@@ -136,6 +136,8 @@ const GeneratePayroll = () => {
       const headers = [
         'Employee Name',
         'Employee Code',
+        'Mediclaim ID',
+        'PF ID',
         'Role',
         'Designation',
         'Month of Salary',
@@ -165,7 +167,7 @@ const GeneratePayroll = () => {
           fgColor: { argb: 'FF4338CA' }
         };
         cell.alignment = {
-          horizontal: (colNumber >= 6 && colNumber <= 13 && colNumber !== 7) ? 'right' : 'center',
+          horizontal: (colNumber >= 8 && colNumber <= 15 && colNumber !== 9) ? 'right' : 'center',
           vertical: 'middle',
           wrapText: true
         };
@@ -210,6 +212,8 @@ const GeneratePayroll = () => {
         row.values = [
           emp.name || '—',
           emp.employeeCode || '—',
+          emp.mediclaimId || 'Not Assigned',
+          emp.pfId || 'Not Assigned',
           emp.role || '—',
           emp.designation || '—',
           monthLabel,
@@ -244,21 +248,21 @@ const GeneratePayroll = () => {
             right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
           };
 
-          if (colNumber >= 6 && colNumber <= 13 && colNumber !== 7) {
+          if (colNumber >= 8 && colNumber <= 15 && colNumber !== 9) {
             cell.alignment = { horizontal: 'right', vertical: 'middle' };
             cell.numFmt = '₹#,##0';
           } else {
-            cell.alignment = { horizontal: colNumber === 7 ? 'center' : 'left', vertical: 'middle' };
+            cell.alignment = { horizontal: colNumber === 9 ? 'center' : 'left', vertical: 'middle' };
           }
 
           // Total Deductions Highlight
-          if (colNumber === 12) {
+          if (colNumber === 14) {
              cell.font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: 'FF991B1B' } };
              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
           }
 
           // Net Salary highlight
-          if (colNumber === 13) {
+          if (colNumber === 15) {
             cell.font = { name: 'Segoe UI', size: 10.5, bold: true, color: { argb: 'FF065F46' } };
             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } };
           }
@@ -270,27 +274,27 @@ const GeneratePayroll = () => {
       const summaryRow = worksheet.getRow(summaryRowIndex);
       summaryRow.height = 28;
 
-      worksheet.mergeCells(`A${summaryRowIndex}:E${summaryRowIndex}`);
+      worksheet.mergeCells(`A${summaryRowIndex}:G${summaryRowIndex}`);
       const sumLabelCell = worksheet.getCell(`A${summaryRowIndex}`);
       sumLabelCell.value = 'TOTAL PAYROLL SUMMARY';
       sumLabelCell.font = { name: 'Segoe UI', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
       sumLabelCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } };
       sumLabelCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
-      summaryRow.getCell(6).value = totalBase;
-      summaryRow.getCell(8).value = totalBonus;
-      summaryRow.getCell(9).value = totalMedi;
-      summaryRow.getCell(10).value = totalPF;
-      summaryRow.getCell(11).value = totalLeave;
-      summaryRow.getCell(12).value = totalDed;
-      summaryRow.getCell(13).value = totalNet;
+      summaryRow.getCell(8).value = totalBase;
+      summaryRow.getCell(10).value = totalBonus;
+      summaryRow.getCell(11).value = totalMedi;
+      summaryRow.getCell(12).value = totalPF;
+      summaryRow.getCell(13).value = totalLeave;
+      summaryRow.getCell(14).value = totalDed;
+      summaryRow.getCell(15).value = totalNet;
 
-      for (let c = 6; c <= 17; c++) {
+      for (let c = 8; c <= 19; c++) {
         const cell = summaryRow.getCell(c);
         cell.font = { name: 'Segoe UI', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } };
-        cell.alignment = { horizontal: (c >= 6 && c <= 13 && c !== 7) ? 'right' : 'center', vertical: 'middle' };
-        if (c >= 6 && c <= 13 && c !== 7) cell.numFmt = '₹#,##0';
+        cell.alignment = { horizontal: (c >= 8 && c <= 15 && c !== 9) ? 'right' : 'center', vertical: 'middle' };
+        if (c >= 8 && c <= 15 && c !== 9) cell.numFmt = '₹#,##0';
         cell.border = {
           top: { style: 'medium', color: { argb: 'FF475569' } },
           bottom: { style: 'double', color: { argb: 'FFFFFFFF' } }
@@ -345,12 +349,16 @@ const GeneratePayroll = () => {
     doc.setTextColor(30, 41, 59);
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text('Employee Details', 14, 55);
+    doc.text('Employee Details', 14, 52);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.text(`Name: ${emp.name || '-'}`, 14, 65);
+    doc.setFontSize(9.5);
+    doc.text(`Name: ${emp.name || '-'}`, 14, 60);
+    doc.text(`Employee Code: ${emp.employeeCode || '-'}`, 14, 66);
     doc.text(`Email: ${emp.email || '-'}`, 14, 72);
-    doc.text(`Department: ${emp.department || '-'}`, 14, 79);
+    doc.text(`Department: ${emp.department || '-'}`, 14, 78);
+    doc.text(`Designation: ${emp.designation || '-'}`, 14, 84);
+    doc.text(`Mediclaim ID: ${emp.mediclaimId || 'Not Assigned'}`, 14, 90);
+    doc.text(`PF ID: ${emp.pfId || 'Not Assigned'}`, 14, 96);
 
     const tableBody = [
       ['Base Salary', `₹${(p.baseSalary || 0).toLocaleString()}`],
@@ -371,7 +379,7 @@ const GeneratePayroll = () => {
     );
 
     doc.autoTable({
-      startY: 95,
+      startY: 104,
       head: [['Component', 'Amount (₹)']],
       body: tableBody,
       theme: 'grid',

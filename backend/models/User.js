@@ -181,8 +181,14 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Hash password before saving (only when modified)
+// Hash password before saving (only when modified) & ensure PF and Mediclaim IDs exist
 userSchema.pre('save', async function (next) {
+  if (!this.pfId) {
+    this.pfId = `PF-${new Date().getFullYear()}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
+  }
+  if (!this.mediclaimId) {
+    this.mediclaimId = `MED-${new Date().getFullYear()}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
+  }
   if (!this.isModified('password')) return next();
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);

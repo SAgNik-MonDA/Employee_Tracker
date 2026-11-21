@@ -20,3 +20,9 @@ export const reviewWithdrawal = async (id, data) => {
 export const markWithdrawalAsPaid = async (id) => {
   return API.post(`/withdrawals/${id}/pay`);
 };
+
+export const downloadSettlementPayslip = async (id) => {
+  return API.get(`/withdrawals/${id}/payslip`, {
+    responseType: 'blob',
+  });
+};

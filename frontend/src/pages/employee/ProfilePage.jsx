@@ -7,6 +7,7 @@ import BankDetailsForm from '../../components/common/BankDetailsForm';
 import BirthdayBanner from '../../components/common/BirthdayBanner';
 import FaceRegistrationModal from '../../components/common/FaceRegistrationModal';
 import WithdrawalRequestsSection from '../../components/employee/WithdrawalRequestsSection';
+import MediclaimSection from '../../components/employee/MediclaimSection';
 
 import toast from 'react-hot-toast';
 
@@ -338,14 +339,19 @@ const ProfilePage = () => {
           <InfoRow label="Permanent Address" value={profile?.permanentAddress} />
           <InfoRow label="Date of Joining" value={profile?.joiningDate ? new Date(profile.joiningDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : null} />
 
+          {/* Corporate Benefit IDs */}
+          <div className="pt-4 mt-2 border-t border-surface-600/40">
+            <h3 className="text-sm font-semibold text-surface-400 uppercase tracking-wider mb-3">Corporate Benefit IDs</h3>
+          </div>
+          <InfoRow label="Mediclaim ID" value={profile?.mediclaimId || 'Not Generated'} mono />
+          <InfoRow label="PF ID"        value={profile?.pfId || 'Not Generated'} mono />
+
           {/* Financial Details */}
           {profile?.basicSalary > 0 && (
             <>
               <div className="pt-4 mt-2 border-t border-surface-600/40">
-                <h3 className="text-sm font-semibold text-surface-400 uppercase tracking-wider mb-3">Financial Details</h3>
+                <h3 className="text-sm font-semibold text-surface-400 uppercase tracking-wider mb-3">Salary &amp; Fund Balances</h3>
               </div>
-              <InfoRow label="PF ID"               value={profile.pfId || 'Not Generated'} mono />
-              <InfoRow label="Mediclaim ID"        value={profile.mediclaimId || 'Not Generated'} mono />
               <InfoRow label="Basic Salary"        value={`₹${(profile.basicSalary || 0).toLocaleString()}`} />
               <InfoRow label="PF Deduction"        value={`₹${(profile.pfAmount || 0).toLocaleString()}`} />
               <InfoRow label="Mediclaim Deduction"  value={`₹${(profile.mediclaimAmount || 0).toLocaleString()}`} />
@@ -448,6 +454,8 @@ const ProfilePage = () => {
             Your personal QR code can be used for instant login without entering credentials.
           </p>
         </div>
+
+        <MediclaimSection profile={profile} fetchProfile={fetchProfile} />
 
         <WithdrawalRequestsSection profile={profile} fetchProfile={fetchProfile} />
 

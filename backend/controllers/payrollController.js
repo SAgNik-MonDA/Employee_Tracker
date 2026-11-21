@@ -177,7 +177,9 @@ const generatePayroll = async (req, res) => {
 // @access  Private
 const getMyPayslips = async (req, res) => {
   try {
-    const payslips = await Payroll.find({ employeeId: req.user._id }).sort({ createdAt: -1 });
+    const payslips = await Payroll.find({ employeeId: req.user._id })
+      .populate('employeeId', 'name email department designation employeeCode role pfId mediclaimId bankDetails')
+      .sort({ createdAt: -1 });
     res.json(payslips);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -194,7 +196,7 @@ const getAllPayroll = async (req, res) => {
     if (monthYear) filter.monthYear = monthYear;
 
     const payrolls = await Payroll.find(filter)
-      .populate('employeeId', 'name email department designation employeeCode role bankDetails basicSalary pfAmount mediclaimAmount totalPfAccumulated totalMediclaimAccumulated phone')
+      .populate('employeeId', 'name email department designation employeeCode role pfId mediclaimId bankDetails basicSalary pfAmount mediclaimAmount totalPfAccumulated totalMediclaimAccumulated phone')
       .sort({ createdAt: -1 });
 
     // Return data as-is from database — no dummy enrichment

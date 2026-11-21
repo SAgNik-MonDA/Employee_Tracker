@@ -742,14 +742,21 @@ const ManageEmployees = () => {
                 </div>
               </div>
 
+              {/* Corporate Benefit IDs */}
+              <div>
+                <h3 className="text-sm font-semibold text-surface-400 uppercase tracking-wider mb-3">Corporate Benefit IDs</h3>
+                <div className="mb-4">
+                  <InfoRow label="Mediclaim ID" value={selectedEmp.mediclaimId || 'Not Generated'} mono />
+                  <InfoRow label="PF ID"        value={selectedEmp.pfId || 'Not Generated'} mono />
+                </div>
+              </div>
+
               {/* Financial Details */}
               {selectedEmp.basicSalary > 0 && (
                 <div>
                   <h3 className="text-sm font-semibold text-surface-400 uppercase tracking-wider mb-3">Financial Details</h3>
                   <div className="mb-4">
                     <InfoRow label="Basic Salary"       value={`₹${(selectedEmp.basicSalary || 0).toLocaleString()}`} />
-                    <InfoRow label="PF ID"              value={selectedEmp.pfId || 'Not Generated'} mono />
-                    <InfoRow label="Mediclaim ID"       value={selectedEmp.mediclaimId || 'Not Generated'} mono />
                     <InfoRow label="PF Deduction"       value={`₹${(selectedEmp.pfAmount || 0).toLocaleString()}`} />
                     <InfoRow label="Mediclaim Deduction" value={`₹${(selectedEmp.mediclaimAmount || 0).toLocaleString()}`} />
                     <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 py-3 border-b border-surface-700/40 last:border-0">

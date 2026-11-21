@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
-import { HiOutlineCurrencyRupee, HiOutlineDocumentText } from 'react-icons/hi';
+import { HiOutlineCurrencyRupee, HiOutlineDocumentText, HiOutlineClock, HiOutlineShieldCheck } from 'react-icons/hi';
 import { submitWithdrawal, getMyWithdrawals } from '../../api/withdrawalAPI';
 
 const WithdrawalRequestsSection = ({ profile, fetchProfile }) => {
@@ -14,9 +14,6 @@ const WithdrawalRequestsSection = ({ profile, fetchProfile }) => {
     type: 'PF',
     amount: '',
     reason: '',
-    diseaseName: '',
-    purpose: 'Medical Emergencies',
-    attachment: ''
   });
 
   useEffect(() => {
@@ -26,7 +23,9 @@ const WithdrawalRequestsSection = ({ profile, fetchProfile }) => {
   const fetchRequests = async () => {
     try {
       const { data } = await getMyWithdrawals();
-      setRequests(data);
+      // Filter for PF requests in this section
+      const pfOnly = data.filter((r) => r.type === 'PF');
+      setRequests(pfOnly);
     } catch (error) {
       console.error('Failed to load withdrawals', error);
     } finally {
@@ -34,23 +33,13 @@ const WithdrawalRequestsSection = ({ profile, fetchProfile }) => {
     }
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setForm({ ...form, attachment: reader.result });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   // Yearly limit calculation (PF Max 2 per year)
   const currentYear = new Date().getFullYear();
   const pfRequestsThisYear = useMemo(() => {
-    return requests.filter(req => 
-      req.type === 'PF' && 
-      new Date(req.createdAt).getFullYear() === currentYear
+    return requests.filter(
+      (req) =>
+        req.type === 'PF' &&
+        new Date(req.createdAt).getFullYear() === currentYear
     ).length;
   }, [requests, currentYear]);
 
@@ -58,29 +47,28 @@ const WithdrawalRequestsSection = ({ profile, fetchProfile }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.amount || isNaN(form.amount) || Number(form.amount) <= 0) {
+    const numAmount = Number(form.amount);
+    if (!form.amount || isNaN(numAmount) || numAmount <= 0) {
       return toast.error('Enter a valid amount');
     }
-    
-    // Balance check
-    if (form.type === 'PF' && Number(form.amount) > (profile?.totalPfAccumulated || 0)) {
-      return toast.error('Amount exceeds available PF balance');
+
+    const availablePf = profile?.totalPfAccumulated || 0;
+    if (numAmount > availablePf) {
+      return toast.error(`Amount exceeds available PF balance (₹${availablePf.toLocaleString()})`);
     }
-    if (form.type === 'Mediclaim' && Number(form.amount) > (profile?.totalMediclaimAccumulated || 0)) {
-      return toast.error('Amount exceeds available Mediclaim balance');
+
+    if (pfLimitReached) {
+      return toast.error(`Maximum 2 PF withdrawal requests allowed per calendar year (${currentYear}).`);
     }
 
     setSubmitting(true);
     try {
-      await submitWithdrawal({ ...form, amount: Number(form.amount) });
-      toast.success(`${form.type} withdrawal request submitted`);
+      await submitWithdrawal({ type: 'PF', amount: numAmount, reason: form.reason });
+      toast.success('PF withdrawal request submitted for review');
       setForm({
         type: 'PF',
         amount: '',
         reason: '',
-        diseaseName: '',
-        purpose: 'Medical Emergencies',
-        attachment: ''
       });
       fetchRequests();
       if (fetchProfile) fetchProfile();
@@ -93,7 +81,7 @@ const WithdrawalRequestsSection = ({ profile, fetchProfile }) => {
 
   // History filtering & Stats
   const filteredRequests = useMemo(() => {
-    return requests.filter(req => {
+    return requests.filter((req) => {
       const reqDate = new Date(req.createdAt);
       const matchYear = filterYear === 'All' || reqDate.getFullYear().toString() === filterYear;
       const matchMonth = filterMonth === 'All' || (reqDate.getMonth() + 1).toString() === filterMonth;
@@ -102,213 +90,167 @@ const WithdrawalRequestsSection = ({ profile, fetchProfile }) => {
   }, [requests, filterMonth, filterYear]);
 
   const stats = useMemo(() => {
-    return filteredRequests.reduce((acc, req) => {
-      acc.totalRequested += req.amount;
-      acc.count += 1;
-      if (req.status === 'Approved' || req.status === 'Paid') acc.approved += 1;
-      if (req.status === 'Rejected') acc.rejected += 1;
-      return acc;
-    }, { totalRequested: 0, count: 0, approved: 0, rejected: 0 });
+    return filteredRequests.reduce(
+      (acc, req) => {
+        acc.totalRequested += req.amount;
+        acc.count += 1;
+        if (req.status === 'Approved' || req.status === 'Paid') acc.approved += 1;
+        if (req.status === 'Rejected') acc.rejected += 1;
+        return acc;
+      },
+      { totalRequested: 0, count: 0, approved: 0, rejected: 0 }
+    );
   }, [filteredRequests]);
 
+  const availablePf = profile?.totalPfAccumulated || 0;
 
-  if (!profile || (!profile.totalPfAccumulated && !profile.totalMediclaimAccumulated && requests.length === 0)) {
-    return null; 
+  if (!profile || (!profile.totalPfAccumulated && requests.length === 0)) {
+    return null;
   }
 
   return (
     <div className="mt-8 mb-6">
       <div className="flex items-center justify-between mb-4 border-b border-surface-700/40 pb-2">
-        <h3 className="text-sm font-semibold text-surface-400 uppercase tracking-wider">Fund Withdrawals</h3>
+        <h3 className="text-sm font-semibold text-surface-400 uppercase tracking-wider flex items-center gap-2">
+          <HiOutlineCurrencyRupee className="w-5 h-5 text-violet-400" />
+          Provident Fund (PF) Withdrawal Portal
+        </h3>
+        <span className="text-xs font-mono px-2 py-0.5 rounded bg-surface-800 text-surface-300 border border-surface-700">
+          PF ID: {profile?.pfId || 'Not Generated'}
+        </span>
       </div>
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Request Form */}
         <div className="glass-card p-5">
           <h4 className="font-bold text-surface-100 mb-4 flex items-center justify-between">
             <span className="flex items-center gap-2">
-              <HiOutlineCurrencyRupee className="w-5 h-5 text-emerald-400" />
-              New Request
+              <HiOutlineCurrencyRupee className="w-5 h-5 text-violet-400" />
+              New PF Withdrawal Request
             </span>
-            <span className="text-xs font-mono font-normal px-2 py-1 bg-surface-800 rounded border border-surface-700">
-              ID: {form.type === 'PF' ? (profile?.pfId || 'Not Generated') : (profile?.mediclaimId || 'Not Generated')}
+            <span className="text-xs font-mono text-surface-400">
+              {pfRequestsThisYear}/2 Used ({currentYear})
             </span>
           </h4>
-          
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="flex gap-4 mb-4">
-              <label className="flex items-center gap-2 text-sm text-surface-300 cursor-pointer">
-                <input type="radio" name="wType" checked={form.type === 'PF'} onChange={() => setForm({ ...form, type: 'PF' })} className="text-primary-500 focus:ring-primary-500" /> PF
-              </label>
-              <label className="flex items-center gap-2 text-sm text-surface-300 cursor-pointer">
-                <input type="radio" name="wType" checked={form.type === 'Mediclaim'} onChange={() => setForm({ ...form, type: 'Mediclaim' })} className="text-primary-500 focus:ring-primary-500" /> Mediclaim
-              </label>
-            </div>
 
-            {form.type === 'PF' && pfLimitReached && (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {pfLimitReached && (
               <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-medium">
-                ⚠️ You have reached the maximum limit of 2 PF withdrawals for the current year ({currentYear}). The form is locked.
+                ⚠️ You have reached the maximum limit of 2 PF withdrawals for the current year ({currentYear}).
               </div>
             )}
 
             <div>
               <label className="block text-xs font-medium text-surface-400 mb-1">
-                Amount (Available: ₹{form.type === 'PF' ? (profile?.totalPfAccumulated || 0).toLocaleString() : (profile?.totalMediclaimAccumulated || 0).toLocaleString()})
+                Amount (Available PF: ₹{availablePf.toLocaleString()})
               </label>
               <input
                 type="number"
                 required
-                max={form.type === 'PF' ? profile?.totalPfAccumulated : profile?.totalMediclaimAccumulated}
+                min="1"
+                max={availablePf}
                 value={form.amount}
-                onChange={e => setForm({ ...form, amount: e.target.value })}
+                onChange={(e) => setForm({ ...form, amount: e.target.value })}
                 className="input-field disabled:opacity-50 disabled:cursor-not-allowed"
-                placeholder="Enter amount"
-                disabled={form.type === 'PF' && pfLimitReached}
+                placeholder="Enter amount in INR"
+                disabled={pfLimitReached}
               />
             </div>
 
-            {form.type === 'PF' ? (
-              <div>
-                <label className="block text-xs font-medium text-surface-400 mb-1">Reason</label>
-                <textarea
-                  required
-                  rows="2"
-                  value={form.reason}
-                  onChange={e => setForm({ ...form, reason: e.target.value })}
-                  className="input-field resize-none disabled:opacity-50 disabled:cursor-not-allowed"
-                  placeholder="Why are you withdrawing PF?"
-                  disabled={form.type === 'PF' && pfLimitReached}
-                />
-              </div>
-            ) : (
-              <>
-                <div>
-                  <label className="block text-xs font-medium text-surface-400 mb-1">Purpose</label>
-                  <select
-                    required
-                    value={form.purpose}
-                    onChange={e => setForm({ ...form, purpose: e.target.value })}
-                    className="input-field"
-                  >
-                    <option value="Medical Emergencies">Medical Emergencies</option>
-                    <option value="Cashless Treatment">Cashless Treatment</option>
-                    <option value="Tax Saving / Tax Benefits">Tax Saving / Tax Benefits</option>
-                    <option value="Preventive Health Check-up">Preventive Health Check-up</option>
-                    <option value="Maternity and Newborn Care">Maternity and Newborn Care</option>
-                    <option value="Critical Illness Cover">Critical Illness Cover</option>
-                    <option value="Family Protection">Family Protection</option>
-                    <option value="Financial Security / Wealth Protection">Financial Security / Wealth Protection</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-surface-400 mb-1">Disease Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={form.diseaseName}
-                    onChange={e => setForm({ ...form, diseaseName: e.target.value })}
-                    className="input-field"
-                    placeholder="E.g., Dengue, Surgery"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-surface-400 mb-1">Bill / Prescription (Image/PDF)</label>
-                  <input
-                    type="file"
-                    required
-                    accept="image/*,.pdf"
-                    onChange={handleFileChange}
-                    className="block w-full text-sm text-surface-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-500/10 file:text-primary-400 hover:file:bg-primary-500/20"
-                  />
-                </div>
-              </>
-            )}
+            <div>
+              <label className="block text-xs font-medium text-surface-400 mb-1">Reason for Withdrawal</label>
+              <textarea
+                required
+                rows="3"
+                value={form.reason}
+                onChange={(e) => setForm({ ...form, reason: e.target.value })}
+                className="input-field disabled:opacity-50 disabled:cursor-not-allowed"
+                placeholder="State the reason (e.g. Higher education, Home construction, Marriage)"
+                disabled={pfLimitReached}
+              />
+            </div>
 
             <button
               type="submit"
-              disabled={submitting || (form.type === 'PF' && (!profile?.totalPfAccumulated || pfLimitReached)) || (form.type === 'Mediclaim' && !profile?.totalMediclaimAccumulated)}
+              disabled={submitting || pfLimitReached}
               className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {submitting ? 'Submitting...' : 'Submit Request'}
+              {submitting ? 'Submitting...' : 'Submit PF Request'}
             </button>
           </form>
         </div>
 
-        {/* History Tracking Panel */}
-        <div className="glass-card p-5 max-h-[600px] flex flex-col">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
-            <h4 className="font-bold text-surface-100 flex items-center gap-2">
-              <HiOutlineDocumentText className="w-5 h-5 text-primary-400" />
-              History & Tracking
-            </h4>
-            <div className="flex gap-2">
-              <select 
-                value={filterMonth} 
-                onChange={e => setFilterMonth(e.target.value)} 
-                className="input-field py-1 px-2 text-xs h-auto min-h-0 bg-surface-800"
-              >
-                <option value="All">All Months</option>
-                {Array.from({length: 12}, (_, i) => i + 1).map(m => (
-                  <option key={m} value={m}>{new Date(2000, m - 1).toLocaleString('default', { month: 'short' })}</option>
-                ))}
-              </select>
-              <select 
-                value={filterYear} 
-                onChange={e => setFilterYear(e.target.value)} 
-                className="input-field py-1 px-2 text-xs h-auto min-h-0 bg-surface-800"
-              >
-                <option value="All">All Years</option>
-                {[currentYear, currentYear - 1, currentYear - 2].map(y => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </select>
+        {/* PF Withdrawal History */}
+        <div className="glass-card p-5 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="font-bold text-surface-100 flex items-center gap-2">
+                <HiOutlineClock className="w-4 h-4 text-violet-400" />
+                PF Withdrawal History
+              </h4>
+              <div className="flex gap-2">
+                <select
+                  value={filterMonth}
+                  onChange={(e) => setFilterMonth(e.target.value)}
+                  className="bg-surface-800 border border-surface-700 rounded-lg px-2 py-1 text-xs text-surface-300"
+                >
+                  <option value="All">All Months</option>
+                  {Array.from({ length: 12 }, (_, i) => (
+                    <option key={i + 1} value={(i + 1).toString()}>
+                      {new Date(0, i).toLocaleString('en', { month: 'short' })}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={filterYear}
+                  onChange={(e) => setFilterYear(e.target.value)}
+                  className="bg-surface-800 border border-surface-700 rounded-lg px-2 py-1 text-xs text-surface-300"
+                >
+                  <option value="All">All Years</option>
+                  <option value="2026">2026</option>
+                  <option value="2025">2025</option>
+                </select>
+              </div>
             </div>
-          </div>
 
-          {/* Stats Summary */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4 shrink-0">
-            <div className="bg-surface-800/50 rounded p-2 text-center border border-surface-700/50">
-              <p className="text-[10px] text-surface-400 uppercase">Requests</p>
-              <p className="text-sm font-bold text-surface-100">{stats.count}</p>
-            </div>
-            <div className="bg-surface-800/50 rounded p-2 text-center border border-surface-700/50">
-              <p className="text-[10px] text-surface-400 uppercase">Total ₹</p>
-              <p className="text-sm font-bold text-primary-400">{stats.totalRequested.toLocaleString()}</p>
-            </div>
-            <div className="bg-surface-800/50 rounded p-2 text-center border border-surface-700/50">
-              <p className="text-[10px] text-surface-400 uppercase">Approved</p>
-              <p className="text-sm font-bold text-emerald-400">{stats.approved}</p>
-            </div>
-            <div className="bg-surface-800/50 rounded p-2 text-center border border-surface-700/50">
-              <p className="text-[10px] text-surface-400 uppercase">Rejected</p>
-              <p className="text-sm font-bold text-rose-400">{stats.rejected}</p>
-            </div>
-          </div>
-          
-          <div className="overflow-y-auto flex-1 space-y-3 pr-1">
             {loading ? (
-              <p className="text-sm text-surface-400 text-center py-4">Loading history...</p>
+              <p className="text-sm text-surface-500">Loading history...</p>
             ) : filteredRequests.length === 0 ? (
-              <p className="text-sm text-surface-500 text-center py-4">No matching requests found.</p>
+              <p className="text-sm text-surface-500 py-6 text-center">No PF requests found for the selected period.</p>
             ) : (
-              filteredRequests.map(req => (
-                <div key={req._id} className="p-3 rounded-lg bg-surface-800/50 border border-surface-700/50">
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="text-sm font-bold text-surface-200">{req.type} Withdrawal</span>
-                    <span className={`text-[10px] px-2 py-0.5 rounded border font-semibold ${
-                      req.status === 'Pending' ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
-                      : req.status === 'Approved' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                      : req.status === 'Paid' ? 'bg-primary-500/10 border-primary-500/30 text-primary-400'
-                      : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
-                    }`}>
-                      {req.status}
+              <div className="space-y-3 max-h-56 overflow-y-auto pr-1 custom-scrollbar">
+                {filteredRequests.map((req) => (
+                  <div key={req._id} className="p-3 rounded-lg bg-surface-800/50 border border-surface-700/50 flex justify-between items-center text-sm">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-surface-200">₹{req.amount?.toLocaleString()}</span>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                          {req.claimId || 'PF'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-surface-400 mt-1 line-clamp-1">{req.reason}</p>
+                      <p className="text-[10px] text-surface-500 mt-0.5">{new Date(req.createdAt).toLocaleDateString('en-IN')}</p>
+                    </div>
+                    <span
+                      className={`text-xs px-2 py-1 rounded-md font-medium ${
+                        req.status === 'Approved' || req.status === 'Paid'
+                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                          : req.status === 'Rejected'
+                          ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                          : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                      }`}
+                    >
+                      {req.status === 'Paid' ? 'Approved & Paid' : req.status}
                     </span>
                   </div>
-                  <p className="text-sm text-surface-300">Amount: <strong className="text-emerald-400">₹{req.amount.toLocaleString()}</strong></p>
-                  <p className="text-xs text-surface-500 mt-1">{new Date(req.createdAt).toLocaleDateString()} {new Date(req.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
-                </div>
-              ))
+                ))}
+              </div>
             )}
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-surface-700/40 flex justify-between text-xs text-surface-400">
+            <span>Filtered Total: <strong className="text-surface-200">₹{stats.totalRequested.toLocaleString()}</strong></span>
+            <span>Approved: <strong className="text-emerald-400">{stats.approved}</strong> | Rejected: <strong className="text-rose-400">{stats.rejected}</strong></span>
           </div>
         </div>
       </div>

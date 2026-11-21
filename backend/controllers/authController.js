@@ -314,6 +314,18 @@ const getUserProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: 'User not found' });
+
+    let modified = false;
+    if (!user.pfId) {
+      user.pfId = `PF-${new Date().getFullYear()}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
+      modified = true;
+    }
+    if (!user.mediclaimId) {
+      user.mediclaimId = `MED-${new Date().getFullYear()}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
+      modified = true;
+    }
+    if (modified) await user.save({ validateBeforeSave: false });
+
     res.json(userResponse(user));
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -329,6 +341,18 @@ const getMyFullProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: 'User not found' });
+
+    let modified = false;
+    if (!user.pfId) {
+      user.pfId = `PF-${new Date().getFullYear()}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
+      modified = true;
+    }
+    if (!user.mediclaimId) {
+      user.mediclaimId = `MED-${new Date().getFullYear()}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
+      modified = true;
+    }
+    if (modified) await user.save({ validateBeforeSave: false });
+
     res.json(userResponse(user));
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });

@@ -39,21 +39,22 @@ const MyPayslips = () => {
     doc.text(`Month: ${payslip.monthYear}`, 105, 32, { align: 'center' });
 
     // Employee Details
+    const emp = payslip.employeeId || user || {};
     doc.setTextColor(30, 41, 59);
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text('Employee Details', 14, 55);
+    doc.text('Employee Details', 14, 52);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.text(`Name: ${user?.name || '-'}`, 14, 65);
-    doc.text(`Email: ${user?.email || '-'}`, 14, 72);
-    doc.text(`Department: ${user?.department || '-'}`, 14, 79);
-    doc.text(`Designation: ${user?.designation || '-'}`, 14, 86);
-    doc.text(`PF ID: ${user?.pfId || 'Not Generated'}`, 14, 93);
-    doc.text(`Mediclaim ID: ${user?.mediclaimId || 'Not Generated'}`, 14, 100);
+    doc.setFontSize(9.5);
+    doc.text(`Name: ${emp.name || '-'}`, 14, 60);
+    doc.text(`Employee Code: ${emp.employeeCode || user?.employeeCode || '-'}`, 14, 66);
+    doc.text(`Department: ${emp.department || '-'}`, 14, 72);
+    doc.text(`Designation: ${emp.designation || '-'}`, 14, 78);
+    doc.text(`Mediclaim ID: ${emp.mediclaimId || user?.mediclaimId || 'Not Generated'}`, 14, 84);
+    doc.text(`PF ID: ${emp.pfId || user?.pfId || 'Not Generated'}`, 14, 90);
 
     // Salary Table
-    const startY = 110;
+    const startY = 100;
     const tableBody = [
       ['Base Salary', `₹${(payslip.baseSalary || 0).toLocaleString()}`],
       ['Bonus', `₹${(payslip.bonus || 0).toLocaleString()}`],
