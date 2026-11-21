@@ -113,6 +113,29 @@ const registerUser = async (req, res) => {
       }
     }
 
+    // ── Generate Unique PF ID and Mediclaim ID ─────────────────────────────────
+    let uniquePfId = '';
+    let pfFound = false;
+    while (!pfFound) {
+      const code = `PF-${new Date().getFullYear()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+      const exists = await User.findOne({ pfId: code });
+      if (!exists) {
+        uniquePfId = code;
+        pfFound = true;
+      }
+    }
+
+    let uniqueMediclaimId = '';
+    let medFound = false;
+    while (!medFound) {
+      const code = `MED-${new Date().getFullYear()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+      const exists = await User.findOne({ mediclaimId: code });
+      if (!exists) {
+        uniqueMediclaimId = code;
+        medFound = true;
+      }
+    }
+
     const user = await User.create({
       name,
       email: cleanEmail,
@@ -130,8 +153,8 @@ const registerUser = async (req, res) => {
       currentAddress:   currentAddress   || '',
       bankDetails:      bankDetails      || { bankName: '', branchName: '', ifscCode: '', bankAddress: '', accountHolderName: '', accountNumber: '' },
       joiningDate:      joiningDate      || Date.now(),
-      pfId:             `PF-${new Date().getFullYear()}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`,
-      mediclaimId:      `MED-${new Date().getFullYear()}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`,
+      pfId:             uniquePfId,
+      mediclaimId:      uniqueMediclaimId,
       isFirstLogin:     true,
     });
 
@@ -164,6 +187,14 @@ const registerUser = async (req, res) => {
                 <tr>
                   <td style="color:#64748b;font-size:13px;padding:8px 0;width:150px;">Employee Code (EMP-no)</td>
                   <td style="color:#e2e8f0;font-weight:600;font-size:14px;padding:8px 0;font-family:monospace;letter-spacing:1px;">${finalEmployeeCode}</td>
+                </tr>
+                <tr>
+                  <td style="color:#64748b;font-size:13px;padding:8px 0;">Mediclaim ID</td>
+                  <td style="color:#14b8a6;font-weight:600;font-size:14px;padding:8px 0;font-family:monospace;letter-spacing:1px;">${user.mediclaimId}</td>
+                </tr>
+                <tr>
+                  <td style="color:#64748b;font-size:13px;padding:8px 0;">PF Account ID</td>
+                  <td style="color:#a78bfa;font-weight:600;font-size:14px;padding:8px 0;font-family:monospace;letter-spacing:1px;">${user.pfId}</td>
                 </tr>
                 <tr>
                   <td style="color:#64748b;font-size:13px;padding:8px 0;">Email Address</td>
@@ -317,11 +348,27 @@ const getUserProfile = async (req, res) => {
 
     let modified = false;
     if (!user.pfId) {
-      user.pfId = `PF-${new Date().getFullYear()}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
+      let pfFound = false;
+      while (!pfFound) {
+        const code = `PF-${new Date().getFullYear()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+        const exists = await User.findOne({ pfId: code });
+        if (!exists) {
+          user.pfId = code;
+          pfFound = true;
+        }
+      }
       modified = true;
     }
     if (!user.mediclaimId) {
-      user.mediclaimId = `MED-${new Date().getFullYear()}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
+      let medFound = false;
+      while (!medFound) {
+        const code = `MED-${new Date().getFullYear()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+        const exists = await User.findOne({ mediclaimId: code });
+        if (!exists) {
+          user.mediclaimId = code;
+          medFound = true;
+        }
+      }
       modified = true;
     }
     if (modified) await user.save({ validateBeforeSave: false });
@@ -344,11 +391,27 @@ const getMyFullProfile = async (req, res) => {
 
     let modified = false;
     if (!user.pfId) {
-      user.pfId = `PF-${new Date().getFullYear()}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
+      let pfFound = false;
+      while (!pfFound) {
+        const code = `PF-${new Date().getFullYear()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+        const exists = await User.findOne({ pfId: code });
+        if (!exists) {
+          user.pfId = code;
+          pfFound = true;
+        }
+      }
       modified = true;
     }
     if (!user.mediclaimId) {
-      user.mediclaimId = `MED-${new Date().getFullYear()}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
+      let medFound = false;
+      while (!medFound) {
+        const code = `MED-${new Date().getFullYear()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+        const exists = await User.findOne({ mediclaimId: code });
+        if (!exists) {
+          user.mediclaimId = code;
+          medFound = true;
+        }
+      }
       modified = true;
     }
     if (modified) await user.save({ validateBeforeSave: false });

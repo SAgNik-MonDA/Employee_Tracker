@@ -84,28 +84,30 @@ const generateQrPdf = (user, qrDataUrl, plainPassword) => {
         .text('Your account has been created. Below are your login credentials and your personal QR code for instant login.', 50, infoY + 30, { width: 495 });
 
       // ── Credentials Box ─────────────────────────────────────────────────
-      const boxY = infoY + 75;
+      const boxY = infoY + 70;
       doc
-        .roundedRect(50, boxY, 495, 120, 8)
+        .roundedRect(50, boxY, 495, 155, 8)
         .fillAndStroke('#f1f5f9', '#cbd5e1');
 
       const labelX  = 70;
       const valueX  = 220;
-      let rowY = boxY + 18;
+      let rowY = boxY + 14;
 
       const drawRow = (label, value) => {
-        doc.fontSize(11).font('Helvetica').fillColor('#64748b').text(label, labelX, rowY);
-        doc.fontSize(11).font('Helvetica-Bold').fillColor('#1e293b').text(value, valueX, rowY);
-        rowY += 24;
+        doc.fontSize(10).font('Helvetica').fillColor('#64748b').text(label, labelX, rowY);
+        doc.fontSize(10.5).font('Helvetica-Bold').fillColor('#1e293b').text(value, valueX, rowY);
+        rowY += 22;
       };
 
       drawRow('Employee Code:', user.employeeCode || 'N/A');
-      drawRow('Email:', user.email);
+      drawRow('Mediclaim ID:', user.mediclaimId || 'Not Generated');
+      drawRow('PF Account ID:', user.pfId || 'Not Generated');
+      drawRow('Email Address:', user.email);
       drawRow('Password:', plainPassword);
-      drawRow('Role:', user.role || 'Employee');
+      drawRow('Role / Designation:', `${user.role || 'Employee'}${user.designation ? ` (${user.designation})` : ''}`);
 
       // ── QR Code ─────────────────────────────────────────────────────────
-      const qrY = boxY + 150;
+      const qrY = boxY + 175;
 
       doc
         .fontSize(14)

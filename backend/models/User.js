@@ -181,13 +181,29 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Hash password before saving (only when modified) & ensure PF and Mediclaim IDs exist
+// Hash password before saving (only when modified) & ensure PF and Mediclaim IDs exist and are unique
 userSchema.pre('save', async function (next) {
   if (!this.pfId) {
-    this.pfId = `PF-${new Date().getFullYear()}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
+    let pfFound = false;
+    while (!pfFound) {
+      const code = `PF-${new Date().getFullYear()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+      const exists = await mongoose.model('User').findOne({ pfId: code });
+      if (!exists) {
+        this.pfId = code;
+        pfFound = true;
+      }
+    }
   }
   if (!this.mediclaimId) {
-    this.mediclaimId = `MED-${new Date().getFullYear()}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
+    let medFound = false;
+    while (!medFound) {
+      const code = `MED-${new Date().getFullYear()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+      const exists = await mongoose.model('User').findOne({ mediclaimId: code });
+      if (!exists) {
+        this.mediclaimId = code;
+        medFound = true;
+      }
+    }
   }
   if (!this.isModified('password')) return next();
   const salt = await bcrypt.genSalt(10);
