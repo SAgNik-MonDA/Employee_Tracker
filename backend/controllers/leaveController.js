@@ -114,18 +114,32 @@ const applyLeave = async (req, res) => {
       return res.status(400).json({ message: 'End date must be after or equal to start date' });
     }
 
-    if (leaveType === 'Casual') {
+    if (leaveType === 'Emergency') {
       const today = new Date();
-      // Calculate difference in whole days
+      today.setHours(23, 59, 59, 999);
+      if (start > today) {
+        return res.status(400).json({
+          message: 'Emergency leave can only be applied after taking the leave (chuti neoyar por). Advance application is not permitted for Emergency leave.',
+        });
+      }
+    } else if (leaveType === 'Casual') {
+      const today = new Date();
       today.setHours(0, 0, 0, 0);
       const startDay = new Date(start);
       startDay.setHours(0, 0, 0, 0);
       const diffDays = Math.round((startDay - today) / (1000 * 60 * 60 * 24));
       
-      if (diffDays < 3) {
-        return res.status(400).json({ message: 'Casual leave must be applied at least 3 days in advance.' });
+      // If applying in advance for future dates, require at least 3 days advance notice
+      if (diffDays >= 0 && diffDays < 3) {
+        return res.status(400).json({
+          message: 'Future Casual leave must be applied at least 3 days in advance. For past absences, submit a post-absence leave request subject to attendance penalty rules.',
+        });
       }
     }
+
+    const todayForAbsence = new Date();
+    todayForAbsence.setHours(23, 59, 59, 999);
+    const appliedAfterAbsence = start <= todayForAbsence;
 
     // Leaves must be within the same calendar month
     if (
@@ -268,6 +282,7 @@ const applyLeave = async (req, res) => {
       endDate:   end,
       days,
       reason,
+      appliedAfterAbsence,
     });
 
     // Notify all Admin and HR users about the new leave request

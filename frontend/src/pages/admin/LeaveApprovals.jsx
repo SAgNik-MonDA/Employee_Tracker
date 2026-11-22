@@ -149,7 +149,20 @@ const LeaveApprovals = () => {
                         </div>
                       </div>
                     </td>
-                    <td>{getLeaveTypeBadge(l.leaveType)}</td>
+                    <td>
+                      <div className="flex flex-col gap-1 items-start">
+                        {getLeaveTypeBadge(l.leaveType)}
+                        {l.appliedAfterAbsence && (
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${
+                            l.leaveType === 'Emergency'
+                              ? 'bg-amber-500/10 text-amber-300 border-amber-500/20'
+                              : 'bg-rose-500/10 text-rose-300 border-rose-500/20'
+                          }`}>
+                            {l.leaveType === 'Emergency' ? 'Post-Absence (Exempt)' : 'Post-Absence (Penalty 0.5%/1%)'}
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td>{new Date(l.startDate).toLocaleDateString()}</td>
                     <td>{new Date(l.endDate).toLocaleDateString()}</td>
                     <td className="font-medium text-surface-200">

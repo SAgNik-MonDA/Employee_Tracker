@@ -42,11 +42,12 @@ const AttendanceOverview = () => {
     const counters = {};
     const result = sorted.map((rec) => {
       const empId = rec.employeeId?._id?.toString() || 'unknown';
-      if (!counters[empId]) counters[empId] = { present: 0, absent: 0, offline: 0, leave: 0 };
+      if (!counters[empId]) counters[empId] = { present: 0, absent: 0, offline: 0, leave: 0, inactive: 0 };
       if (rec.attendanceStatus === 'Present' || rec.attendanceStatus === 'Late') counters[empId].present++;
       if (rec.attendanceStatus === 'Absent')  counters[empId].absent++;
       if (rec.checkOut)                       counters[empId].offline++;
       if (rec.leaveOnDate?.active)            counters[empId].leave++;
+      counters[empId].inactive += (rec.inactiveCount || 0);
       return { ...rec, _counters: { ...counters[empId] } };
     });
     return result.sort((a, b) => b.date.localeCompare(a.date));
@@ -192,17 +193,19 @@ const AttendanceOverview = () => {
                 <th>Early Out (m)</th>
                 <th>Status</th>
                 <th>Leave Status</th>
+                <th className="text-center">Daily Inactive</th>
                 <th className="text-center">No. of Present</th>
                 <th className="text-center">No. of Absent</th>
                 <th className="text-center">No. of Offline</th>
                 <th className="text-center">No. of Leave</th>
+                <th className="text-center">Monthly Inactive</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={17} className="text-center py-8 text-surface-500">Loading...</td></tr>
+                <tr><td colSpan={19} className="text-center py-8 text-surface-500">Loading...</td></tr>
               ) : enrichedWithCounters.length === 0 ? (
-                <tr><td colSpan={17} className="text-center py-8 text-surface-500">No attendance records found</td></tr>
+                <tr><td colSpan={19} className="text-center py-8 text-surface-500">No attendance records found</td></tr>
               ) : (
                 enrichedWithCounters.map((a) => (
                   <tr key={a._id}>
@@ -248,11 +251,24 @@ const AttendanceOverview = () => {
                     </td>
                     <td>{getStatusBadge(a.status)}</td>
                     <td>{getLeaveBadge(a.leaveOnDate)}</td>
+                    <td className="text-center font-mono">
+                      {a.inactiveCount > 0 ? (
+                        <span className="px-2 py-0.5 rounded text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                          {a.inactiveCount}
+                        </span>
+                      ) : (
+                        <span className="text-surface-500 text-xs">0</span>
+                      )}
+                    </td>
                     {/* Per-employee running counters */}
                     <CounterCell value={a._counters.present} color="text-emerald-400" />
                     <CounterCell value={a._counters.absent}  color="text-rose-400" />
                     <CounterCell value={a._counters.offline} color="text-surface-300" />
                     <CounterCell value={a._counters.leave}   color="text-violet-400" />
+                    <CounterCell
+                      value={a._counters.inactive}
+                      color={a._counters.inactive >= 155 ? "text-rose-400 font-bold bg-rose-500/10 rounded px-1" : "text-amber-400"}
+                    />
                   </tr>
                 ))
               )}

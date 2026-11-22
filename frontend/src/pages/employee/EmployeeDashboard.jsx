@@ -47,6 +47,39 @@ const EmployeeDashboard = () => {
     return () => socket.off('settings-updated', handleSettingsUpdated);
   }, [socket]);
 
+  // Automatic Inactivity Tracking when employee is checked in & working
+  useEffect(() => {
+    if (!todayStatus?.checkIn || todayStatus?.checkOut) return;
+
+    let idleSeconds = 0;
+    const IDLE_LIMIT = 180; // 3 minutes of no user interaction counts as 1 inactive instance
+
+    const resetIdle = () => {
+      idleSeconds = 0;
+    };
+
+    const interval = setInterval(() => {
+      idleSeconds += 10;
+      if (idleSeconds >= IDLE_LIMIT) {
+        idleSeconds = 0;
+        API.post('/attendance/record-inactive', { count: 1 }).catch(() => {});
+      }
+    }, 10000);
+
+    window.addEventListener('mousemove', resetIdle);
+    window.addEventListener('keydown', resetIdle);
+    window.addEventListener('scroll', resetIdle);
+    window.addEventListener('click', resetIdle);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('mousemove', resetIdle);
+      window.removeEventListener('keydown', resetIdle);
+      window.removeEventListener('scroll', resetIdle);
+      window.removeEventListener('click', resetIdle);
+    };
+  }, [todayStatus?.checkIn, todayStatus?.checkOut]);
+
   const fetchDashboardData = async () => {
     try {
       const now = new Date();
@@ -410,6 +443,31 @@ const EmployeeDashboard = () => {
                   <span className="text-sm font-semibold text-cyan-300">Total Mediclaim Accumulated</span>
                 </div>
                 <span className="text-2xl font-bold text-cyan-200">₹{(user.totalMediclaimAccumulated || 0).toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Salary Deduction & Attendance Policy */}
+          <div className="mt-6 pt-4 border-t border-surface-700/50">
+            <h4 className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <span>📋 Company Salary Deduction &amp; Disciplinary Policy</span>
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+              <div className="p-3 rounded-xl bg-surface-900/60 border border-surface-700/60 space-y-1">
+                <span className="text-rose-400 font-bold block">1% Net Deduction</span>
+                <p className="text-surface-300">Monthly Inactivity ≥ 155 occurrences during work hours</p>
+              </div>
+              <div className="p-3 rounded-xl bg-surface-900/60 border border-surface-700/60 space-y-1">
+                <span className="text-rose-400 font-bold block">1% Net Deduction</span>
+                <p className="text-surface-300">Unapproved Absences ≥ 5 occurrences across the year</p>
+              </div>
+              <div className="p-3 rounded-xl bg-surface-900/60 border border-surface-700/60 space-y-1">
+                <span className="text-amber-400 font-bold block">0.5% / 1% Deduction</span>
+                <p className="text-surface-300">Post-Absence Casual Leave: 0.5% if Approved, 1% if Rejected</p>
+              </div>
+              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25 space-y-1">
+                <span className="text-emerald-400 font-bold block">0% Penalty (Exempt)</span>
+                <p className="text-surface-300">Emergency Leave: Only applied post-absence, zero deduction penalty</p>
               </div>
             </div>
           </div>

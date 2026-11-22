@@ -278,6 +278,7 @@ const _enrichRecord = async (record, employeeId, approvedLeaves, today, empHolid
     checkIn:          record.checkIn,
     checkOut:         record.checkOut,
     status:           record.status,
+    inactiveCount:    record.inactiveCount || 0,
     teamId:           team?.teamId       || '—',
     projectName:      team?.projectName  || '—',
     onlineStatus:     isOnline ? 'Online' : 'Offline',
@@ -491,6 +492,7 @@ const getAllAttendanceEnriched = async (req, res) => {
         checkIn:          record.checkIn,
         checkOut:         record.checkOut,
         status:           record.status,
+        inactiveCount:    record.inactiveCount || 0,
         employeeId:       record.employeeId,
         teamId:           team?.teamId      || '—',
         projectName:      team?.projectName || '—',
@@ -699,6 +701,63 @@ const getAllEarlyCheckouts = async (req, res) => {
   }
 };
 
+// @desc    Record or update inactive count for today / employee
+// @route   POST /api/attendance/record-inactive
+// @access  Private
+const recordInactive = async (req, res) => {
+  try {
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+    let targetEmployeeId = req.user._id;
+    let targetDate = today;
+    let countToAdd = parseInt(req.body.count, 10) || 1;
+    const mode = req.body.mode || 'add'; // 'add' or 'set'
+
+    // If Admin or HR, allow specifying another employeeId & date
+    if (['Admin', 'HR'].includes(req.user.role) && req.body.employeeId) {
+      targetEmployeeId = req.body.employeeId;
+      if (req.body.date) targetDate = req.body.date;
+    }
+
+    let record = await Attendance.findOne({ employeeId: targetEmployeeId, date: targetDate });
+    if (!record) {
+      record = new Attendance({
+        employeeId: targetEmployeeId,
+        date: targetDate,
+        status: 'Present',
+        inactiveCount: 0,
+      });
+    }
+
+    if (mode === 'set') {
+      record.inactiveCount = Math.max(0, countToAdd);
+    } else {
+      record.inactiveCount = (record.inactiveCount || 0) + countToAdd;
+    }
+
+    await record.save();
+
+    // Compute monthly total for this employee
+    const [yearStr, monthStr] = targetDate.split('-');
+    const monthlyRecords = await Attendance.find({
+      employeeId: targetEmployeeId,
+      date: { $regex: `^${yearStr}-${monthStr}` },
+    }).select('inactiveCount').lean();
+
+    const totalMonthlyInactive = monthlyRecords.reduce((acc, r) => acc + (r.inactiveCount || 0), 0);
+
+    res.json({
+      message: 'Inactive count updated successfully',
+      date: targetDate,
+      dailyInactiveCount: record.inactiveCount,
+      totalMonthlyInactive,
+      thresholdReached: totalMonthlyInactive >= 155,
+      record,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 module.exports = {
   checkIn,
   checkOut,
@@ -712,4 +771,5 @@ module.exports = {
   reviewEarlyCheckout,
   getPendingEarlyCheckouts,
   getAllEarlyCheckouts,
+  recordInactive,
 };

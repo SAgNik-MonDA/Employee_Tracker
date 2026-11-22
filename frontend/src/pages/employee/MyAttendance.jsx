@@ -321,6 +321,26 @@ const MyAttendance = () => {
             <span className="text-violet-400 font-bold text-lg">{summary.totalLeaves}</span>
             <span className="text-sm text-violet-400/80">Approved Leaves</span>
           </div>
+          {(() => {
+            const totalInactive = attendance.reduce((s, a) => s + (a.inactiveCount || 0), 0);
+            return (
+              <div className={`flex items-center gap-2.5 px-4 py-2 rounded-xl border ${
+                totalInactive >= 155
+                  ? 'bg-rose-500/15 border-rose-500/30 text-rose-300'
+                  : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+              }`}>
+                <span className="font-bold text-lg">{totalInactive}</span>
+                <div className="flex flex-col text-left">
+                  <span className="text-xs font-semibold">Monthly Inactive</span>
+                  {totalInactive >= 155 ? (
+                    <span className="text-[10px] text-rose-400 font-bold">⚠️ 1% Net Salary Deduction (≥155)</span>
+                  ) : (
+                    <span className="text-[10px] text-surface-400">{155 - totalInactive} left until 1% penalty</span>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Table */}
@@ -338,15 +358,16 @@ const MyAttendance = () => {
                 <th>Check Out</th>
                 <th>Late (m)</th>
                 <th>Early Out (m)</th>
+                <th>Inactive</th>
                 <th>Status</th>
                 <th>Leave Status</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={11} className="text-center py-8 text-surface-500">Loading...</td></tr>
+                <tr><td colSpan={13} className="text-center py-8 text-surface-500">Loading...</td></tr>
               ) : attendance.length === 0 ? (
-                <tr><td colSpan={11} className="text-center py-8 text-surface-500">No records found</td></tr>
+                <tr><td colSpan={13} className="text-center py-8 text-surface-500">No records found</td></tr>
               ) : (
                 attendance.map((a) => (
                   <tr key={a._id}>
@@ -374,6 +395,19 @@ const MyAttendance = () => {
                         <span className="text-amber-400 font-semibold">{a.earlyCheckoutDuration}</span>
                       ) : (
                         <span className="text-surface-500">—</span>
+                      )}
+                    </td>
+                    <td className="text-center font-mono">
+                      {a.inactiveCount > 0 ? (
+                        <span className={`px-2 py-0.5 rounded text-xs font-bold ${
+                          a.inactiveCount >= 10
+                            ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                            : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                        }`}>
+                          {a.inactiveCount}
+                        </span>
+                      ) : (
+                        <span className="text-surface-500 text-xs">0</span>
                       )}
                     </td>
                     <td>{getStatusBadge(a.status)}</td>

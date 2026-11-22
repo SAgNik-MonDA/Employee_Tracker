@@ -1,10 +1,182 @@
 const Payroll = require('../models/Payroll');
 const User = require('../models/User');
+const Attendance = require('../models/Attendance');
+const Leave = require('../models/Leave');
 const Notification = require('../models/Notification');
 const sendEmail = require('../utils/sendEmail');
 
 // ── Helper: get the number of calendar days in a month ──────────────
 const getDaysInMonth = (month, year) => new Date(year, month, 0).getDate();
+
+/**
+ * Computes exact deduction breakdown and net salary based on 5 enterprise rules:
+ * Rule 1: Monthly inactive count >= 155 -> 1% net salary deduction
+ * Rule 2: Yearly unapproved absences >= 5 -> 1% net salary deduction
+ * Rule 3: Post-absence leave applied and approved -> 0.5% net salary deduction (per occurrence)
+ * Rule 4: Post-absence leave applied and rejected -> 1% net salary deduction (per occurrence)
+ * Rule 5: Emergency leave can only be applied post-absence, and has 0% deduction penalty (Exempt)
+ */
+const computeSalaryDeductions = async ({
+  emp,
+  month,
+  year,
+  proratedSalary,
+  pfDeduction,
+  mediclaimDeduction,
+  bonus,
+}) => {
+  const monthStr = month.toString().padStart(2, '0');
+  const yearStr  = year.toString();
+
+  // Baseline standard net salary before disciplinary / attendance deductions
+  const standardNetSalary = Math.max(0, proratedSalary - (pfDeduction + mediclaimDeduction) + (bonus || 0));
+
+  const breakdownNotes = [];
+
+  // ── Rule 1: Inactive Count Check (Month-wide) ─────────────────────
+  const monthAttendanceRecords = await Attendance.find({
+    employeeId: emp._id,
+    date: { $regex: `^${yearStr}-${monthStr}` },
+  }).select('date inactiveCount status').lean();
+
+  const monthlyInactiveCount = monthAttendanceRecords.reduce((sum, r) => sum + (r.inactiveCount || 0), 0);
+  let inactiveDeduction = 0;
+  if (monthlyInactiveCount >= 155) {
+    inactiveDeduction = Math.round(standardNetSalary * 0.01);
+    breakdownNotes.push(`Inactive Count Penalty (>=155): ${monthlyInactiveCount} occurrences in month -> 1% deducted (-₹${inactiveDeduction.toLocaleString()})`);
+  }
+
+  // ── Rule 2: Yearly Unapproved Absences (Year-to-date up to this payroll) ─
+  const yearStart = new Date(year, 0, 1);
+  const joiningDate = new Date(emp.joiningDate || yearStart);
+  const trackStart = joiningDate > yearStart ? new Date(joiningDate) : new Date(yearStart);
+  trackStart.setHours(0, 0, 0, 0);
+
+  const payrollMonthEnd = new Date(year, month, 0, 23, 59, 59, 999);
+  const now = new Date();
+  const trackEnd = payrollMonthEnd < now ? payrollMonthEnd : now;
+
+  const yearAttendance = await Attendance.find({
+    employeeId: emp._id,
+    date: { $regex: `^${yearStr}` },
+  }).select('date status').lean();
+
+  const attendanceMap = {};
+  yearAttendance.forEach(a => { attendanceMap[a.date] = a.status; });
+
+  const approvedLeaves = await Leave.find({
+    employeeId: emp._id,
+    status: 'Approved',
+    startDate: { $lte: payrollMonthEnd },
+    endDate:   { $gte: yearStart },
+  }).lean();
+
+  const empWeeklyHolidays = Array.isArray(emp.weeklyHolidays) ? emp.weeklyHolidays : [];
+
+  let yearlyUnapprovedAbsences = 0;
+  const cursorDate = new Date(trackStart);
+
+  while (cursorDate <= trackEnd) {
+    const dayOfWeek = cursorDate.getDay();
+    const curDateStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(cursorDate);
+
+    const isHoliday = empWeeklyHolidays.includes(dayOfWeek);
+
+    const isCoveredByApprovedLeave = approvedLeaves.some(l => {
+      const lStart = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(l.startDate));
+      const lEnd   = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(l.endDate));
+      return curDateStr >= lStart && curDateStr <= lEnd;
+    });
+
+    if (!isHoliday && !isCoveredByApprovedLeave) {
+      const attStatus = attendanceMap[curDateStr];
+      if (attStatus === 'Absent' || !attStatus) {
+        yearlyUnapprovedAbsences++;
+      }
+    }
+
+    cursorDate.setDate(cursorDate.getDate() + 1);
+  }
+
+  let unapprovedAbsenceDeduction = 0;
+  if (yearlyUnapprovedAbsences >= 5) {
+    unapprovedAbsenceDeduction = Math.round(standardNetSalary * 0.01);
+    breakdownNotes.push(`Unapproved Absenteeism Penalty (>=5/year): ${yearlyUnapprovedAbsences} unapproved absent days in year -> 1% deducted (-₹${unapprovedAbsenceDeduction.toLocaleString()})`);
+  }
+
+  // ── Rule 3, 4, 5: Post-Absence Leaves in this Month ────────────────
+  const monthStart = new Date(year, month - 1, 1);
+  const monthEnd   = new Date(year, month, 0, 23, 59, 59, 999);
+
+  const monthLeaves = await Leave.find({
+    employeeId: emp._id,
+    startDate: { $gte: monthStart, $lte: monthEnd },
+  }).lean();
+
+  let postAbsenceApprovedLeaves = 0;
+  let postAbsenceRejectedLeaves = 0;
+  let emergencyLeaveExemptCount = 0;
+
+  monthLeaves.forEach(l => {
+    // Rule 5: Emergency leaves can only be applied after taking leave and are 100% EXEMPT from deduction penalties
+    if (l.leaveType === 'Emergency') {
+      emergencyLeaveExemptCount++;
+      return;
+    }
+
+    // For non-emergency (e.g. Casual) leaves, check if applied post-absence
+    const lStartStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(l.startDate));
+    const lCreatedStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(l.createdAt || l.startDate));
+    const isPostAbsence = l.appliedAfterAbsence || (lCreatedStr >= lStartStr);
+
+    if (isPostAbsence) {
+      if (l.status === 'Approved') {
+        postAbsenceApprovedLeaves++;
+      } else if (l.status === 'Rejected') {
+        postAbsenceRejectedLeaves++;
+      }
+    }
+  });
+
+  const postAbsenceApprovedDeduction = postAbsenceApprovedLeaves > 0
+    ? Math.round(standardNetSalary * 0.005 * postAbsenceApprovedLeaves)
+    : 0;
+  if (postAbsenceApprovedLeaves > 0) {
+    breakdownNotes.push(`Post-absence Approved Leave Penalty: ${postAbsenceApprovedLeaves} occurrence(s) -> 0.5% deducted (-₹${postAbsenceApprovedDeduction.toLocaleString()})`);
+  }
+
+  const postAbsenceRejectedDeduction = postAbsenceRejectedLeaves > 0
+    ? Math.round(standardNetSalary * 0.01 * postAbsenceRejectedLeaves)
+    : 0;
+  if (postAbsenceRejectedLeaves > 0) {
+    breakdownNotes.push(`Post-absence Rejected Leave Penalty: ${postAbsenceRejectedLeaves} occurrence(s) -> 1% deducted (-₹${postAbsenceRejectedDeduction.toLocaleString()})`);
+  }
+
+  if (emergencyLeaveExemptCount > 0) {
+    breakdownNotes.push(`Emergency Leave: ${emergencyLeaveExemptCount} taken post-absence as permitted (0% penalty - Exempt)`);
+  }
+
+  const penaltyDeductions = inactiveDeduction + unapprovedAbsenceDeduction + postAbsenceApprovedDeduction + postAbsenceRejectedDeduction;
+  const leaveDeduction = penaltyDeductions;
+  const totalDeductions = pfDeduction + mediclaimDeduction + leaveDeduction;
+  const netSalary = Math.max(0, standardNetSalary - penaltyDeductions);
+
+  return {
+    inactiveCount: monthlyInactiveCount,
+    inactiveDeduction,
+    yearlyUnapprovedAbsences,
+    unapprovedAbsenceDeduction,
+    postAbsenceApprovedLeaves,
+    postAbsenceApprovedDeduction,
+    postAbsenceRejectedLeaves,
+    postAbsenceRejectedDeduction,
+    penaltyDeductions,
+    leaveDeduction,
+    totalDeductions,
+    netSalary,
+    breakdownNotes,
+  };
+};
 
 // @desc    Generate payroll for all employees for a given month
 // @route   POST /api/payroll/generate
@@ -68,7 +240,6 @@ const generatePayroll = async (req, res) => {
 
       const pfDeduction        = Math.round((rawPf / totalDaysInMonth) * effectiveDays);
       const mediclaimDeduction = Math.round((rawMediclaim / totalDaysInMonth) * effectiveDays);
-      const leaveDeduction     = 0;
 
       // ── Upsert: update if exists, create if not ───────────────────
       const existingPayroll = await Payroll.findOne({
@@ -77,9 +248,35 @@ const generatePayroll = async (req, res) => {
       });
 
       // Preserve any existing bonus awarded for this month!
-      const bonus           = existingPayroll ? (existingPayroll.bonus || 0) : 0;
-      const totalDeductions = pfDeduction + mediclaimDeduction + leaveDeduction;
-      const netSalary       = proratedSalary - totalDeductions + bonus;
+      const bonus       = existingPayroll ? (existingPayroll.bonus || 0) : 0;
+      const bonusReason = existingPayroll ? (existingPayroll.bonusReason || '') : '';
+
+      // Compute disciplinary, attendance & leave penalties according to the 5 rules
+      const calculation = await computeSalaryDeductions({
+        emp,
+        month,
+        year,
+        proratedSalary,
+        pfDeduction,
+        mediclaimDeduction,
+        bonus,
+      });
+
+      const {
+        inactiveCount,
+        inactiveDeduction,
+        yearlyUnapprovedAbsences,
+        unapprovedAbsenceDeduction,
+        postAbsenceApprovedLeaves,
+        postAbsenceApprovedDeduction,
+        postAbsenceRejectedLeaves,
+        postAbsenceRejectedDeduction,
+        penaltyDeductions,
+        leaveDeduction,
+        totalDeductions,
+        netSalary,
+        breakdownNotes,
+      } = calculation;
 
       // Track whether this is a brand-new payroll (to avoid double accumulation on re-generate)
       let isNewPayroll = false;
@@ -91,15 +288,26 @@ const generatePayroll = async (req, res) => {
         prevPf        = existingPayroll.pfDeduction || 0;
         prevMediclaim = existingPayroll.mediclaimDeduction || 0;
 
-        existingPayroll.baseSalary          = proratedSalary;
-        existingPayroll.bonus               = bonus;
-        existingPayroll.pfDeduction         = pfDeduction;
-        existingPayroll.mediclaimDeduction   = mediclaimDeduction;
-        existingPayroll.leaveDeduction      = leaveDeduction;
-        existingPayroll.deductions          = totalDeductions;
-        existingPayroll.netSalary           = netSalary;
-        existingPayroll.totalDaysInMonth    = totalDaysInMonth;
-        existingPayroll.effectiveDays       = effectiveDays;
+        existingPayroll.baseSalary                  = proratedSalary;
+        existingPayroll.bonus                       = bonus;
+        existingPayroll.bonusReason                 = bonusReason;
+        existingPayroll.pfDeduction                 = pfDeduction;
+        existingPayroll.mediclaimDeduction           = mediclaimDeduction;
+        existingPayroll.leaveDeduction              = leaveDeduction;
+        existingPayroll.inactiveCount               = inactiveCount;
+        existingPayroll.inactiveDeduction           = inactiveDeduction;
+        existingPayroll.yearlyUnapprovedAbsences    = yearlyUnapprovedAbsences;
+        existingPayroll.unapprovedAbsenceDeduction  = unapprovedAbsenceDeduction;
+        existingPayroll.postAbsenceApprovedLeaves   = postAbsenceApprovedLeaves;
+        existingPayroll.postAbsenceApprovedDeduction = postAbsenceApprovedDeduction;
+        existingPayroll.postAbsenceRejectedLeaves   = postAbsenceRejectedLeaves;
+        existingPayroll.postAbsenceRejectedDeduction = postAbsenceRejectedDeduction;
+        existingPayroll.penaltyDeductions           = penaltyDeductions;
+        existingPayroll.deductionBreakdownNotes     = breakdownNotes;
+        existingPayroll.deductions                  = totalDeductions;
+        existingPayroll.netSalary                   = netSalary;
+        existingPayroll.totalDaysInMonth            = totalDaysInMonth;
+        existingPayroll.effectiveDays               = effectiveDays;
         payroll = await existingPayroll.save();
         payrollResults.push({ employee: emp.name, status: 'Updated', payroll });
       } else {
@@ -109,9 +317,20 @@ const generatePayroll = async (req, res) => {
           monthYear,
           baseSalary: proratedSalary,
           bonus,
+          bonusReason,
           pfDeduction,
           mediclaimDeduction,
           leaveDeduction,
+          inactiveCount,
+          inactiveDeduction,
+          yearlyUnapprovedAbsences,
+          unapprovedAbsenceDeduction,
+          postAbsenceApprovedLeaves,
+          postAbsenceApprovedDeduction,
+          postAbsenceRejectedLeaves,
+          postAbsenceRejectedDeduction,
+          penaltyDeductions,
+          deductionBreakdownNotes: breakdownNotes,
           deductions: totalDeductions,
           netSalary,
           totalDaysInMonth,
@@ -157,8 +376,18 @@ const generatePayroll = async (req, res) => {
               : ''}
             <tr><td><strong>PF Deduction</strong></td><td>- ₹${pfDeduction.toLocaleString()}</td></tr>
             <tr><td><strong>Mediclaim Deduction</strong></td><td>- ₹${mediclaimDeduction.toLocaleString()}</td></tr>
+            ${bonus > 0 ? `<tr><td><strong>Bonus ${bonusReason ? `(${bonusReason})` : ''}</strong></td><td style="color:#059669;">+ ₹${bonus.toLocaleString()}</td></tr>` : ''}
+            ${leaveDeduction > 0 ? `<tr><td><strong>Attendance / Leave Penalties</strong></td><td style="color:#dc2626;">- ₹${leaveDeduction.toLocaleString()}</td></tr>` : ''}
             <tr style="background:#f0fdf4;"><td><strong>Net Salary</strong></td><td><strong>₹${netSalary.toLocaleString()}</strong></td></tr>
           </table>
+          ${breakdownNotes.length > 0 ? `
+            <div style="margin-top:16px;padding:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;color:#475569;">
+              <strong>Salary Calculation &amp; Deduction Details:</strong>
+              <ul style="margin:6px 0 0;padding-left:18px;">
+                ${breakdownNotes.map(n => `<li>${n}</li>`).join('')}
+              </ul>
+            </div>
+          ` : ''}
           <p>Best regards,<br/>HR Team</p>
         `,
       }).catch(err => console.error('Payroll Email Error:', err));
@@ -276,9 +505,32 @@ const generateBonus = async (req, res) => {
 
     if (payroll) {
       // Add or update bonus
-      payroll.bonus = (payroll.bonus || 0) + numAmount;
+      const totalBonus = (payroll.bonus || 0) + numAmount;
+      const calculation = await computeSalaryDeductions({
+        emp,
+        month: m,
+        year: y,
+        proratedSalary: payroll.baseSalary,
+        pfDeduction: payroll.pfDeduction,
+        mediclaimDeduction: payroll.mediclaimDeduction,
+        bonus: totalBonus,
+      });
+
+      payroll.bonus = totalBonus;
       if (reason) payroll.bonusReason = reason;
-      payroll.netSalary = (payroll.baseSalary || 0) - (payroll.deductions || 0) + payroll.bonus;
+      payroll.inactiveCount = calculation.inactiveCount;
+      payroll.inactiveDeduction = calculation.inactiveDeduction;
+      payroll.yearlyUnapprovedAbsences = calculation.yearlyUnapprovedAbsences;
+      payroll.unapprovedAbsenceDeduction = calculation.unapprovedAbsenceDeduction;
+      payroll.postAbsenceApprovedLeaves = calculation.postAbsenceApprovedLeaves;
+      payroll.postAbsenceApprovedDeduction = calculation.postAbsenceApprovedDeduction;
+      payroll.postAbsenceRejectedLeaves = calculation.postAbsenceRejectedLeaves;
+      payroll.postAbsenceRejectedDeduction = calculation.postAbsenceRejectedDeduction;
+      payroll.penaltyDeductions = calculation.penaltyDeductions;
+      payroll.leaveDeduction = calculation.leaveDeduction;
+      payroll.deductions = calculation.totalDeductions;
+      payroll.deductionBreakdownNotes = calculation.breakdownNotes;
+      payroll.netSalary = calculation.netSalary;
       await payroll.save();
     } else {
       // Calculate salary & deductions from employee profile for this month
@@ -296,9 +548,16 @@ const generateBonus = async (req, res) => {
       const proratedSalary = Math.round((basicSalary / totalDaysInMonth) * effectiveDays);
       const pfDeduction = Math.round((rawPf / totalDaysInMonth) * effectiveDays);
       const mediclaimDeduction = Math.round((rawMediclaim / totalDaysInMonth) * effectiveDays);
-      const leaveDeduction = 0;
-      const totalDeductions = pfDeduction + mediclaimDeduction + leaveDeduction;
-      const netSalary = proratedSalary - totalDeductions + numAmount;
+
+      const calculation = await computeSalaryDeductions({
+        emp,
+        month: m,
+        year: y,
+        proratedSalary,
+        pfDeduction,
+        mediclaimDeduction,
+        bonus: numAmount,
+      });
 
       payroll = await Payroll.create({
         employeeId: emp._id,
@@ -309,9 +568,19 @@ const generateBonus = async (req, res) => {
         bonusReason: reason || 'Performance Incentive',
         pfDeduction,
         mediclaimDeduction,
-        leaveDeduction,
-        deductions: totalDeductions,
-        netSalary,
+        leaveDeduction: calculation.leaveDeduction,
+        inactiveCount: calculation.inactiveCount,
+        inactiveDeduction: calculation.inactiveDeduction,
+        yearlyUnapprovedAbsences: calculation.yearlyUnapprovedAbsences,
+        unapprovedAbsenceDeduction: calculation.unapprovedAbsenceDeduction,
+        postAbsenceApprovedLeaves: calculation.postAbsenceApprovedLeaves,
+        postAbsenceApprovedDeduction: calculation.postAbsenceApprovedDeduction,
+        postAbsenceRejectedLeaves: calculation.postAbsenceRejectedLeaves,
+        postAbsenceRejectedDeduction: calculation.postAbsenceRejectedDeduction,
+        penaltyDeductions: calculation.penaltyDeductions,
+        deductions: calculation.totalDeductions,
+        deductionBreakdownNotes: calculation.breakdownNotes,
+        netSalary: calculation.netSalary,
         totalDaysInMonth,
         effectiveDays,
         status: 'Unpaid',

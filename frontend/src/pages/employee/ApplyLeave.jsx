@@ -135,6 +135,22 @@ const ApplyLeave = () => {
       return `Not enough ${type} leave balance. You have ${remaining} day(s) remaining.`;
 
     if (formData.startDate && formData.endDate) {
+      const todayStr = new Date().toLocaleDateString('en-CA');
+      if (formData.leaveType === 'Emergency') {
+        if (formData.startDate > todayStr) {
+          return 'Emergency leave can only be applied after taking the leave (chuti neoyar por). Future dates are not allowed.';
+        }
+      } else if (formData.leaveType === 'Casual') {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const start = new Date(formData.startDate);
+        start.setHours(0, 0, 0, 0);
+        const diffDays = Math.round((start - today) / (1000 * 60 * 60 * 24));
+        if (diffDays >= 0 && diffDays < 3) {
+          return 'Future Casual leave must be applied at least 3 days in advance.';
+        }
+      }
+
       const start = new Date(formData.startDate);
       const end   = new Date(formData.endDate);
       if (
@@ -226,20 +242,21 @@ const ApplyLeave = () => {
       <div className="glass-card p-4 border border-primary-500/20 bg-primary-500/5">
         <div className="flex gap-3">
           <HiOutlineInformationCircle className="w-5 h-5 text-primary-400 flex-shrink-0 mt-0.5" />
-          <div className="text-sm text-surface-300 space-y-1">
+          <div className="text-sm text-surface-300 space-y-1.5">
             <p>
-              <strong className="text-indigo-400">Casual Leave:</strong> Max {balance?.casualTotal || 24} days/year • Max 2 days/month
+              <strong className="text-indigo-400">Casual Leave:</strong> Max {balance?.casualTotal || 24} days/year • Max 2 days/month. Must be applied at least 3 days in advance.
             </p>
-            <p className="text-rose-400 font-medium flex items-center gap-1.5 mt-1">
-              <HiOutlineExclamationCircle className="w-4 h-4" />
-              Casual leave must be applied at least 3 days in advance.
+            <p>
+              <strong className="text-amber-400">Emergency Leave:</strong> Max {balance?.emergencyTotal || 16} days/year. <strong>Can ONLY be applied after taking the leave</strong> (chuti neoyar por). Exempt from salary deduction penalties.
             </p>
-            <p className="mt-2">
-              <strong className="text-amber-400">Emergency Leave:</strong> Max {balance?.emergencyTotal || 16} days/year • Distribution: 9 months×1day, 2 months×2days, 1 month max 3days
-            </p>
-            <p className="text-surface-400 mt-1">
-              Leave dates must be within the same calendar month.
-            </p>
+            <div className="pt-1.5 border-t border-primary-500/20 text-xs text-surface-400 space-y-1">
+              <p className="font-semibold text-surface-200">📌 Salary Deduction Rules:</p>
+              <ul className="list-disc pl-4 space-y-0.5 text-surface-400">
+                <li><strong className="text-rose-400">Monthly Inactivity (≥155 times):</strong> 1% deducted from monthly net salary.</li>
+                <li><strong className="text-rose-400">Unapproved Absences (≥5 times/year):</strong> 1% deducted from monthly net salary.</li>
+                <li><strong className="text-rose-400">Post-Absence Leave:</strong> Approved = 0.5% deduction; Rejected = 1% deduction (Emergency leave is exempt).</li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>
@@ -292,6 +309,7 @@ const ApplyLeave = () => {
               type="date"
               required
               value={formData.startDate}
+              max={formData.leaveType === 'Emergency' ? new Date().toLocaleDateString('en-CA') : undefined}
               onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
               className="input-field"
             />
@@ -305,6 +323,7 @@ const ApplyLeave = () => {
               required
               value={formData.endDate}
               min={formData.startDate}
+              max={formData.leaveType === 'Emergency' ? new Date().toLocaleDateString('en-CA') : undefined}
               onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
               className="input-field"
             />
@@ -322,6 +341,32 @@ const ApplyLeave = () => {
               placeholder="Brief reason for leave (Required)"
             />
           </div>
+
+          {/* Post-Absence / Salary Deduction Notice */}
+          {formData.startDate && formData.startDate <= new Date().toLocaleDateString('en-CA') && (
+            <div className={`md:col-span-2 p-3.5 rounded-xl border text-xs flex items-start gap-2.5 ${
+              formData.leaveType === 'Emergency'
+                ? 'bg-amber-500/10 border-amber-500/20 text-amber-300'
+                : 'bg-rose-500/10 border-rose-500/20 text-rose-300'
+            }`}>
+              <HiOutlineExclamationCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <div>
+                {formData.leaveType === 'Emergency' ? (
+                  <span>
+                    <strong>⚡ Emergency Leave (Taken Post-Absence):</strong> Emergency leave can only be applied after taking the leave. It is <strong>100% exempt from salary deduction penalties</strong>.
+                  </span>
+                ) : (
+                  <span>
+                    <strong>⚠️ Post-Absence Leave Application:</strong> You are applying for a leave after the date of absence. Under company salary policy:
+                    <ul className="list-disc pl-4 mt-1 space-y-0.5">
+                      <li>If <strong>Approved</strong>: <strong>0.5%</strong> will be deducted from your net salary.</li>
+                      <li>If <strong>Rejected</strong>: <strong>1%</strong> will be deducted from your net salary.</li>
+                    </ul>
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="md:col-span-2">
             <button

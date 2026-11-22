@@ -40,6 +40,46 @@ const payrollSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    inactiveCount: {
+      type: Number,
+      default: 0,
+    },
+    inactiveDeduction: {
+      type: Number,
+      default: 0,
+    },
+    yearlyUnapprovedAbsences: {
+      type: Number,
+      default: 0,
+    },
+    unapprovedAbsenceDeduction: {
+      type: Number,
+      default: 0,
+    },
+    postAbsenceApprovedLeaves: {
+      type: Number,
+      default: 0,
+    },
+    postAbsenceApprovedDeduction: {
+      type: Number,
+      default: 0,
+    },
+    postAbsenceRejectedLeaves: {
+      type: Number,
+      default: 0,
+    },
+    postAbsenceRejectedDeduction: {
+      type: Number,
+      default: 0,
+    },
+    penaltyDeductions: {
+      type: Number,
+      default: 0,
+    },
+    deductionBreakdownNotes: {
+      type: [String],
+      default: [],
+    },
     deductions: {
       type: Number,
       default: 0,

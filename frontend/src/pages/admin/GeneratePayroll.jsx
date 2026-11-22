@@ -388,6 +388,16 @@ const GeneratePayroll = () => {
       styles: { cellPadding: 6 },
     });
 
+    if (p.deductionBreakdownNotes && p.deductionBreakdownNotes.length > 0) {
+      const finalY = (doc.lastAutoTable?.finalY || 160) + 10;
+      doc.setFontSize(8.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text('Deduction & Attendance Penalty Notes:', 14, finalY);
+      p.deductionBreakdownNotes.forEach((note, idx) => {
+        doc.text(`• ${note}`, 16, finalY + 6 + (idx * 5));
+      });
+    }
+
     doc.save(`Payslip_${emp.name || 'employee'}_${p.monthYear}.pdf`);
     toast.success('PDF downloaded! 📄');
   };
@@ -524,7 +534,17 @@ const GeneratePayroll = () => {
                     </td>
                     <td className="text-amber-400/90 font-mono">-₹{(p.mediclaimDeduction || 0).toLocaleString()}</td>
                     <td className="text-amber-400/90 font-mono">-₹{(p.pfDeduction || 0).toLocaleString()}</td>
-                    <td className="text-rose-400/90 font-mono">-₹{(p.leaveDeduction || 0).toLocaleString()}</td>
+                    <td className="text-rose-400/90 font-mono">
+                      <div>-₹{(p.leaveDeduction || 0).toLocaleString()}</div>
+                      {p.deductionBreakdownNotes && p.deductionBreakdownNotes.length > 0 && (
+                        <div
+                          className="text-[10px] text-amber-300 font-sans tracking-tight cursor-help"
+                          title={p.deductionBreakdownNotes.join('\n')}
+                        >
+                          ⚠️ {p.deductionBreakdownNotes.length} note(s)
+                        </div>
+                      )}
+                    </td>
                     <td className="text-rose-400 font-semibold font-mono">-₹{(p.deductions || 0).toLocaleString()}</td>
                     <td className="font-bold text-primary-400 font-mono">₹{(p.netSalary || 0).toLocaleString()}</td>
                     <td>

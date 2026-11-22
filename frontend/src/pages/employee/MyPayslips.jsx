@@ -91,6 +91,16 @@ const MyPayslips = () => {
     doc.text(`Status: ${payslip.status}`, 14, finalY);
     doc.text(`Generated: ${new Date(payslip.createdAt).toLocaleDateString()}`, 14, finalY + 7);
 
+    // Deduction breakdown notes if any
+    if (payslip.deductionBreakdownNotes && payslip.deductionBreakdownNotes.length > 0) {
+      doc.setFontSize(8.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text('Deduction & Attendance Notes:', 14, finalY + 16);
+      payslip.deductionBreakdownNotes.forEach((note, idx) => {
+        doc.text(`• ${note}`, 16, finalY + 22 + (idx * 5));
+      });
+    }
+
     // Footer
     doc.setFontSize(8);
     doc.setTextColor(148, 163, 184);
@@ -154,10 +164,27 @@ const MyPayslips = () => {
                   </span>
                   <span className="text-emerald-400 font-medium">+₹{(p.bonus || 0).toLocaleString()}</span>
                 </div>
+                {p.leaveDeduction > 0 && (
+                  <div className="flex justify-between items-center text-xs text-rose-400 bg-rose-500/10 px-2.5 py-1 rounded-lg border border-rose-500/20">
+                    <span>Attendance &amp; Leave Penalties</span>
+                    <span className="font-semibold">-₹{p.leaveDeduction.toLocaleString()}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm">
                   <span className="text-surface-400">Total Deductions</span>
                   <span className="text-rose-400">-₹{(p.deductions || 0).toLocaleString()}</span>
                 </div>
+                {p.deductionBreakdownNotes && p.deductionBreakdownNotes.length > 0 && (
+                  <div className="text-[11px] text-surface-400 bg-surface-900/60 p-2.5 rounded-lg border border-surface-700/50 space-y-1">
+                    <span className="font-semibold text-surface-300 block mb-0.5">Penalty Breakdown:</span>
+                    {p.deductionBreakdownNotes.map((note, idx) => (
+                      <p key={idx} className="flex items-start gap-1.5 text-surface-300">
+                        <span className="text-amber-400 mt-0.5">•</span>
+                        <span>{note}</span>
+                      </p>
+                    ))}
+                  </div>
+                )}
                 <hr className="border-surface-700/50" />
                 <div className="flex justify-between font-semibold">
                   <span className="text-surface-300">Net Salary</span>

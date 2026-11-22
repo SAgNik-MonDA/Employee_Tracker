@@ -13,12 +13,14 @@ const {
   reviewEarlyCheckout,
   getPendingEarlyCheckouts,
   getAllEarlyCheckouts,
+  recordInactive,
 } = require('../controllers/attendanceController');
 const { protect } = require('../middleware/authMiddleware');
 const { authorizeRoles } = require('../middleware/roleMiddleware');
 
 router.post('/check-in',              protect,                                              checkIn);
 router.put('/check-out',              protect,                                              checkOut);
+router.post('/record-inactive',       protect,                                              recordInactive);
 router.get('/my-history',             protect,                                              getMyAttendance);
 router.get('/my-history-enriched',    protect,                                              getMyAttendanceEnriched);
 router.get('/today',                  protect,                                              getTodayStatus);

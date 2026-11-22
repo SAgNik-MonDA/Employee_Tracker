@@ -35,6 +35,10 @@ const leaveSchema = new mongoose.Schema(
       enum: ['Pending', 'Approved', 'Rejected'],
       default: 'Pending',
     },
+    appliedAfterAbsence: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
