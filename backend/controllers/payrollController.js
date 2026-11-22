@@ -374,11 +374,15 @@ const generatePayroll = async (req, res) => {
             ${effectiveDays < totalDaysInMonth
               ? `<tr><td><strong>Note</strong></td><td>Prorated for ${effectiveDays} of ${totalDaysInMonth} days</td></tr>`
               : ''}
-            <tr><td><strong>PF Deduction</strong></td><td>- ₹${pfDeduction.toLocaleString()}</td></tr>
-            <tr><td><strong>Mediclaim Deduction</strong></td><td>- ₹${mediclaimDeduction.toLocaleString()}</td></tr>
-            ${bonus > 0 ? `<tr><td><strong>Bonus ${bonusReason ? `(${bonusReason})` : ''}</strong></td><td style="color:#059669;">+ ₹${bonus.toLocaleString()}</td></tr>` : ''}
-            ${leaveDeduction > 0 ? `<tr><td><strong>Attendance / Leave Penalties</strong></td><td style="color:#dc2626;">- ₹${leaveDeduction.toLocaleString()}</td></tr>` : ''}
-            <tr style="background:#f0fdf4;"><td><strong>Net Salary</strong></td><td><strong>₹${netSalary.toLocaleString()}</strong></td></tr>
+            ${bonus > 0 ? `<tr><td><strong>Bonus ${bonusReason ? `(${bonusReason})` : ''}</strong></td><td style="color:#059669;font-weight:bold;">+ ₹${bonus.toLocaleString()}</td></tr>` : ''}
+            <tr><td><strong>Provident Fund (PF - 12%)</strong></td><td style="color:#dc2626;">- ₹${pfDeduction.toLocaleString()}</td></tr>
+            <tr><td><strong>Mediclaim Health Fund</strong></td><td style="color:#dc2626;">- ₹${mediclaimDeduction.toLocaleString()}</td></tr>
+            ${inactiveDeduction > 0 ? `<tr><td><strong>Inactivity Penalty (≥155 times, 1%)</strong></td><td style="color:#dc2626;">- ₹${inactiveDeduction.toLocaleString()}</td></tr>` : ''}
+            ${unapprovedAbsenceDeduction > 0 ? `<tr><td><strong>Unapproved Absences Penalty (≥5/yr, 1%)</strong></td><td style="color:#dc2626;">- ₹${unapprovedAbsenceDeduction.toLocaleString()}</td></tr>` : ''}
+            ${postAbsenceApprovedDeduction > 0 ? `<tr><td><strong>Post-Absence Approved Leave Penalty (0.5%)</strong></td><td style="color:#d97706;">- ₹${postAbsenceApprovedDeduction.toLocaleString()}</td></tr>` : ''}
+            ${postAbsenceRejectedDeduction > 0 ? `<tr><td><strong>Post-Absence Rejected Leave Penalty (1%)</strong></td><td style="color:#dc2626;">- ₹${postAbsenceRejectedDeduction.toLocaleString()}</td></tr>` : ''}
+            <tr style="border-top:2px solid #cbd5e1;"><td><strong>Total Deductions</strong></td><td style="color:#dc2626;font-weight:bold;">- ₹${totalDeductions.toLocaleString()}</td></tr>
+            <tr style="background:#f0fdf4;border-top:2px solid #16a34a;"><td><strong>Net Take-Home Salary</strong></td><td style="color:#16a34a;font-weight:bold;font-size:16px;">₹${netSalary.toLocaleString()}</td></tr>
           </table>
           ${breakdownNotes.length > 0 ? `
             <div style="margin-top:16px;padding:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;color:#475569;">

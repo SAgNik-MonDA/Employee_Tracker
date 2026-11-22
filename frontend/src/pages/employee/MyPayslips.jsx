@@ -53,14 +53,55 @@ const MyPayslips = () => {
     doc.text(`Mediclaim ID: ${emp.mediclaimId || user?.mediclaimId || 'Not Generated'}`, 14, 84);
     doc.text(`PF ID: ${emp.pfId || user?.pfId || 'Not Generated'}`, 14, 90);
 
+    // Itemized Deductions rows
+    const deductionRows = [
+      ['Provident Fund (PF - 12%)', `- ₹${(payslip.pfDeduction || 0).toLocaleString()}`],
+      ['Mediclaim Health Fund', `- ₹${(payslip.mediclaimDeduction || 0).toLocaleString()}`],
+    ];
+
+    if (payslip.inactiveDeduction > 0 || (payslip.inactiveCount >= 155)) {
+      deductionRows.push([
+        `Inactivity Penalty (≥155 times, ${payslip.inactiveCount || 0} counts - 1%)`,
+        `- ₹${(payslip.inactiveDeduction || 0).toLocaleString()}`
+      ]);
+    }
+
+    if (payslip.unapprovedAbsenceDeduction > 0 || (payslip.yearlyUnapprovedAbsences >= 5)) {
+      deductionRows.push([
+        `Unapproved Absence Penalty (≥5/yr, ${payslip.yearlyUnapprovedAbsences || 0} days - 1%)`,
+        `- ₹${(payslip.unapprovedAbsenceDeduction || 0).toLocaleString()}`
+      ]);
+    }
+
+    if (payslip.postAbsenceApprovedDeduction > 0 || payslip.postAbsenceApprovedLeaves > 0) {
+      deductionRows.push([
+        `Post-Absence Approved Leave Penalty (${payslip.postAbsenceApprovedLeaves || 0} leave - 0.5%)`,
+        `- ₹${(payslip.postAbsenceApprovedDeduction || 0).toLocaleString()}`
+      ]);
+    }
+
+    if (payslip.postAbsenceRejectedDeduction > 0 || payslip.postAbsenceRejectedLeaves > 0) {
+      deductionRows.push([
+        `Post-Absence Rejected Leave Penalty (${payslip.postAbsenceRejectedLeaves || 0} leave - 1%)`,
+        `- ₹${(payslip.postAbsenceRejectedDeduction || 0).toLocaleString()}`
+      ]);
+    }
+
+    const specificPenalties = (payslip.inactiveDeduction || 0) + (payslip.unapprovedAbsenceDeduction || 0) + (payslip.postAbsenceApprovedDeduction || 0) + (payslip.postAbsenceRejectedDeduction || 0);
+    const otherLeaveDeductions = (payslip.leaveDeduction || 0) - specificPenalties;
+    if (otherLeaveDeductions > 0) {
+      deductionRows.push([
+        'Other Leave / Late Attendance Deductions',
+        `- ₹${otherLeaveDeductions.toLocaleString()}`
+      ]);
+    }
+
     // Salary Table
     const startY = 100;
     const tableBody = [
       ['Base Salary', `₹${(payslip.baseSalary || 0).toLocaleString()}`],
       ['Bonus' + (payslip.bonusReason ? ` (${payslip.bonusReason})` : ''), `+ ₹${(payslip.bonus || 0).toLocaleString()}`],
-      ['Mediclaim Deduction', `- ₹${(payslip.mediclaimDeduction || 0).toLocaleString()}`],
-      ['PF Deduction', `- ₹${(payslip.pfDeduction || 0).toLocaleString()}`],
-      ['Leave & Attendance Deductions', `- ₹${(payslip.leaveDeduction || 0).toLocaleString()}`],
+      ...deductionRows,
       ['Total Deductions', `- ₹${(payslip.deductions || 0).toLocaleString()}`],
     ];
 
@@ -70,7 +111,7 @@ const MyPayslips = () => {
 
     tableBody.push(
       ['', ''],
-      ['Net Salary', `₹${(payslip.netSalary || 0).toLocaleString()}`],
+      ['Net Salary (Take-Home)', `₹${(payslip.netSalary || 0).toLocaleString()}`],
     );
 
     doc.autoTable({
@@ -164,19 +205,86 @@ const MyPayslips = () => {
                   </span>
                   <span className="text-emerald-400 font-medium">+₹{(p.bonus || 0).toLocaleString()}</span>
                 </div>
-                {p.leaveDeduction > 0 && (
-                  <div className="flex justify-between items-center text-xs text-rose-400 bg-rose-500/10 px-2.5 py-1 rounded-lg border border-rose-500/20">
-                    <span>Attendance &amp; Leave Penalties</span>
-                    <span className="font-semibold">-₹{p.leaveDeduction.toLocaleString()}</span>
+                {/* ── Itemized Deductions Section ── */}
+                <div className="pt-2 pb-1 border-t border-surface-700/50 space-y-1.5">
+                  <div className="flex items-center justify-between text-xs font-semibold text-surface-400 uppercase tracking-wider">
+                    <span>Deduction Breakdown (কাটা টাকার বিবরণ)</span>
+                    <span className="text-rose-400 font-mono">-₹{(p.deductions || 0).toLocaleString()}</span>
                   </div>
-                )}
-                <div className="flex justify-between text-sm">
-                  <span className="text-surface-400">Total Deductions</span>
-                  <span className="text-rose-400">-₹{(p.deductions || 0).toLocaleString()}</span>
+
+                  {/* Standard deductions */}
+                  <div className="space-y-1 pl-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-surface-400">Provident Fund (PF - 12%)</span>
+                      <span className="text-rose-400/90 font-mono font-medium">-₹{(p.pfDeduction || 0).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-surface-400">Mediclaim Health Fund</span>
+                      <span className="text-rose-400/90 font-mono font-medium">-₹{(p.mediclaimDeduction || 0).toLocaleString()}</span>
+                    </div>
+
+                    {/* Specific Penalties itemized */}
+                    {(p.inactiveDeduction > 0 || (p.inactiveCount >= 155)) && (
+                      <div className="flex justify-between items-center text-xs bg-rose-500/10 px-2 py-1 rounded border border-rose-500/20">
+                        <span className="text-rose-300 font-medium">
+                          ⚡ Inactivity Penalty ({p.inactiveCount || 0} times, 1%)
+                        </span>
+                        <span className="text-rose-400 font-bold font-mono">-₹{(p.inactiveDeduction || 0).toLocaleString()}</span>
+                      </div>
+                    )}
+
+                    {(p.unapprovedAbsenceDeduction > 0 || (p.yearlyUnapprovedAbsences >= 5)) && (
+                      <div className="flex justify-between items-center text-xs bg-rose-500/10 px-2 py-1 rounded border border-rose-500/20">
+                        <span className="text-rose-300 font-medium">
+                          ⚠️ Unapproved Absences ({p.yearlyUnapprovedAbsences || 0} days, 1%)
+                        </span>
+                        <span className="text-rose-400 font-bold font-mono">-₹{(p.unapprovedAbsenceDeduction || 0).toLocaleString()}</span>
+                      </div>
+                    )}
+
+                    {p.postAbsenceApprovedDeduction > 0 && (
+                      <div className="flex justify-between items-center text-xs bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20">
+                        <span className="text-amber-300 font-medium">
+                          📝 Post-Absence Approved ({p.postAbsenceApprovedLeaves || 0} leave, 0.5%)
+                        </span>
+                        <span className="text-amber-400 font-bold font-mono">-₹{p.postAbsenceApprovedDeduction.toLocaleString()}</span>
+                      </div>
+                    )}
+
+                    {p.postAbsenceRejectedDeduction > 0 && (
+                      <div className="flex justify-between items-center text-xs bg-rose-500/10 px-2 py-1 rounded border border-rose-500/20">
+                        <span className="text-rose-300 font-medium">
+                          ❌ Post-Absence Rejected ({p.postAbsenceRejectedLeaves || 0} leave, 1%)
+                        </span>
+                        <span className="text-rose-400 font-bold font-mono">-₹{p.postAbsenceRejectedDeduction.toLocaleString()}</span>
+                      </div>
+                    )}
+
+                    {/* Any other leave deduction */}
+                    {(() => {
+                      const specific = (p.inactiveDeduction || 0) + (p.unapprovedAbsenceDeduction || 0) + (p.postAbsenceApprovedDeduction || 0) + (p.postAbsenceRejectedDeduction || 0);
+                      const other = (p.leaveDeduction || 0) - specific;
+                      if (other > 0) {
+                        return (
+                          <div className="flex justify-between text-xs">
+                            <span className="text-surface-400">Other Leave / Late Deductions</span>
+                            <span className="text-rose-400/90 font-mono">-₹{other.toLocaleString()}</span>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
                 </div>
+
+                <div className="flex justify-between text-sm pt-1 border-t border-surface-700/40">
+                  <span className="text-surface-300 font-semibold">Total Deductions</span>
+                  <span className="text-rose-400 font-bold font-mono">-₹{(p.deductions || 0).toLocaleString()}</span>
+                </div>
+
                 {p.deductionBreakdownNotes && p.deductionBreakdownNotes.length > 0 && (
                   <div className="text-[11px] text-surface-400 bg-surface-900/60 p-2.5 rounded-lg border border-surface-700/50 space-y-1">
-                    <span className="font-semibold text-surface-300 block mb-0.5">Penalty Breakdown:</span>
+                    <span className="font-semibold text-surface-300 block mb-0.5">Disciplinary Notes:</span>
                     {p.deductionBreakdownNotes.map((note, idx) => (
                       <p key={idx} className="flex items-start gap-1.5 text-surface-300">
                         <span className="text-amber-400 mt-0.5">•</span>

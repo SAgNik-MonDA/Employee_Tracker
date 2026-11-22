@@ -360,12 +360,53 @@ const GeneratePayroll = () => {
     doc.text(`Mediclaim ID: ${emp.mediclaimId || 'Not Assigned'}`, 14, 90);
     doc.text(`PF ID: ${emp.pfId || 'Not Assigned'}`, 14, 96);
 
+    // Itemized Deductions rows
+    const deductionRows = [
+      ['Provident Fund (PF - 12%)', `- ₹${(p.pfDeduction || 0).toLocaleString()}`],
+      ['Mediclaim Health Fund', `- ₹${(p.mediclaimDeduction || 0).toLocaleString()}`],
+    ];
+
+    if (p.inactiveDeduction > 0 || (p.inactiveCount >= 155)) {
+      deductionRows.push([
+        `Inactivity Penalty (≥155 times, ${p.inactiveCount || 0} counts - 1%)`,
+        `- ₹${(p.inactiveDeduction || 0).toLocaleString()}`
+      ]);
+    }
+
+    if (p.unapprovedAbsenceDeduction > 0 || (p.yearlyUnapprovedAbsences >= 5)) {
+      deductionRows.push([
+        `Unapproved Absence Penalty (≥5/yr, ${p.yearlyUnapprovedAbsences || 0} days - 1%)`,
+        `- ₹${(p.unapprovedAbsenceDeduction || 0).toLocaleString()}`
+      ]);
+    }
+
+    if (p.postAbsenceApprovedDeduction > 0 || p.postAbsenceApprovedLeaves > 0) {
+      deductionRows.push([
+        `Post-Absence Approved Leave Penalty (${p.postAbsenceApprovedLeaves || 0} leave - 0.5%)`,
+        `- ₹${(p.postAbsenceApprovedDeduction || 0).toLocaleString()}`
+      ]);
+    }
+
+    if (p.postAbsenceRejectedDeduction > 0 || p.postAbsenceRejectedLeaves > 0) {
+      deductionRows.push([
+        `Post-Absence Rejected Leave Penalty (${p.postAbsenceRejectedLeaves || 0} leave - 1%)`,
+        `- ₹${(p.postAbsenceRejectedDeduction || 0).toLocaleString()}`
+      ]);
+    }
+
+    const specificPenalties = (p.inactiveDeduction || 0) + (p.unapprovedAbsenceDeduction || 0) + (p.postAbsenceApprovedDeduction || 0) + (p.postAbsenceRejectedDeduction || 0);
+    const otherLeaveDeductions = (p.leaveDeduction || 0) - specificPenalties;
+    if (otherLeaveDeductions > 0) {
+      deductionRows.push([
+        'Other Leave / Late Attendance Deductions',
+        `- ₹${otherLeaveDeductions.toLocaleString()}`
+      ]);
+    }
+
     const tableBody = [
       ['Base Salary', `₹${(p.baseSalary || 0).toLocaleString()}`],
       ['Bonus' + (p.bonusReason ? ` (${p.bonusReason})` : ''), `+ ₹${(p.bonus || 0).toLocaleString()}`],
-      ['Mediclaim Deduction', `- ₹${(p.mediclaimDeduction || 0).toLocaleString()}`],
-      ['PF Deduction', `- ₹${(p.pfDeduction || 0).toLocaleString()}`],
-      ['Leave & Attendance Deductions', `- ₹${(p.leaveDeduction || 0).toLocaleString()}`],
+      ...deductionRows,
       ['Total Deductions', `- ₹${(p.deductions || 0).toLocaleString()}`],
     ];
 
@@ -375,7 +416,7 @@ const GeneratePayroll = () => {
 
     tableBody.push(
       ['', ''],
-      ['Net Salary', `₹${(p.netSalary || 0).toLocaleString()}`],
+      ['Net Salary (Take-Home)', `₹${(p.netSalary || 0).toLocaleString()}`],
     );
 
     doc.autoTable({
