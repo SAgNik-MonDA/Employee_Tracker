@@ -5,11 +5,13 @@ const {
   getMyPayslips,
   getAllPayroll,
   markAsPaid,
+  generateBonus,
 } = require('../controllers/payrollController');
 const { protect } = require('../middleware/authMiddleware');
 const { authorizeRoles } = require('../middleware/roleMiddleware');
 
 router.post('/generate', protect, authorizeRoles('Admin'), generatePayroll);        // Admin only
+router.post('/generate-bonus', protect, authorizeRoles('Admin', 'HR'), generateBonus); // Admin/HR can generate bonus
 router.get('/my-slips', protect, getMyPayslips);
 router.get('/all', protect, authorizeRoles('Admin', 'HR'), getAllPayroll);          // Both can view
 router.put('/mark-paid/:id', protect, authorizeRoles('Admin'), markAsPaid);        // Admin only

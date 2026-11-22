@@ -362,7 +362,7 @@ const GeneratePayroll = () => {
 
     const tableBody = [
       ['Base Salary', `₹${(p.baseSalary || 0).toLocaleString()}`],
-      ['Bonus', `₹${(p.bonus || 0).toLocaleString()}`],
+      ['Bonus' + (p.bonusReason ? ` (${p.bonusReason})` : ''), `+ ₹${(p.bonus || 0).toLocaleString()}`],
       ['Mediclaim Deduction', `- ₹${(p.mediclaimDeduction || 0).toLocaleString()}`],
       ['PF Deduction', `- ₹${(p.pfDeduction || 0).toLocaleString()}`],
       ['Leave & Attendance Deductions', `- ₹${(p.leaveDeduction || 0).toLocaleString()}`],
@@ -516,7 +516,12 @@ const GeneratePayroll = () => {
                       </div>
                     </td>
                     <td className="text-surface-300 font-mono">₹{(p.baseSalary || 0).toLocaleString()}</td>
-                    <td className="text-emerald-400 font-mono">+₹{(p.bonus || 0).toLocaleString()}</td>
+                    <td className="text-emerald-400 font-mono">
+                      <div>+₹{(p.bonus || 0).toLocaleString()}</div>
+                      {p.bonusReason && (
+                        <div className="text-[10px] text-amber-300 font-sans tracking-tight">{p.bonusReason}</div>
+                      )}
+                    </td>
                     <td className="text-amber-400/90 font-mono">-₹{(p.mediclaimDeduction || 0).toLocaleString()}</td>
                     <td className="text-amber-400/90 font-mono">-₹{(p.pfDeduction || 0).toLocaleString()}</td>
                     <td className="text-rose-400/90 font-mono">-₹{(p.leaveDeduction || 0).toLocaleString()}</td>

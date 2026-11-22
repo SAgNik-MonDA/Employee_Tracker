@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import API from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import UserAvatar from '../../components/common/UserAvatar';
@@ -211,6 +211,15 @@ const ManageEmployees = () => {
   const [submitting, setSubmitting]       = useState(false);
   const [empToDelete, setEmpToDelete]     = useState(null);
   const [deletingEmp, setDeletingEmp]     = useState(false);
+  const [teams, setTeams]                 = useState([]);
+
+  // ── Bonus generation modal state ───────────────────────────────────────────
+  const [showBonusModal, setShowBonusModal] = useState(false);
+  const [bonusEmp, setBonusEmp]             = useState(null);
+  const [bonusAmount, setBonusAmount]       = useState('');
+  const [bonusMonthYear, setBonusMonthYear] = useState('');
+  const [bonusReason, setBonusReason]       = useState('Performance Incentive');
+  const [submittingBonus, setSubmittingBonus] = useState(false);
 
   const emptyForm = {
     name: '', email: '', password: '', role: '',
@@ -254,18 +263,84 @@ const ManageEmployees = () => {
 
   const fetchAll = async () => {
     try {
-      const [empRes, balRes, statsRes] = await Promise.all([
+      const [empRes, balRes, statsRes, teamsRes] = await Promise.all([
         API.get('/auth/employees'),
         API.get('/leaves/all-balances'),
         API.get('/attendance/employee-stats').catch(() => ({ data: {} })),
+        API.get('/teams').catch(() => ({ data: [] })),
       ]);
       setEmployees(empRes.data);
       setLeaveBalances(balRes.data);
       setAttStats(statsRes.data || {});
+      setTeams(teamsRes.data || []);
     } catch {
       toast.error('Failed to load employees');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Helper: Extract employee assigned Team Name & Project Name
+  const getEmpTeamAndProject = (empId) => {
+    if (!empId || !teams.length) return { teamName: '—', projectName: '—' };
+    const matchedTeams = teams.filter((t) => {
+      const isMember = Array.isArray(t.members) && t.members.some((m) => (m?._id || m) === empId);
+      const isLead = (t.teamLead?._id || t.teamLead) === empId;
+      return isMember || isLead;
+    });
+    if (!matchedTeams.length) return { teamName: 'Unassigned', projectName: 'Unassigned' };
+    const teamName = matchedTeams.map((t) => t.teamId || t.name).filter(Boolean).join(', ') || 'General';
+    const projectName = matchedTeams.map((t) => t.projectName).filter(Boolean).join(', ') || 'Internal';
+    return { teamName, projectName };
+  };
+
+  // Month options for bonus award (1 month prior to 4 months forward)
+  const bonusMonthOptions = useMemo(() => {
+    const list = [];
+    const now = new Date();
+    for (let offset = -1; offset <= 4; offset++) {
+      const d = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+      const val = `${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
+      const label = d.toLocaleString('en', { month: 'long', year: 'numeric' });
+      list.push({ value: val, label: `${label} (${val})` });
+    }
+    return list;
+  }, []);
+
+  const handleOpenBonusModal = (emp) => {
+    const now = new Date();
+    const currentMY = `${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`;
+    setBonusEmp(emp);
+    setBonusAmount('');
+    setBonusMonthYear(currentMY);
+    setBonusReason('Performance Incentive');
+    setShowBonusModal(true);
+  };
+
+  const handleGenerateBonusSubmit = async (e) => {
+    e.preventDefault();
+    if (!bonusEmp) return;
+    const numAmount = Number(bonusAmount);
+    if (!bonusAmount || isNaN(numAmount) || numAmount <= 0) {
+      toast.error('Please enter a valid bonus amount greater than 0');
+      return;
+    }
+
+    setSubmittingBonus(true);
+    try {
+      const { data } = await API.post('/payroll/generate-bonus', {
+        employeeId: bonusEmp._id,
+        amount: numAmount,
+        monthYear: bonusMonthYear,
+        reason: bonusReason.trim(),
+      });
+      toast.success(data.message || `Bonus of ₹${numAmount.toLocaleString()} generated for ${bonusEmp.name}! Added to payslip 🎉`);
+      setShowBonusModal(false);
+      setBonusEmp(null);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to generate bonus');
+    } finally {
+      setSubmittingBonus(false);
     }
   };
 
@@ -381,6 +456,8 @@ const ManageEmployees = () => {
               <tr>
                 <th>Employee</th>
                 <th>Code</th>
+                <th>Project</th>
+                <th>Team</th>
                 <th>Email</th>
                 <th>Role</th>
                 <th>Department</th>
@@ -400,15 +477,16 @@ const ManageEmployees = () => {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={canManage ? 17 : 16} className="text-center py-8 text-surface-500">Loading...</td></tr>
+                <tr><td colSpan={canManage ? 19 : 18} className="text-center py-8 text-surface-500">Loading...</td></tr>
               ) : filteredEmployees.length === 0 ? (
-                <tr><td colSpan={canManage ? 17 : 16} className="text-center py-8 text-surface-500">No employees found</td></tr>
+                <tr><td colSpan={canManage ? 19 : 18} className="text-center py-8 text-surface-500">No employees found</td></tr>
               ) : (
                 filteredEmployees.map((emp) => {
                   const bal = leaveBalances[emp._id] || {
                     casualTotal: 24, casualRemaining: 24,
                     emergencyTotal: 16, emergencyRemaining: 16,
                   };
+                  const empTP = getEmpTeamAndProject(emp._id);
                   return (
                     <tr key={emp._id}>
                       <td>
@@ -426,6 +504,16 @@ const ManageEmployees = () => {
                       <td>
                         <span className="text-xs font-mono text-primary-400 bg-primary-500/10 px-2 py-1 rounded">
                           {emp.employeeCode || '—'}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 whitespace-nowrap">
+                          {empTP.projectName}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded bg-violet-500/10 text-violet-300 border border-violet-500/20 whitespace-nowrap">
+                          {empTP.teamName}
                         </span>
                       </td>
                       <td className="text-surface-400">{emp.email}</td>
@@ -472,19 +560,27 @@ const ManageEmployees = () => {
 
                       {canManage && (
                         <td>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => handleOpenBonusModal(emp)}
+                              className="px-2.5 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 font-semibold text-xs flex items-center gap-1 transition-all shadow-sm active:scale-95 whitespace-nowrap"
+                              title="Generate Bonus"
+                            >
+                              <span>🎁</span>
+                              <span>Bonus</span>
+                            </button>
                             <button
                               onClick={() => { setSelectedEmp(emp); setShowViewModal(true); }}
-                              className="p-2 rounded-lg hover:bg-primary-500/20 text-primary-400 transition-colors"
+                              className="p-1.5 rounded-lg hover:bg-primary-500/20 text-primary-400 transition-colors"
                               title="View Details"
                             >
                               <HiOutlineEye className="w-4 h-4" />
                             </button>
-                            <button onClick={() => handleEdit(emp)} className="p-2 rounded-lg hover:bg-primary-500/20 text-primary-400 transition-colors" title="Edit">
+                            <button onClick={() => handleEdit(emp)} className="p-1.5 rounded-lg hover:bg-primary-500/20 text-primary-400 transition-colors" title="Edit">
                               <HiOutlinePencil className="w-4 h-4" />
                             </button>
                             {canDelete && (
-                              <button onClick={() => handleDelete(emp._id, emp.name)} className="p-2 rounded-lg hover:bg-rose-500/20 text-rose-400 transition-colors" title="Delete">
+                              <button onClick={() => handleDelete(emp._id, emp.name)} className="p-1.5 rounded-lg hover:bg-rose-500/20 text-rose-400 transition-colors" title="Delete">
                                 <HiOutlineTrash className="w-4 h-4" />
                               </button>
                             )}
@@ -725,7 +821,7 @@ const ManageEmployees = () => {
               </div>
 
               <div>
-                <h3 className="text-sm font-semibold text-surface-400 uppercase tracking-wider mb-3">Personal Details</h3>
+                <h3 className="text-sm font-semibold text-surface-400 uppercase tracking-wider mb-3">Personal & Project Details</h3>
                 <div className="mb-4">
                   <InfoRow label="Full Name"         value={selectedEmp.name} />
                   <InfoRow label="Email"             value={selectedEmp.email} />
@@ -733,6 +829,8 @@ const ManageEmployees = () => {
                   <InfoRow label="Role"              value={selectedEmp.role} />
                   <InfoRow label="Department"        value={selectedEmp.department} />
                   <InfoRow label="Designation"       value={selectedEmp.designation} />
+                  <InfoRow label="Project Name"      value={getEmpTeamAndProject(selectedEmp._id).projectName} />
+                  <InfoRow label="Team Name"         value={getEmpTeamAndProject(selectedEmp._id).teamName} />
                   <InfoRow label="Phone"             value={selectedEmp.phone} />
                   <InfoRow label="Alternate Phone"   value={selectedEmp.alternatePhone} />
                   <InfoRow label="Current Address"   value={selectedEmp.currentAddress} />
@@ -792,16 +890,218 @@ const ManageEmployees = () => {
               </div>
 
 
-              <div className="flex pt-4">
+              <div className="flex items-center gap-3 pt-4 border-t border-surface-700">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const emp = selectedEmp;
+                    setShowViewModal(false);
+                    handleOpenBonusModal(emp);
+                  }}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-all active:scale-95"
+                >
+                  <span>🎁 Generate Bonus</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => { setShowViewModal(false); setSelectedEmp(null); }}
-                  className="btn-secondary flex-1"
+                  className="btn-secondary px-6"
                 >
                   Close
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Generate Bonus Modal */}
+      {showBonusModal && bonusEmp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-surface-800 border border-surface-700 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden my-8">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-surface-700 bg-gradient-to-r from-amber-500/10 via-yellow-500/5 to-transparent">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-xl shadow-inner">
+                  🎁
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                    Generate Bonus
+                    <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      Payroll Credit
+                    </span>
+                  </h2>
+                  <p className="text-xs text-surface-400 mt-0.5">Award incentive / festive bonus added to net salary</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setShowBonusModal(false); setBonusEmp(null); }}
+                className="p-2 rounded-xl text-surface-400 hover:text-white hover:bg-surface-700/60 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleGenerateBonusSubmit} className="p-6 space-y-5">
+              {/* Employee Summary Card */}
+              <div className="bg-surface-900/80 border border-surface-700/80 rounded-xl p-4 space-y-2">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold text-white">{bonusEmp.name}</h3>
+                    <p className="text-xs text-surface-400">{bonusEmp.email}</p>
+                  </div>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded font-mono text-xs font-semibold bg-primary-500/15 text-primary-300 border border-primary-500/30">
+                    {bonusEmp.employeeCode || 'N/A'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-surface-700/50 text-xs">
+                  <div>
+                    <span className="text-surface-400 block">Project:</span>
+                    <span className="font-semibold text-surface-200">
+                      {getEmpTeamAndProject(bonusEmp._id).projectName}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-surface-400 block">Team:</span>
+                    <span className="font-semibold text-surface-200">
+                      {getEmpTeamAndProject(bonusEmp._id).teamName}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-surface-400 block">Base Salary:</span>
+                    <span className="font-semibold text-emerald-400">
+                      ₹{(bonusEmp.basicSalary || 0).toLocaleString()}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-surface-400 block">Department:</span>
+                    <span className="font-semibold text-surface-200">
+                      {bonusEmp.department || 'N/A'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Month/Year selector */}
+              <div>
+                <label className="block text-xs font-semibold text-surface-300 mb-1.5">
+                  Payroll Month & Year <span className="text-red-400">*</span>
+                </label>
+                <select
+                  value={bonusMonthYear}
+                  onChange={(e) => setBonusMonthYear(e.target.value)}
+                  className="input-field text-sm w-full"
+                  required
+                >
+                  {bonusMonthOptions.map(opt => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-surface-400 mt-1">
+                  The bonus will be added to this month's payslip and net salary.
+                </p>
+              </div>
+
+              {/* Bonus Amount Input */}
+              <div>
+                <label className="block text-xs font-semibold text-surface-300 mb-1.5">
+                  Amount of Bonus (₹) <span className="text-red-400">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400 font-bold">₹</span>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={bonusAmount}
+                    onChange={(e) => setBonusAmount(e.target.value)}
+                    placeholder="e.g. 5000"
+                    className="input-field pl-8 text-sm w-full font-semibold text-amber-300"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Bonus Reason */}
+              <div>
+                <label className="block text-xs font-semibold text-surface-300 mb-1.5">
+                  Bonus Category / Reason
+                </label>
+                <input
+                  type="text"
+                  value={bonusReason}
+                  onChange={(e) => setBonusReason(e.target.value)}
+                  placeholder="e.g. Performance Incentive, Festive Bonus, Project Completion"
+                  className="input-field text-sm w-full"
+                  list="bonus-reason-suggestions"
+                />
+                <datalist id="bonus-reason-suggestions">
+                  <option value="Performance Incentive" />
+                  <option value="Festive / Festival Bonus" />
+                  <option value="Project Completion Bonus" />
+                  <option value="Annual Performance Bonus" />
+                  <option value="Special Recognition Award" />
+                  <option value="Referral Bonus" />
+                </datalist>
+              </div>
+
+              {/* Live Impact Preview */}
+              {Number(bonusAmount) > 0 && (
+                <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs space-y-1.5">
+                  <div className="flex items-center justify-between text-surface-300">
+                    <span>Base Salary:</span>
+                    <span>₹{(bonusEmp.basicSalary || 0).toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-amber-300 font-medium">
+                    <span>+ Bonus Amount:</span>
+                    <span>+₹{Number(bonusAmount).toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-surface-400">
+                    <span>- Standard Deductions (PF & Mediclaim):</span>
+                    <span>-₹{((bonusEmp.pfAmount || 0) + (bonusEmp.mediclaimAmount || 0)).toLocaleString()}</span>
+                  </div>
+                  <div className="pt-1.5 border-t border-amber-500/30 flex items-center justify-between font-bold text-emerald-400 text-sm">
+                    <span>Estimated Net Salary:</span>
+                    <span>
+                      ₹{Math.max(0, (bonusEmp.basicSalary || 0) - (bonusEmp.pfAmount || 0) - (bonusEmp.mediclaimAmount || 0) + Number(bonusAmount)).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-surface-700">
+                <button
+                  type="button"
+                  onClick={() => { setShowBonusModal(false); setBonusEmp(null); }}
+                  className="btn-secondary text-sm"
+                  disabled={submittingBonus}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingBonus || !bonusAmount || Number(bonusAmount) <= 0}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-bold text-sm flex items-center gap-2 shadow-lg shadow-amber-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                >
+                  {submittingBonus ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></span>
+                      <span>Generating Bonus...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>🎁 Generate Bonus</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

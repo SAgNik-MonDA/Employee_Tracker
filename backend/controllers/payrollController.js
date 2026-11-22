@@ -69,16 +69,17 @@ const generatePayroll = async (req, res) => {
       const pfDeduction        = Math.round((rawPf / totalDaysInMonth) * effectiveDays);
       const mediclaimDeduction = Math.round((rawMediclaim / totalDaysInMonth) * effectiveDays);
       const leaveDeduction     = 0;
-      const bonus              = 0;
-      const totalDeductions    = pfDeduction + mediclaimDeduction + leaveDeduction;
-
-      const netSalary = proratedSalary - totalDeductions + bonus;
 
       // ── Upsert: update if exists, create if not ───────────────────
       const existingPayroll = await Payroll.findOne({
         employeeId: emp._id,
         monthYear,
       });
+
+      // Preserve any existing bonus awarded for this month!
+      const bonus           = existingPayroll ? (existingPayroll.bonus || 0) : 0;
+      const totalDeductions = pfDeduction + mediclaimDeduction + leaveDeduction;
+      const netSalary       = proratedSalary - totalDeductions + bonus;
 
       // Track whether this is a brand-new payroll (to avoid double accumulation on re-generate)
       let isNewPayroll = false;
@@ -228,9 +229,166 @@ const markAsPaid = async (req, res) => {
   }
 };
 
+// @desc    Generate / Award bonus to an employee (adds directly into monthly payslip)
+// @route   POST /api/payroll/generate-bonus
+// @access  Private (Admin, HR)
+const generateBonus = async (req, res) => {
+  try {
+    const { employeeId, amount, monthYear, reason } = req.body;
+
+    if (!employeeId) {
+      return res.status(400).json({ message: 'Employee ID is required.' });
+    }
+
+    const numAmount = Number(amount);
+    if (!amount || isNaN(numAmount) || numAmount <= 0) {
+      return res.status(400).json({ message: 'Please enter a valid bonus amount greater than 0.' });
+    }
+
+    const emp = await User.findById(employeeId);
+    if (!emp) {
+      return res.status(404).json({ message: 'Employee not found.' });
+    }
+
+    // Default to current month-year (MM-YYYY) if not specified
+    let targetMonthYear = monthYear;
+    if (!targetMonthYear) {
+      const now = new Date();
+      targetMonthYear = `${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`;
+    }
+
+    const [monthStr, yearStr] = targetMonthYear.split('-');
+    const m = parseInt(monthStr, 10);
+    const y = parseInt(yearStr, 10);
+
+    if (!m || !y || m < 1 || m > 12) {
+      return res.status(400).json({ message: 'Invalid monthYear format. Use MM-YYYY' });
+    }
+
+    const totalDaysInMonth = getDaysInMonth(m, y);
+
+    // Check if payroll record already exists for this employee and month
+    let payroll = await Payroll.findOne({
+      employeeId: emp._id,
+      monthYear: targetMonthYear,
+      type: 'Regular',
+    });
+
+    if (payroll) {
+      // Add or update bonus
+      payroll.bonus = (payroll.bonus || 0) + numAmount;
+      if (reason) payroll.bonusReason = reason;
+      payroll.netSalary = (payroll.baseSalary || 0) - (payroll.deductions || 0) + payroll.bonus;
+      await payroll.save();
+    } else {
+      // Calculate salary & deductions from employee profile for this month
+      const basicSalary = emp.basicSalary || 0;
+      const rawPf = emp.pfAmount || 0;
+      const rawMediclaim = emp.mediclaimAmount || 0;
+
+      const joiningDate = new Date(emp.joiningDate || Date.now());
+      const monthStart = new Date(y, m - 1, 1);
+      let effectiveDays = totalDaysInMonth;
+      if (joiningDate > monthStart) {
+        effectiveDays = totalDaysInMonth - joiningDate.getDate() + 1;
+      }
+
+      const proratedSalary = Math.round((basicSalary / totalDaysInMonth) * effectiveDays);
+      const pfDeduction = Math.round((rawPf / totalDaysInMonth) * effectiveDays);
+      const mediclaimDeduction = Math.round((rawMediclaim / totalDaysInMonth) * effectiveDays);
+      const leaveDeduction = 0;
+      const totalDeductions = pfDeduction + mediclaimDeduction + leaveDeduction;
+      const netSalary = proratedSalary - totalDeductions + numAmount;
+
+      payroll = await Payroll.create({
+        employeeId: emp._id,
+        monthYear: targetMonthYear,
+        type: 'Regular',
+        baseSalary: proratedSalary,
+        bonus: numAmount,
+        bonusReason: reason || 'Performance Incentive',
+        pfDeduction,
+        mediclaimDeduction,
+        leaveDeduction,
+        deductions: totalDeductions,
+        netSalary,
+        totalDaysInMonth,
+        effectiveDays,
+        status: 'Unpaid',
+      });
+    }
+
+    // In-app Notification for the employee
+    await Notification.create({
+      userId: emp._id,
+      type: 'bonus_awarded',
+      title: '🎉 Special Bonus Awarded!',
+      message: `Congratulations! A bonus of ₹${numAmount.toLocaleString()} has been awarded for ${targetMonthYear}${reason ? ` (${reason})` : ''}. It is added to your net salary payslip.`,
+      link: '/employee/payslips',
+    }).catch((e) => console.error('Bonus notification error:', e));
+
+    // Send Email to employee
+    sendEmail({
+      to: emp.email,
+      subject: `🎉 Special Bonus Awarded - ₹${numAmount.toLocaleString()} Added to Your ${targetMonthYear} Salary!`,
+      html: `
+        <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:0 auto;background:#0f172a;color:#e2e8f0;border-radius:16px;overflow:hidden;border:1px solid #334155;">
+          <div style="background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);padding:36px 32px;text-align:center;">
+            <h1 style="margin:0;font-size:24px;font-weight:800;color:#ffffff;">🎉 Congratulations, ${emp.name}!</h1>
+            <p style="margin:8px 0 0;color:#e0e7ff;font-size:14px;">Special Performance &amp; Incentive Bonus Awarded</p>
+          </div>
+          <div style="padding:32px 28px;">
+            <p style="color:#94a3b8;font-size:14px;line-height:1.7;margin:0 0 20px;">
+              We are pleased to inform you that a special bonus of <strong>₹${numAmount.toLocaleString()}</strong> has been approved by Management and added to your salary for <strong>${targetMonthYear}</strong>.
+            </p>
+            <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:20px;margin-bottom:24px;">
+              <table style="width:100%;font-size:14px;border-collapse:collapse;color:#cbd5e1;">
+                <tr>
+                  <td style="padding:6px 0;color:#64748b;">Employee Code:</td>
+                  <td style="padding:6px 0;font-weight:bold;color:#e2e8f0;text-align:right;">${emp.employeeCode || '—'}</td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 0;color:#64748b;">Bonus Reason / Category:</td>
+                  <td style="padding:6px 0;color:#a78bfa;font-weight:600;text-align:right;">${reason || 'Performance Incentive'}</td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 0;color:#64748b;">Salary Period:</td>
+                  <td style="padding:6px 0;color:#e2e8f0;text-align:right;">${targetMonthYear}</td>
+                </tr>
+                <tr style="border-top:1px solid #334155;">
+                  <td style="padding:10px 0;font-size:15px;color:#f1f5f9;"><strong>Bonus Amount:</strong></td>
+                  <td style="padding:10px 0;font-size:16px;font-weight:bold;color:#34d399;text-align:right;">+ ₹${numAmount.toLocaleString()}</td>
+                </tr>
+                <tr style="border-top:1px solid #334155;">
+                  <td style="padding:10px 0;font-size:15px;color:#f1f5f9;"><strong>Updated Net Salary:</strong></td>
+                  <td style="padding:10px 0;font-size:16px;font-weight:bold;color:#38bdf8;text-align:right;">₹${payroll.netSalary.toLocaleString()}</td>
+                </tr>
+              </table>
+            </div>
+            <p style="color:#94a3b8;font-size:13px;line-height:1.6;margin:0 0 20px;">
+              📄 Your monthly payslip for ${targetMonthYear} has been automatically updated with this bonus amount and added to your net salary. You can view or download it anytime from the Employee Portal.
+            </p>
+          </div>
+          <div style="background:#090d16;padding:16px;text-align:center;border-top:1px solid #1e293b;">
+            <p style="margin:0;font-size:11px;color:#64748b;">&copy; 2026 Employee Tracker Enterprise. All Rights Reserved.</p>
+          </div>
+        </div>
+      `,
+    }).catch((e) => console.error('Bonus Email Error:', e));
+
+    res.status(200).json({
+      message: `Bonus of ₹${numAmount.toLocaleString()} generated for ${emp.name} (${targetMonthYear}) and added to payslip successfully!`,
+      payroll,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 module.exports = {
   generatePayroll,
   getMyPayslips,
   getAllPayroll,
   markAsPaid,
+  generateBonus,
 };

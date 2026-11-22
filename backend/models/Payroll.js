@@ -24,6 +24,10 @@ const payrollSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    bonusReason: {
+      type: String,
+      default: '',
+    },
     pfDeduction: {
       type: Number,
       default: 0,

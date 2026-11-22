@@ -57,7 +57,7 @@ const MyPayslips = () => {
     const startY = 100;
     const tableBody = [
       ['Base Salary', `₹${(payslip.baseSalary || 0).toLocaleString()}`],
-      ['Bonus', `₹${(payslip.bonus || 0).toLocaleString()}`],
+      ['Bonus' + (payslip.bonusReason ? ` (${payslip.bonusReason})` : ''), `+ ₹${(payslip.bonus || 0).toLocaleString()}`],
       ['Mediclaim Deduction', `- ₹${(payslip.mediclaimDeduction || 0).toLocaleString()}`],
       ['PF Deduction', `- ₹${(payslip.pfDeduction || 0).toLocaleString()}`],
       ['Leave & Attendance Deductions', `- ₹${(payslip.leaveDeduction || 0).toLocaleString()}`],
@@ -143,9 +143,16 @@ const MyPayslips = () => {
                     <span className="text-amber-400">{p.effectiveDays} / {p.totalDaysInMonth}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-sm">
-                  <span className="text-surface-400">Bonus</span>
-                  <span className="text-emerald-400">+₹{(p.bonus || 0).toLocaleString()}</span>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-surface-400 flex items-center gap-1.5">
+                    <span>Bonus</span>
+                    {p.bonusReason && (
+                      <span className="text-[11px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 font-medium">
+                        {p.bonusReason}
+                      </span>
+                    )}
+                  </span>
+                  <span className="text-emerald-400 font-medium">+₹{(p.bonus || 0).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-surface-400">Total Deductions</span>
