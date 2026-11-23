@@ -6,11 +6,24 @@ import API from '../api/axios';
 import toast from 'react-hot-toast';
 import jsQR from 'jsqr';
 import {
-  HiOutlineMail, HiOutlineLockClosed,
-  HiOutlineEye, HiOutlineEyeOff, HiOutlineX,
-  HiOutlineArrowLeft, HiOutlineIdentification,
-  HiOutlineSun, HiOutlineMoon, HiOutlineQrcode,
+  HiOutlineMail,
+  HiOutlineLockClosed,
+  HiOutlineEye,
+  HiOutlineEyeOff,
+  HiOutlineX,
+  HiOutlineArrowLeft,
+  HiOutlineIdentification,
+  HiOutlineSun,
+  HiOutlineMoon,
+  HiOutlineQrcode,
+  HiOutlineSparkles,
+  HiOutlineCheckCircle,
+  HiOutlineShieldCheck,
+  HiOutlineDocumentReport,
+  HiOutlineCash,
+  HiOutlineChevronRight,
 } from 'react-icons/hi';
+import LoginIllustration from '../components/auth/LoginIllustration';
 
 const LoginPage = () => {
   const [employeeCode, setEmployeeCode] = useState('');
@@ -18,9 +31,9 @@ const LoginPage = () => {
   const [password, setPassword]         = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading]           = useState(false);
-  const { login, loginWithQr } = useAuth();
-  const { theme, toggleTheme } = useTheme();
-  const navigate = useNavigate();
+  const { login, loginWithQr }          = useAuth();
+  const { theme, toggleTheme }          = useTheme();
+  const navigate                        = useNavigate();
 
   // Login mode: 'credentials' or 'qr'
   const [loginMode, setLoginMode] = useState('credentials');
@@ -30,15 +43,30 @@ const LoginPage = () => {
   const canvasRef   = useRef(null);
   const streamRef   = useRef(null);
   const scanningRef = useRef(false);
-  const [cameraReady, setCameraReady]     = useState(false);
-  const [scanError, setScanError]         = useState('');
-  const [qrScanning, setQrScanning]       = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [scanError, setScanError]     = useState('');
+  const [qrScanning, setQrScanning]   = useState(false);
 
   // Forgot password state
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotEmail, setForgotEmail]         = useState('');
   const [forgotLoading, setForgotLoading]     = useState(false);
   const [forgotSent, setForgotSent]           = useState(false);
+
+  // ── Quick Demo Login Auto-fill ───────────────────────────────────────────
+  const fillDemoAdmin = () => {
+    setEmployeeCode('ADMIN-001');
+    setEmail('admin@company.com');
+    setPassword('Admin@123');
+    toast.success('Admin demo credentials populated! 👑');
+  };
+
+  const fillDemoEmployee = () => {
+    setEmployeeCode('EMP-001');
+    setEmail('sagnikmondal011@gmail.com');
+    setPassword('Password@123');
+    toast.success('Employee demo credentials populated! 👤');
+  };
 
   // ── Sign In ──────────────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
@@ -53,7 +81,7 @@ const LoginPage = () => {
       toast.success(`Welcome back, ${data.name}! 👋`);
       navigate(data.role === 'Employee' ? '/employee/dashboard' : '/admin/dashboard');
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Login failed');
+      toast.error(error.response?.data?.message || 'Login failed. Please check credentials.');
     } finally {
       setLoading(false);
     }
@@ -78,7 +106,7 @@ const LoginPage = () => {
       }
     } catch (err) {
       console.error('Camera error:', err);
-      setScanError('Camera access denied. Please allow camera permission in your browser settings.');
+      setScanError('Camera access denied. Please allow camera permission in your browser.');
     }
   }, []);
 
@@ -129,7 +157,6 @@ const LoginPage = () => {
       navigate(data.role === 'Employee' ? '/employee/dashboard' : '/admin/dashboard');
     } catch (error) {
       toast.error(error.response?.data?.message || 'QR authentication failed');
-      // Resume scanning after a failed attempt
       setTimeout(() => {
         scanningRef.current = true;
         setQrScanning(false);
@@ -138,7 +165,6 @@ const LoginPage = () => {
     }
   };
 
-  // Start/stop camera when mode changes
   useEffect(() => {
     if (loginMode === 'qr') {
       startCamera();
@@ -151,7 +177,10 @@ const LoginPage = () => {
   // ── Forgot Password ──────────────────────────────────────────────────────
   const handleForgotPassword = async (e) => {
     e.preventDefault();
-    if (!forgotEmail) { toast.error('Please enter your email'); return; }
+    if (!forgotEmail) {
+      toast.error('Please enter your email');
+      return;
+    }
     setForgotLoading(true);
     try {
       await API.post('/auth/forgot-password', { email: forgotEmail });
@@ -170,320 +199,508 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-surface-950 transition-colors duration-300">
-      {/* Animated background */}
-      <div className="absolute inset-0">
-        <div className="absolute top-1/4 -left-20 w-96 h-96 bg-primary-500/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-violet-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary-600/5 rounded-full blur-3xl" />
-      </div>
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(99,102,241,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(99,102,241,0.03)_1px,transparent_1px)] bg-[size:64px_64px]" />
-
-      {/* Theme Toggle */}
-      <div className="absolute top-6 right-6 z-50">
-        <button
-          onClick={toggleTheme}
-          className="p-3 rounded-xl bg-surface-900/50 border border-surface-700/50 backdrop-blur-md hover:bg-surface-800 text-surface-400 hover:text-surface-200 transition-all duration-300 shadow-xl"
-          aria-label="Toggle theme"
-          title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-        >
-          <div className="relative w-6 h-6">
-            <HiOutlineSun className={`w-6 h-6 absolute inset-0 transition-all duration-500 ${
-              theme === 'dark' ? 'rotate-0 scale-100 opacity-100' : '-rotate-90 scale-0 opacity-0'
-            }`} />
-            <HiOutlineMoon className={`w-6 h-6 absolute inset-0 transition-all duration-500 ${
-              theme === 'light' ? 'rotate-0 scale-100 opacity-100' : 'rotate-90 scale-0 opacity-0'
-            }`} />
-          </div>
-        </button>
+    <div className="min-h-screen relative overflow-x-hidden bg-surface-950 transition-colors duration-300 flex flex-col justify-between selection:bg-teal-500 selection:text-white">
+      {/* ── AMBIENT LIQUID MESH GRADIENT BLOBS ── */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute -top-32 -left-32 w-[600px] h-[600px] bg-teal-500/15 rounded-full blur-[140px] animate-pulse-slow" />
+        <div
+          className="absolute top-1/3 -right-32 w-[550px] h-[550px] bg-amber-500/12 rounded-full blur-[130px] animate-pulse-slow"
+          style={{ animationDelay: '2s' }}
+        />
+        <div
+          className="absolute -bottom-32 left-1/4 w-[650px] h-[650px] bg-blue-600/12 rounded-full blur-[150px] animate-pulse-slow"
+          style={{ animationDelay: '4s' }}
+        />
+        {/* Subtle geometric dot matrix overlay */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(14,75,86,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(14,75,86,0.04)_1px,transparent_1px)] bg-[size:48px_48px] opacity-70" />
       </div>
 
-      {/* Login Card */}
-      <div className="relative z-10 w-full max-w-md mx-4 animate-slide-up">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 shadow-2xl shadow-primary-500/30 mb-4">
-            <span className="text-white font-bold text-2xl font-display">ET</span>
+      {/* ── TOP HEADER / NAV BAR ── */}
+      <header className="relative z-30 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between">
+        {/* Logo Mark */}
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-teal-700 via-teal-800 to-teal-950 p-0.5 shadow-xl shadow-teal-900/30 border border-teal-500/30 flex items-center justify-center">
+            <div className="w-full h-full rounded-[14px] bg-surface-900/70 backdrop-blur-md flex items-center justify-center">
+              <span className="font-display font-black text-xl text-transparent bg-clip-text bg-gradient-to-r from-teal-300 via-teal-200 to-amber-300">
+                ET
+              </span>
+            </div>
           </div>
-          <h1 className="text-3xl font-display font-bold text-surface-100">Employee Tracker</h1>
-          <p className="text-surface-500 mt-1">Performance &amp; Payroll Management</p>
+          <div>
+            <span className="text-lg font-display font-extrabold tracking-tight text-surface-100 flex items-center gap-1.5">
+              EMPLOYEE TRACKER
+              <span className="text-xs px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 font-semibold border border-teal-400/30">
+                PRO
+              </span>
+            </span>
+            <span className="text-[11px] font-medium text-surface-400 block -mt-1 tracking-wider uppercase">
+              Financial Insights &amp; Payroll Suite
+            </span>
+          </div>
         </div>
 
-        {/* Form Card */}
-        <div className="glass-card p-8">
-          {/* Mode Tabs */}
-          <div className="flex rounded-xl bg-surface-800/60 p-1 mb-6 border border-surface-700/50">
-            <button
-              onClick={() => setLoginMode('credentials')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-300 ${
-                loginMode === 'credentials'
-                  ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30'
-                  : 'text-surface-400 hover:text-surface-200'
-              }`}
-            >
-              <HiOutlineLockClosed className="w-4 h-4" />
-              Credentials
-            </button>
-            <button
-              onClick={() => setLoginMode('qr')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-300 ${
-                loginMode === 'qr'
-                  ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30'
-                  : 'text-surface-400 hover:text-surface-200'
-              }`}
-            >
-              <HiOutlineQrcode className="w-4 h-4" />
-              Scan QR Code
-            </button>
+        {/* Center Links (Desktop only) */}
+        <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-surface-400">
+          <span className="text-surface-200 hover:text-teal-400 transition-colors cursor-pointer">Services</span>
+          <span className="hover:text-teal-400 transition-colors cursor-pointer">Payroll &amp; PF</span>
+          <span className="hover:text-teal-400 transition-colors cursor-pointer">Bank Advice</span>
+          <span className="hover:text-teal-400 transition-colors cursor-pointer">Security</span>
+        </nav>
+
+        {/* Right Action: System Status & Theme Toggle */}
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full liquid-glass text-xs text-teal-300 font-medium">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Portal Operational</span>
           </div>
 
-          {/* ── Credentials Mode ──────────────────────────────────────────── */}
-          {loginMode === 'credentials' && (
-            <>
-              <h2 className="text-xl font-display font-bold text-surface-100 mb-1">Sign In</h2>
-              <p className="text-sm text-surface-500 mb-8">Enter your credentials to access your dashboard</p>
+          <button
+            onClick={toggleTheme}
+            className="p-2.5 rounded-xl liquid-glass text-surface-300 hover:text-surface-100 transition-all duration-300 shadow-md hover:scale-105"
+            aria-label="Toggle theme"
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          >
+            <div className="relative w-5 h-5">
+              <HiOutlineSun
+                className={`w-5 h-5 absolute inset-0 transition-all duration-500 ${
+                  theme === 'dark' ? 'rotate-0 scale-100 opacity-100 text-amber-300' : '-rotate-90 scale-0 opacity-0'
+                }`}
+              />
+              <HiOutlineMoon
+                className={`w-5 h-5 absolute inset-0 transition-all duration-500 ${
+                  theme === 'light' ? 'rotate-0 scale-100 opacity-100 text-teal-600' : 'rotate-90 scale-0 opacity-0'
+                }`}
+              />
+            </div>
+          </button>
+        </div>
+      </header>
 
-              <form onSubmit={handleSubmit} className="space-y-5">
-                {/* Employee Code */}
-                <div>
-                  <label className="block text-sm font-medium text-surface-300 mb-2">Employee Code</label>
-                  <div className="relative">
-                    <HiOutlineIdentification className="absolute left-4 top-1/2 -translate-y-1/2 text-surface-500 w-5 h-5" />
-                    <input
-                      id="login-employee-code"
-                      type="text"
-                      value={employeeCode}
-                      onChange={(e) => setEmployeeCode(e.target.value)}
-                      className="input-field pl-12"
-                      placeholder="e.g. EMP-001 or ADMIN"
-                    />
-                  </div>
+      {/* ── MAIN CONTENT SPLIT SECTION (HERO + AUTH CARD) ── */}
+      <main className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 lg:py-6 flex-1 flex items-center">
+        <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+          {/* ══════════════════════════════════════════════════════════════════════
+              LEFT / HERO COLUMN: FINANCIAL INSIGHTS & STRATEGY SHOWCASE
+             ══════════════════════════════════════════════════════════════════════ */}
+          <div className="lg:col-span-7 flex flex-col justify-center space-y-6">
+            {/* Pill Tag */}
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full liquid-glass-teal text-xs font-semibold text-teal-200 border border-teal-500/30 w-fit shadow-lg shadow-teal-950/20">
+              <HiOutlineSparkles className="w-4 h-4 text-amber-300 animate-spin" style={{ animationDuration: '6s' }} />
+              <span>Next-Gen Enterprise HR &amp; Financial Strategy</span>
+            </div>
+
+            {/* Headline matching user's screenshot */}
+            <div className="space-y-3">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-extrabold text-surface-100 tracking-tight leading-[1.12]">
+                FINANCIAL INSIGHTS <br className="hidden sm:inline" />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-amber-400 to-orange-500">
+                  &amp; WORKFORCE STRATEGY
+                </span>
+              </h1>
+              <p className="text-base sm:text-lg font-medium text-surface-300 leading-snug">
+                Empowering businesses with precise biometric tracking, automated payroll, and statutory fund advisory.
+              </p>
+              <p className="text-xs sm:text-sm text-surface-400 leading-relaxed max-w-2xl">
+                Our platform delivers intelligent HR solutions to optimize performance, calculate monthly PF &amp;
+                Mediclaim deductions automatically on the 2nd of every month, and generate comprehensive bank transfer schedules for your finance team.
+              </p>
+            </div>
+
+            {/* Rich Vector Graphic Illustration matching user screenshot */}
+            <div className="py-2">
+              <LoginIllustration />
+            </div>
+
+            {/* 3 Interactive Feature Cards Matching Screenshot (Tax Planning, Bookkeeping, Audit) */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-2">
+              {/* Feature 1: Tax & PF Planning */}
+              <div className="liquid-glass p-4 rounded-2xl border border-surface-700/60 hover:border-teal-500/40 transition-all duration-300 group hover:-translate-y-1">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-800 to-teal-950 border border-teal-400/30 flex items-center justify-center text-teal-300 shadow-md shadow-teal-900/30 mb-3 group-hover:scale-105 transition-transform">
+                  <HiOutlineCash className="w-5 h-5 text-teal-300" />
                 </div>
-
-                {/* Email Address */}
-                <div>
-                  <label className="block text-sm font-medium text-surface-300 mb-2">Email Address</label>
-                  <div className="relative">
-                    <HiOutlineMail className="absolute left-4 top-1/2 -translate-y-1/2 text-surface-500 w-5 h-5" />
-                    <input
-                      id="login-email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="input-field pl-12"
-                      placeholder="you@company.com"
-                    />
-                  </div>
-                </div>
-
-                {/* Password */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-medium text-surface-300">Password</label>
-                    <button
-                      type="button"
-                      onClick={() => setShowForgotModal(true)}
-                      className="text-xs text-primary-400 hover:text-primary-300 transition-colors"
-                    >
-                      Forgot Password?
-                    </button>
-                  </div>
-                  <div className="relative">
-                    <HiOutlineLockClosed className="absolute left-4 top-1/2 -translate-y-1/2 text-surface-500 w-5 h-5" />
-                    <input
-                      id="login-password"
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="input-field pl-12 pr-12"
-                      placeholder="••••••••"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-surface-500 hover:text-surface-300 transition-colors"
-                    >
-                      {showPassword ? <HiOutlineEyeOff className="w-5 h-5" /> : <HiOutlineEye className="w-5 h-5" />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Submit */}
-                <button
-                  id="login-submit"
-                  type="submit"
-                  disabled={loading}
-                  className="btn-primary w-full flex items-center justify-center gap-2 py-3"
-                >
-                  {loading ? (
-                    <>
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Signing in...
-                    </>
-                  ) : 'Sign In →'}
-                </button>
-              </form>
-            </>
-          )}
-
-          {/* ── QR Scan Mode ──────────────────────────────────────────────── */}
-          {loginMode === 'qr' && (
-            <div className="space-y-4">
-              <div className="text-center">
-                <h2 className="text-xl font-display font-bold text-surface-100 mb-1">QR Code Login</h2>
-                <p className="text-sm text-surface-500">Hold your QR code in front of the camera</p>
+                <h4 className="text-sm font-bold text-surface-100 mb-1">Tax &amp; PF Planning</h4>
+                <p className="text-[11px] text-surface-400 leading-relaxed">
+                  Automated statutory PF (12%) &amp; Mediclaim accumulation with transparent deductions.
+                </p>
               </div>
 
-              {/* Scanner Viewport */}
-              <div className="relative rounded-2xl overflow-hidden bg-surface-900 border border-surface-700/50 aspect-square max-w-xs mx-auto">
-                <video
-                  ref={videoRef}
-                  className="w-full h-full object-cover"
-                  playsInline
-                  muted
-                />
-                <canvas ref={canvasRef} className="hidden" />
+              {/* Feature 2: Bookkeeping & Payroll */}
+              <div className="liquid-glass p-4 rounded-2xl border border-surface-700/60 hover:border-amber-500/40 transition-all duration-300 group hover:-translate-y-1">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-600 to-orange-700 border border-amber-400/30 flex items-center justify-center text-white shadow-md shadow-amber-900/30 mb-3 group-hover:scale-105 transition-transform">
+                  <HiOutlineDocumentReport className="w-5 h-5 text-amber-100" />
+                </div>
+                <h4 className="text-sm font-bold text-surface-100 mb-1">Bookkeeping</h4>
+                <p className="text-[11px] text-surface-400 leading-relaxed">
+                  Prorated salaries, bonus incentives, and 5-rule attendance deduction calculations.
+                </p>
+              </div>
 
-                {/* Scanning Overlay */}
-                {cameraReady && !qrScanning && (
-                  <div className="absolute inset-0 pointer-events-none">
-                    {/* Corner markers */}
-                    <div className="absolute top-4 left-4 w-10 h-10 border-t-3 border-l-3 border-primary-400 rounded-tl-lg" />
-                    <div className="absolute top-4 right-4 w-10 h-10 border-t-3 border-r-3 border-primary-400 rounded-tr-lg" />
-                    <div className="absolute bottom-4 left-4 w-10 h-10 border-b-3 border-l-3 border-primary-400 rounded-bl-lg" />
-                    <div className="absolute bottom-4 right-4 w-10 h-10 border-b-3 border-r-3 border-primary-400 rounded-br-lg" />
+              {/* Feature 3: Audit & Assurance */}
+              <div className="liquid-glass p-4 rounded-2xl border border-surface-700/60 hover:border-blue-500/40 transition-all duration-300 group hover:-translate-y-1">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-800 border border-blue-400/30 flex items-center justify-center text-white shadow-md shadow-blue-900/30 mb-3 group-hover:scale-105 transition-transform">
+                  <HiOutlineShieldCheck className="w-5 h-5 text-blue-100" />
+                </div>
+                <h4 className="text-sm font-bold text-surface-100 mb-1">Audit &amp; Assurance</h4>
+                <p className="text-[11px] text-surface-400 leading-relaxed">
+                  Instant bank disbursement PDF schedules and secure biometric QR code verification.
+                </p>
+              </div>
+            </div>
+          </div>
 
-                    {/* Scanning line animation */}
-                    <div className="absolute left-4 right-4 h-0.5 bg-gradient-to-r from-transparent via-primary-400 to-transparent animate-qr-scan" />
+          {/* ══════════════════════════════════════════════════════════════════════
+              RIGHT COLUMN: PRODUCTION-GRADE LIQUID GLASS AUTH CARD
+             ══════════════════════════════════════════════════════════════════════ */}
+          <div className="lg:col-span-5 w-full max-w-md mx-auto">
+            <div className="liquid-glass rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden border border-white/20 dark:border-white/10">
+              {/* Specular top rim shine */}
+              <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-teal-400/60 to-transparent" />
+
+              {/* Card Header */}
+              <div className="text-center mb-6">
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-700 via-teal-800 to-teal-950 p-0.5 shadow-xl shadow-teal-900/40 mb-3 border border-teal-500/30">
+                  <div className="w-full h-full rounded-[14px] bg-surface-900/60 backdrop-blur-md flex items-center justify-center">
+                    <HiOutlineLockClosed className="w-6 h-6 text-teal-300" />
                   </div>
-                )}
+                </div>
+                <h2 className="text-2xl font-display font-bold text-surface-100">Sign In to Portal</h2>
+                <p className="text-xs text-surface-400 mt-1">
+                  Access your HR, attendance, payroll &amp; financial workspace
+                </p>
+              </div>
 
-                {/* QR Processing Overlay */}
-                {qrScanning && (
-                  <div className="absolute inset-0 bg-surface-950/70 flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="w-10 h-10 border-3 border-primary-500/30 border-t-primary-400 rounded-full animate-spin mx-auto mb-3" />
-                      <p className="text-sm text-surface-300 font-medium">Verifying...</p>
+              {/* Mode Switcher Tabs */}
+              <div className="flex rounded-xl bg-surface-900/80 p-1 mb-6 border border-surface-700/60 shadow-inner">
+                <button
+                  type="button"
+                  onClick={() => setLoginMode('credentials')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition-all duration-300 ${
+                    loginMode === 'credentials'
+                      ? 'bg-gradient-to-r from-teal-800 to-teal-700 text-white shadow-md shadow-teal-900/40 border border-teal-500/30'
+                      : 'text-surface-400 hover:text-surface-200'
+                  }`}
+                >
+                  <HiOutlineLockClosed className="w-3.5 h-3.5" />
+                  Credentials
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLoginMode('qr')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition-all duration-300 ${
+                    loginMode === 'qr'
+                      ? 'bg-gradient-to-r from-teal-800 to-teal-700 text-white shadow-md shadow-teal-900/40 border border-teal-500/30'
+                      : 'text-surface-400 hover:text-surface-200'
+                  }`}
+                >
+                  <HiOutlineQrcode className="w-3.5 h-3.5" />
+                  Scan QR Badge
+                </button>
+              </div>
+
+              {/* ── MODE A: CREDENTIALS SIGN IN ────────────────────────────── */}
+              {loginMode === 'credentials' && (
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {/* Employee Code */}
+                  <div>
+                    <label className="block text-xs font-semibold text-surface-300 mb-1.5">
+                      Employee Code
+                    </label>
+                    <div className="relative">
+                      <HiOutlineIdentification className="absolute left-3.5 top-1/2 -translate-y-1/2 text-surface-400 w-5 h-5 pointer-events-none" />
+                      <input
+                        id="login-employee-code"
+                        type="text"
+                        value={employeeCode}
+                        onChange={(e) => setEmployeeCode(e.target.value)}
+                        className="input-field pl-11 text-sm focus:border-teal-500 focus:ring-teal-500/20"
+                        placeholder="e.g. EMP-001 or ADMIN-001"
+                        required
+                      />
                     </div>
                   </div>
-                )}
 
-                {/* Camera loading state */}
-                {!cameraReady && !scanError && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-surface-900">
-                    <div className="text-center">
-                      <div className="w-10 h-10 border-3 border-surface-600 border-t-primary-400 rounded-full animate-spin mx-auto mb-3" />
-                      <p className="text-sm text-surface-400">Starting camera...</p>
+                  {/* Email Address */}
+                  <div>
+                    <label className="block text-xs font-semibold text-surface-300 mb-1.5">
+                      Corporate Email
+                    </label>
+                    <div className="relative">
+                      <HiOutlineMail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-surface-400 w-5 h-5 pointer-events-none" />
+                      <input
+                        id="login-email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="input-field pl-11 text-sm focus:border-teal-500 focus:ring-teal-500/20"
+                        placeholder="you@company.com"
+                        required
+                      />
                     </div>
                   </div>
-                )}
 
-                {/* Error state */}
-                {scanError && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-surface-900 p-6">
-                    <div className="text-center">
-                      <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center mx-auto mb-3">
-                        <HiOutlineX className="w-6 h-6 text-red-400" />
-                      </div>
-                      <p className="text-sm text-red-400 mb-3">{scanError}</p>
+                  {/* Password */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-semibold text-surface-300">
+                        Password
+                      </label>
                       <button
-                        onClick={startCamera}
-                        className="text-xs text-primary-400 hover:text-primary-300 underline"
+                        type="button"
+                        onClick={() => setShowForgotModal(true)}
+                        className="text-[11px] text-teal-400 hover:text-teal-300 font-medium transition-colors"
                       >
-                        Try Again
+                        Forgot Password?
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <HiOutlineLockClosed className="absolute left-3.5 top-1/2 -translate-y-1/2 text-surface-400 w-5 h-5 pointer-events-none" />
+                      <input
+                        id="login-password"
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="input-field pl-11 pr-11 text-sm focus:border-teal-500 focus:ring-teal-500/20"
+                        placeholder="••••••••"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-surface-400 hover:text-surface-200 transition-colors p-1"
+                        tabIndex={-1}
+                        aria-label="Toggle password visibility"
+                      >
+                        {showPassword ? <HiOutlineEyeOff className="w-5 h-5" /> : <HiOutlineEye className="w-5 h-5" />}
                       </button>
                     </div>
                   </div>
-                )}
-              </div>
 
-              <p className="text-xs text-surface-500 text-center px-4">
-                📱 Position your QR code within the frame. It will be detected automatically.
-              </p>
+                  {/* Quick Demo Credentials Bar */}
+                  <div className="pt-1">
+                    <p className="text-[11px] text-surface-500 mb-2 font-medium flex items-center gap-1">
+                      <span>⚡</span> Quick Demo Auto-Fill:
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={fillDemoAdmin}
+                        className="flex-1 py-1.5 px-2.5 rounded-lg bg-surface-900/60 hover:bg-surface-800 text-[11px] font-semibold text-amber-300 border border-amber-500/30 hover:border-amber-400/50 transition-all flex items-center justify-center gap-1"
+                      >
+                        👑 Admin Demo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={fillDemoEmployee}
+                        className="flex-1 py-1.5 px-2.5 rounded-lg bg-surface-900/60 hover:bg-surface-800 text-[11px] font-semibold text-teal-300 border border-teal-500/30 hover:border-teal-400/50 transition-all flex items-center justify-center gap-1"
+                      >
+                        👤 Employee Demo
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Sign In Submit Button */}
+                  <button
+                    id="login-submit"
+                    type="submit"
+                    disabled={loading}
+                    className="w-full btn-brand-teal flex items-center justify-center gap-2 py-3 rounded-xl mt-2 text-sm"
+                  >
+                    {loading ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <span>Verifying &amp; Signing In...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Sign In to Workspace</span>
+                        <HiOutlineChevronRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </button>
+                </form>
+              )}
+
+              {/* ── MODE B: QR CODE SCANNER ─────────────────────────────────── */}
+              {loginMode === 'qr' && (
+                <div className="space-y-4">
+                  <div className="text-center">
+                    <h3 className="text-sm font-bold text-surface-100">Scan Employee QR Badge</h3>
+                    <p className="text-xs text-surface-400 mt-0.5">
+                      Position your physical or digital badge in front of the camera
+                    </p>
+                  </div>
+
+                  {/* Scanner Viewport */}
+                  <div className="relative rounded-2xl overflow-hidden bg-surface-950 border-2 border-teal-500/40 aspect-square max-w-[260px] mx-auto shadow-2xl">
+                    <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
+                    <canvas ref={canvasRef} className="hidden" />
+
+                    {/* Scanning Overlay Reticles */}
+                    {cameraReady && !qrScanning && (
+                      <div className="absolute inset-0 pointer-events-none">
+                        {/* 4 Corner Markers */}
+                        <div className="absolute top-3 left-3 w-8 h-8 border-t-2 border-l-2 border-teal-400 rounded-tl-md" />
+                        <div className="absolute top-3 right-3 w-8 h-8 border-t-2 border-r-2 border-teal-400 rounded-tr-md" />
+                        <div className="absolute bottom-3 left-3 w-8 h-8 border-b-2 border-l-2 border-teal-400 rounded-bl-md" />
+                        <div className="absolute bottom-3 right-3 w-8 h-8 border-b-2 border-r-2 border-teal-400 rounded-br-md" />
+
+                        {/* Animated Laser Scanning Line */}
+                        <div className="absolute left-3 right-3 h-0.5 bg-gradient-to-r from-transparent via-teal-300 to-transparent shadow-[0_0_12px_#2dd4bf] animate-laser" />
+                      </div>
+                    )}
+
+                    {/* Processing State */}
+                    {qrScanning && (
+                      <div className="absolute inset-0 bg-surface-950/80 backdrop-blur-sm flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="w-10 h-10 border-3 border-teal-500/30 border-t-teal-400 rounded-full animate-spin mx-auto mb-2" />
+                          <p className="text-xs text-teal-200 font-semibold">Authenticating Badge...</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Camera Loading State */}
+                    {!cameraReady && !scanError && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-surface-950">
+                        <div className="text-center p-4">
+                          <div className="w-8 h-8 border-2 border-surface-700 border-t-teal-400 rounded-full animate-spin mx-auto mb-2" />
+                          <p className="text-xs text-surface-400">Initializing Optical Camera...</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Camera Error State */}
+                    {scanError && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-surface-950 p-4">
+                        <div className="text-center">
+                          <div className="w-10 h-10 rounded-full bg-rose-500/10 border border-rose-500/30 flex items-center justify-center mx-auto mb-2">
+                            <HiOutlineX className="w-5 h-5 text-rose-400" />
+                          </div>
+                          <p className="text-xs text-rose-300 mb-2 leading-relaxed">{scanError}</p>
+                          <button
+                            onClick={startCamera}
+                            className="text-xs text-teal-400 hover:text-teal-300 underline font-semibold"
+                          >
+                            Retry Camera
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <p className="text-[11px] text-surface-400 text-center px-2">
+                    💡 Keep the QR code steady and well lit. You will be redirected immediately upon detection.
+                  </p>
+                </div>
+              )}
             </div>
-          )}
+
+            {/* Bottom Security Badge */}
+            <div className="flex items-center justify-center gap-2 text-xs text-surface-500 mt-4">
+              <HiOutlineShieldCheck className="w-4 h-4 text-emerald-400" />
+              <span>TLS 256-Bit Encrypted Corporate Authentication</span>
+            </div>
+          </div>
         </div>
+      </main>
 
-        <p className="text-center text-xs text-surface-600 mt-6">
-          © 2026 Employee Tracker. All rights reserved.
-        </p>
-      </div>
+      {/* ── FOOTER ── */}
+      <footer className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 border-t border-surface-800/60 flex flex-col sm:flex-row items-center justify-between text-xs text-surface-500 gap-2">
+        <p>&copy; 2026 Employee Tracker Enterprise HR &amp; Accounting System. All Rights Reserved.</p>
+        <div className="flex items-center gap-4">
+          <span className="hover:text-surface-300 transition-colors cursor-pointer">Privacy Policy</span>
+          <span>•</span>
+          <span className="hover:text-surface-300 transition-colors cursor-pointer">Terms of Service</span>
+          <span>•</span>
+          <span className="hover:text-surface-300 transition-colors cursor-pointer">Help &amp; Support</span>
+        </div>
+      </footer>
 
-      {/* ── Forgot Password Modal ────────────────────────────────────────────── */}
+      {/* ── FORGOT PASSWORD LIQUID GLASS MODAL ── */}
       {showForgotModal && (
-        <div className="fixed inset-0 bg-surface-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="glass-card w-full max-w-md animate-slide-up">
-            <div className="flex items-center justify-between p-6 border-b border-surface-700/50">
-              <div className="flex items-center gap-3">
+        <div className="fixed inset-0 bg-surface-950/70 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="liquid-glass w-full max-w-md rounded-2xl shadow-2xl border border-white/20 overflow-hidden animate-slide-up">
+            <div className="flex items-center justify-between p-5 border-b border-surface-700/50">
+              <div className="flex items-center gap-2.5">
                 {forgotSent && (
-                  <button onClick={() => setForgotSent(false)} className="p-1.5 rounded-lg hover:bg-surface-700 text-surface-400">
+                  <button
+                    onClick={() => setForgotSent(false)}
+                    className="p-1 rounded-lg hover:bg-surface-800 text-surface-400"
+                  >
                     <HiOutlineArrowLeft className="w-4 h-4" />
                   </button>
                 )}
-                <h2 className="text-xl font-display font-bold text-surface-100">
-                  {forgotSent ? '📧 Check Your Email' : '🔑 Forgot Password'}
-                </h2>
+                <h3 className="text-base font-display font-bold text-surface-100 flex items-center gap-1.5">
+                  {forgotSent ? '📬 Reset Instructions Sent' : '🔑 Reset Your Password'}
+                </h3>
               </div>
-              <button onClick={closeForgotModal} className="p-2 rounded-lg hover:bg-surface-700 text-surface-400">
+              <button
+                onClick={closeForgotModal}
+                className="p-1.5 rounded-lg hover:bg-surface-800 text-surface-400 hover:text-surface-200 transition-colors"
+              >
                 <HiOutlineX className="w-5 h-5" />
               </button>
             </div>
 
             <div className="p-6">
               {forgotSent ? (
-                /* ── Success state ─── */
-                <div className="text-center py-4">
-                  <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto mb-4">
-                    <span className="text-3xl">📬</span>
+                <div className="text-center py-2">
+                  <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto mb-3 shadow-lg shadow-emerald-500/10">
+                    <HiOutlineCheckCircle className="w-8 h-8 text-emerald-400" />
                   </div>
-                  <p className="text-surface-200 font-medium mb-2">Reset link sent!</p>
-                  <p className="text-sm text-surface-500 mb-6">
-                    If <span className="text-primary-400">{forgotEmail}</span> is registered,
-                    you'll receive a password reset link shortly. Check your inbox (and spam folder).
+                  <h4 className="text-base font-bold text-surface-100 mb-1">Check Your Inbox</h4>
+                  <p className="text-xs text-surface-400 mb-4 leading-relaxed">
+                    If <strong className="text-teal-300">{forgotEmail}</strong> matches a registered account, you will receive a secure password recovery link shortly.
                   </p>
-                  <p className="text-xs text-amber-400">⏰ The link expires in 20 minutes.</p>
-                  <button
-                    onClick={closeForgotModal}
-                    className="btn-primary mt-6 w-full"
-                  >
-                    Back to Login
+                  <p className="text-[11px] text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2.5 mb-5">
+                    ⏰ For security, the recovery token expires in 20 minutes.
+                  </p>
+                  <button onClick={closeForgotModal} className="btn-brand-teal w-full py-2.5 text-xs">
+                    Return to Login
                   </button>
                 </div>
               ) : (
-                /* ── Email input form ─── */
                 <form onSubmit={handleForgotPassword} className="space-y-4">
-                  <p className="text-sm text-surface-400">
-                    Enter your registered email address and we'll send you a link to reset your password.
+                  <p className="text-xs text-surface-400 leading-relaxed">
+                    Enter the corporate email associated with your employee account and we will dispatch an instant password reset link.
                   </p>
                   <div>
-                    <label className="block text-sm font-medium text-surface-300 mb-1.5">Email Address</label>
+                    <label className="block text-xs font-semibold text-surface-300 mb-1.5">Corporate Email</label>
                     <div className="relative">
-                      <HiOutlineMail className="absolute left-4 top-1/2 -translate-y-1/2 text-surface-500 w-5 h-5" />
+                      <HiOutlineMail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-surface-400 w-5 h-5 pointer-events-none" />
                       <input
                         type="email"
                         required
                         value={forgotEmail}
                         onChange={(e) => setForgotEmail(e.target.value)}
-                        className="input-field pl-12"
+                        className="input-field pl-11 text-sm focus:border-teal-500 focus:ring-teal-500/20"
                         placeholder="you@company.com"
                         autoFocus
                       />
                     </div>
                   </div>
-                  <div className="flex gap-3 pt-2">
+                  <div className="flex gap-2.5 pt-2">
                     <button
                       type="submit"
                       disabled={forgotLoading}
-                      className="btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="btn-brand-teal flex-1 py-2.5 text-xs flex items-center justify-center gap-1.5"
                     >
                       {forgotLoading ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          Sending...
-                        </span>
-                      ) : '📧 Send Reset Link'}
+                        <>
+                          <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Sending Link...</span>
+                        </>
+                      ) : (
+                        'Send Recovery Link'
+                      )}
                     </button>
-                    <button type="button" onClick={closeForgotModal} className="btn-secondary">Cancel</button>
+                    <button
+                      type="button"
+                      onClick={closeForgotModal}
+                      className="px-4 py-2.5 rounded-xl border border-surface-700/60 text-xs font-semibold text-surface-300 hover:bg-surface-800 transition-colors"
+                    >
+                      Cancel
+                    </button>
                   </div>
                 </form>
               )}
@@ -491,22 +708,6 @@ const LoginPage = () => {
           </div>
         </div>
       )}
-
-      {/* QR scanner animation keyframes */}
-      <style>{`
-        @keyframes qr-scan {
-          0%   { top: 1rem; opacity: 0; }
-          10%  { opacity: 1; }
-          90%  { opacity: 1; }
-          100% { top: calc(100% - 1rem); opacity: 0; }
-        }
-        .animate-qr-scan {
-          animation: qr-scan 2.5s ease-in-out infinite;
-        }
-        .border-3 {
-          border-width: 3px;
-        }
-      `}</style>
     </div>
   );
 };

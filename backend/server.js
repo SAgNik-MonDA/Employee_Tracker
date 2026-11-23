@@ -21,6 +21,10 @@ startBirthdayScheduler();
 // Start holiday scheduler (runs daily at midnight to clear expired holidays)
 const startHolidayScheduler = require('./utils/holidayScheduler');
 startHolidayScheduler();
+
+// Start automated payroll & fund deductions scheduler (runs on 2nd of each month at 00:05 AM IST)
+const { startAutoPayrollScheduler } = require('./utils/autoPayrollScheduler');
+startAutoPayrollScheduler();
 const app    = express();
 const server = http.createServer(app);
 const io     = new Server(server, { cors: { origin: '*' } });

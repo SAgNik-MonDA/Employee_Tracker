@@ -178,12 +178,276 @@ const computeSalaryDeductions = async ({
   };
 };
 
-// @desc    Generate payroll for all employees for a given month
+/**
+ * Computes exact payroll record for a single employee, updates accumulated PF/Mediclaim,
+ * triggers in-app notification, and dispatches detailed fund deduction email.
+ */
+const processEmployeePayrollRecord = async ({
+  emp,
+  month,
+  year,
+  monthYear,
+  totalDaysInMonth,
+  bonusOverride = null,
+  bonusReasonOverride = null,
+  isAutoCron = false,
+}) => {
+  const basicSalary = emp.basicSalary || 0;
+
+  // Prorate for mid-month joiners
+  const joiningDate  = new Date(emp.joiningDate || Date.now());
+  const monthStart   = new Date(year, month - 1, 1);
+
+  let effectiveDays = totalDaysInMonth;
+  if (joiningDate > monthStart) {
+    effectiveDays = totalDaysInMonth - joiningDate.getDate() + 1;
+  }
+
+  const proratedSalary = Math.round((basicSalary / totalDaysInMonth) * effectiveDays);
+
+  const rawPf        = emp.pfAmount || 0;
+  const rawMediclaim = emp.mediclaimAmount || 0;
+
+  const pfDeduction        = Math.round((rawPf / totalDaysInMonth) * effectiveDays);
+  const mediclaimDeduction = Math.round((rawMediclaim / totalDaysInMonth) * effectiveDays);
+
+  const existingPayroll = await Payroll.findOne({
+    employeeId: emp._id,
+    monthYear,
+  });
+
+  const bonus = bonusOverride !== null
+    ? bonusOverride
+    : (existingPayroll ? (existingPayroll.bonus || 0) : 0);
+  const bonusReason = bonusReasonOverride !== null
+    ? bonusReasonOverride
+    : (existingPayroll ? (existingPayroll.bonusReason || '') : '');
+
+  const calculation = await computeSalaryDeductions({
+    emp,
+    month,
+    year,
+    proratedSalary,
+    pfDeduction,
+    mediclaimDeduction,
+    bonus,
+  });
+
+  const {
+    inactiveCount,
+    inactiveDeduction,
+    yearlyUnapprovedAbsences,
+    unapprovedAbsenceDeduction,
+    postAbsenceApprovedLeaves,
+    postAbsenceApprovedDeduction,
+    postAbsenceRejectedLeaves,
+    postAbsenceRejectedDeduction,
+    penaltyDeductions,
+    leaveDeduction,
+    totalDeductions,
+    netSalary,
+    breakdownNotes,
+  } = calculation;
+
+  let prevPf = 0;
+  let prevMediclaim = 0;
+  let payroll;
+  let isNew = false;
+
+  if (existingPayroll) {
+    prevPf        = existingPayroll.pfDeduction || 0;
+    prevMediclaim = existingPayroll.mediclaimDeduction || 0;
+
+    existingPayroll.baseSalary                  = proratedSalary;
+    existingPayroll.bonus                       = bonus;
+    existingPayroll.bonusReason                 = bonusReason;
+    existingPayroll.pfDeduction                 = pfDeduction;
+    existingPayroll.mediclaimDeduction           = mediclaimDeduction;
+    existingPayroll.leaveDeduction              = leaveDeduction;
+    existingPayroll.inactiveCount               = inactiveCount;
+    existingPayroll.inactiveDeduction           = inactiveDeduction;
+    existingPayroll.yearlyUnapprovedAbsences    = yearlyUnapprovedAbsences;
+    existingPayroll.unapprovedAbsenceDeduction  = unapprovedAbsenceDeduction;
+    existingPayroll.postAbsenceApprovedLeaves   = postAbsenceApprovedLeaves;
+    existingPayroll.postAbsenceApprovedDeduction = postAbsenceApprovedDeduction;
+    existingPayroll.postAbsenceRejectedLeaves   = postAbsenceRejectedLeaves;
+    existingPayroll.postAbsenceRejectedDeduction = postAbsenceRejectedDeduction;
+    existingPayroll.penaltyDeductions           = penaltyDeductions;
+    existingPayroll.deductionBreakdownNotes     = breakdownNotes;
+    existingPayroll.deductions                  = totalDeductions;
+    existingPayroll.netSalary                   = netSalary;
+    existingPayroll.totalDaysInMonth            = totalDaysInMonth;
+    existingPayroll.effectiveDays               = effectiveDays;
+    payroll = await existingPayroll.save();
+  } else {
+    isNew = true;
+    payroll = await Payroll.create({
+      employeeId: emp._id,
+      monthYear,
+      baseSalary: proratedSalary,
+      bonus,
+      bonusReason,
+      pfDeduction,
+      mediclaimDeduction,
+      leaveDeduction,
+      inactiveCount,
+      inactiveDeduction,
+      yearlyUnapprovedAbsences,
+      unapprovedAbsenceDeduction,
+      postAbsenceApprovedLeaves,
+      postAbsenceApprovedDeduction,
+      postAbsenceRejectedLeaves,
+      postAbsenceRejectedDeduction,
+      penaltyDeductions,
+      deductionBreakdownNotes: breakdownNotes,
+      deductions: totalDeductions,
+      netSalary,
+      totalDaysInMonth,
+      effectiveDays,
+      status: 'Unpaid',
+    });
+  }
+
+  // Accumulate PF & Mediclaim on User (delta-safe for re-generation)
+  const pfDelta        = pfDeduction - prevPf;
+  const mediclaimDelta = mediclaimDeduction - prevMediclaim;
+
+  if (pfDelta !== 0 || mediclaimDelta !== 0) {
+    await User.findByIdAndUpdate(emp._id, {
+      $inc: {
+        totalPfAccumulated:        pfDelta,
+        totalMediclaimAccumulated: mediclaimDelta,
+      },
+    });
+  }
+
+  // Fetch updated user to display exact accumulated balances in email & response
+  const freshUser = await User.findById(emp._id).select('totalPfAccumulated totalMediclaimAccumulated pfId mediclaimId');
+  const totalPf = freshUser ? freshUser.totalPfAccumulated : ((emp.totalPfAccumulated || 0) + pfDelta);
+  const totalMediclaim = freshUser ? freshUser.totalMediclaimAccumulated : ((emp.totalMediclaimAccumulated || 0) + mediclaimDelta);
+  const pfId = (freshUser && freshUser.pfId) || emp.pfId || 'Assigned';
+  const mediclaimId = (freshUser && freshUser.mediclaimId) || emp.mediclaimId || 'Assigned';
+
+  // In-app Notification for employee
+  Notification.create({
+    userId: emp._id,
+    type: 'payroll_generated',
+    title: isAutoCron ? 'Monthly Salary & Fund Deductions Processed' : 'Payslip Updated',
+    message: `Your salary for ${monthYear} has been generated: PF ₹${pfDeduction.toLocaleString()} & Mediclaim ₹${mediclaimDeduction.toLocaleString()} deducted. Net Salary: ₹${netSalary.toLocaleString()}.`,
+    link: '/employee/payslips',
+  }).catch(err => console.error('Payroll Notif Error:', err));
+
+  // Mask bank account for privacy
+  const rawAcct = emp.bankDetails?.accountNumber || '';
+  const maskedAcct = rawAcct.length > 4 ? `•••• •••• ${rawAcct.slice(-4)}` : (rawAcct || 'On File');
+
+  // Send rich HTML Email detailing PF & Mediclaim deductions and fund balances
+  sendEmail({
+    to: emp.email,
+    subject: `Salary Statement & Statutory Deductions (PF & Mediclaim) - ${monthYear}`,
+    html: `
+      <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:650px;margin:0 auto;background:#0f172a;color:#e2e8f0;border-radius:16px;overflow:hidden;border:1px solid #334155;">
+        <div style="background:linear-gradient(135deg,#312e81 0%,#4338ca 50%,#6366f1 100%);padding:32px 28px;text-align:center;">
+          <h1 style="margin:0;font-size:24px;font-weight:800;color:#ffffff;letter-spacing:0.5px;">Monthly Salary &amp; Fund Deductions Advice</h1>
+          <p style="margin:8px 0 0;color:#e0e7ff;font-size:14px;font-weight:500;">Pay Period: ${monthYear} ${isAutoCron ? '• (Automated Monthly Run)' : ''}</p>
+        </div>
+
+        <div style="padding:28px 24px;">
+          <p style="color:#cbd5e1;font-size:14px;line-height:1.7;margin:0 0 20px;">
+            Dear <strong>${emp.name}</strong> (${emp.employeeCode || 'EMP'}),<br/>
+            Your monthly salary for <strong>${monthYear}</strong> has been processed. In accordance with company policy, your statutory deductions for <strong>Provident Fund (PF)</strong> and <strong>Mediclaim Health Insurance</strong> have been deducted and credited to your accumulated corporate fund accounts.
+          </p>
+
+          <!-- Fund Accumulation Highlights -->
+          <div style="display:flex;gap:12px;margin-bottom:24px;">
+            <div style="flex:1;background:#1e293b;border:1px solid #3b82f6;border-radius:12px;padding:16px;text-align:center;">
+              <span style="font-size:11px;font-weight:700;color:#93c5fd;text-transform:uppercase;letter-spacing:1px;display:block;">Provident Fund (PF)</span>
+              <span style="font-size:20px;font-weight:800;color:#ffffff;display:block;margin:6px 0 2px;">- ₹${pfDeduction.toLocaleString()}</span>
+              <span style="font-size:11px;color:#94a3b8;display:block;">PF ID: <strong>${pfId}</strong></span>
+              <span style="font-size:12px;color:#60a5fa;display:block;margin-top:4px;font-weight:600;">Total Accumulated: ₹${totalPf.toLocaleString()}</span>
+            </div>
+            <div style="flex:1;background:#1e293b;border:1px solid #10b981;border-radius:12px;padding:16px;text-align:center;">
+              <span style="font-size:11px;font-weight:700;color:#6ee7b7;text-transform:uppercase;letter-spacing:1px;display:block;">Mediclaim Health Fund</span>
+              <span style="font-size:20px;font-weight:800;color:#ffffff;display:block;margin:6px 0 2px;">- ₹${mediclaimDeduction.toLocaleString()}</span>
+              <span style="font-size:11px;color:#94a3b8;display:block;">Mediclaim ID: <strong>${mediclaimId}</strong></span>
+              <span style="font-size:12px;color:#34d399;display:block;margin-top:4px;font-weight:600;">Total Accumulated: ₹${totalMediclaim.toLocaleString()}</span>
+            </div>
+          </div>
+
+          <!-- Salary Statement Table -->
+          <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:18px;margin-bottom:24px;">
+            <h3 style="margin:0 0 14px;font-size:14px;color:#f8fafc;font-weight:700;border-bottom:1px solid #334155;padding-bottom:8px;">
+              Salary Breakdown &amp; Deductions Summary
+            </h3>
+            <table style="width:100%;font-size:13px;border-collapse:collapse;color:#cbd5e1;">
+              <tr>
+                <td style="padding:6px 0;">Base Salary ${effectiveDays < totalDaysInMonth ? `(Prorated ${effectiveDays}/${totalDaysInMonth} days)` : ''}:</td>
+                <td style="padding:6px 0;font-weight:600;color:#f1f5f9;text-align:right;">₹${proratedSalary.toLocaleString()}</td>
+              </tr>
+              ${bonus > 0 ? `
+              <tr>
+                <td style="padding:6px 0;color:#34d399;">Special Bonus ${bonusReason ? `(${bonusReason})` : ''}:</td>
+                <td style="padding:6px 0;font-weight:bold;color:#34d399;text-align:right;">+ ₹${bonus.toLocaleString()}</td>
+              </tr>
+              ` : ''}
+              <tr>
+                <td style="padding:6px 0;color:#f87171;">Provident Fund (PF - 12%):</td>
+                <td style="padding:6px 0;font-weight:600;color:#f87171;text-align:right;">- ₹${pfDeduction.toLocaleString()}</td>
+              </tr>
+              <tr>
+                <td style="padding:6px 0;color:#f87171;">Mediclaim Health Contribution:</td>
+                <td style="padding:6px 0;font-weight:600;color:#f87171;text-align:right;">- ₹${mediclaimDeduction.toLocaleString()}</td>
+              </tr>
+              ${penaltyDeductions > 0 ? `
+              <tr>
+                <td style="padding:6px 0;color:#fbbf24;">Disciplinary &amp; Leave Penalties:</td>
+                <td style="padding:6px 0;font-weight:600;color:#fbbf24;text-align:right;">- ₹${penaltyDeductions.toLocaleString()}</td>
+              </tr>
+              ` : ''}
+              <tr style="border-top:1px solid #334155;">
+                <td style="padding:8px 0;font-weight:700;color:#ef4444;">Total Deductions:</td>
+                <td style="padding:8px 0;font-weight:bold;color:#ef4444;text-align:right;">- ₹${totalDeductions.toLocaleString()}</td>
+              </tr>
+              <tr style="border-top:2px solid #3b82f6;background:rgba(59,130,246,0.08);">
+                <td style="padding:10px 8px;font-size:15px;font-weight:bold;color:#ffffff;">Net Take-Home Salary:</td>
+                <td style="padding:10px 8px;font-size:16px;font-weight:800;color:#38bdf8;text-align:right;">₹${netSalary.toLocaleString()}</td>
+              </tr>
+            </table>
+          </div>
+
+          <!-- Bank Transfer Advice Note -->
+          <div style="background:#0b1329;border:1px solid #1e3a8a;border-radius:10px;padding:14px;margin-bottom:20px;font-size:12px;color:#93c5fd;">
+            <strong>Bank Transfer Disbursement:</strong><br/>
+            Bank: <strong>${emp.bankDetails?.bankName || 'Registered Bank'}</strong> | A/C: <strong>${maskedAcct}</strong> | IFSC: <strong>${emp.bankDetails?.ifscCode || 'On File'}</strong><br/>
+            This Net Salary amount is scheduled for direct transfer to your bank account by the Finance Department.
+          </div>
+
+          ${breakdownNotes.length > 0 ? `
+            <div style="margin-top:12px;padding:12px;background:#1e293b;border:1px solid #334155;border-radius:8px;font-size:12px;color:#94a3b8;">
+              <strong style="color:#e2e8f0;">Salary Calculation Notes:</strong>
+              <ul style="margin:6px 0 0;padding-left:18px;">
+                ${breakdownNotes.map(n => `<li>${n}</li>`).join('')}
+              </ul>
+            </div>
+          ` : ''}
+        </div>
+
+        <div style="background:#090d16;padding:16px;text-align:center;border-top:1px solid #1e293b;">
+          <p style="margin:0;font-size:11px;color:#64748b;">&copy; 2026 Employee Tracker Enterprise. All Rights Reserved. This is an automated corporate notification.</p>
+        </div>
+      </div>
+    `,
+  }).catch(err => console.error('Payroll Email Error:', err));
+
+  return { payroll, isNew };
+};
+
+// @desc    Generate payroll (Bulk or Single Employee) for a given month
 // @route   POST /api/payroll/generate
 // @access  Private (Admin, HR)
 const generatePayroll = async (req, res) => {
   try {
-    const { monthYear } = req.body; // MM-YYYY
+    const { monthYear, employeeId } = req.body; // MM-YYYY, optional employeeId
 
     if (!monthYear) {
       return res.status(400).json({ message: 'monthYear is required (MM-YYYY)' });
@@ -198,13 +462,41 @@ const generatePayroll = async (req, res) => {
     }
 
     const totalDaysInMonth = getDaysInMonth(month, year);
-    const lastDayOfMonth   = new Date(year, month, 0, 23, 59, 59, 999); // last instant of the month
+    const lastDayOfMonth   = new Date(year, month, 0, 23, 59, 59, 999);
+    const ADMIN_ROLES      = ['Admin'];
 
-    // ── Only fetch employees who:
-    //    1. Have a basicSalary > 0
-    //    2. Joined on or before the last day of the selected month
-    //    3. Are NOT Admin role
-    const ADMIN_ROLES = ['Admin'];
+    // ── CASE A: Single Employee Manual Generation ────────────────────
+    if (employeeId) {
+      const emp = await User.findOne({
+        _id: employeeId,
+        role: { $nin: ADMIN_ROLES },
+        basicSalary: { $gt: 0 },
+        joiningDate: { $lte: lastDayOfMonth },
+      });
+
+      if (!emp) {
+        return res.status(404).json({
+          message: 'Employee not found or not eligible for payroll in this month (check basic salary and joining date).',
+        });
+      }
+
+      const { payroll, isNew } = await processEmployeePayrollRecord({
+        emp,
+        month,
+        year,
+        monthYear,
+        totalDaysInMonth,
+        isAutoCron: false,
+      });
+
+      return res.status(200).json({
+        message: `Payslip for ${emp.name} ${isNew ? 'generated' : 'updated'} successfully!`,
+        payroll,
+        status: isNew ? 'Generated' : 'Updated',
+      });
+    }
+
+    // ── CASE B: Bulk Generation for All Eligible Employees ─────────────
     const employees = await User.find({
       role: { $nin: ADMIN_ROLES },
       basicSalary: { $gt: 0 },
@@ -218,183 +510,19 @@ const generatePayroll = async (req, res) => {
     const payrollResults = [];
 
     for (const emp of employees) {
-      const basicSalary = emp.basicSalary;
-
-      // ── Prorate for mid-month joiners ─────────────────────────────
-      const joiningDate  = new Date(emp.joiningDate);
-      const monthStart   = new Date(year, month - 1, 1);
-
-      let effectiveDays = totalDaysInMonth;
-
-      if (joiningDate > monthStart) {
-        // Employee joined mid-month — count from joining day to end of month
-        effectiveDays = totalDaysInMonth - joiningDate.getDate() + 1;
-      }
-
-      // Prorate salary based on effective days
-      const proratedSalary = Math.round((basicSalary / totalDaysInMonth) * effectiveDays);
-
-      // ── Compute real PF & Mediclaim deductions (prorated) ─────────
-      const rawPf        = emp.pfAmount || 0;
-      const rawMediclaim = emp.mediclaimAmount || 0;
-
-      const pfDeduction        = Math.round((rawPf / totalDaysInMonth) * effectiveDays);
-      const mediclaimDeduction = Math.round((rawMediclaim / totalDaysInMonth) * effectiveDays);
-
-      // ── Upsert: update if exists, create if not ───────────────────
-      const existingPayroll = await Payroll.findOne({
-        employeeId: emp._id,
-        monthYear,
-      });
-
-      // Preserve any existing bonus awarded for this month!
-      const bonus       = existingPayroll ? (existingPayroll.bonus || 0) : 0;
-      const bonusReason = existingPayroll ? (existingPayroll.bonusReason || '') : '';
-
-      // Compute disciplinary, attendance & leave penalties according to the 5 rules
-      const calculation = await computeSalaryDeductions({
-        emp,
-        month,
-        year,
-        proratedSalary,
-        pfDeduction,
-        mediclaimDeduction,
-        bonus,
-      });
-
-      const {
-        inactiveCount,
-        inactiveDeduction,
-        yearlyUnapprovedAbsences,
-        unapprovedAbsenceDeduction,
-        postAbsenceApprovedLeaves,
-        postAbsenceApprovedDeduction,
-        postAbsenceRejectedLeaves,
-        postAbsenceRejectedDeduction,
-        penaltyDeductions,
-        leaveDeduction,
-        totalDeductions,
-        netSalary,
-        breakdownNotes,
-      } = calculation;
-
-      // Track whether this is a brand-new payroll (to avoid double accumulation on re-generate)
-      let isNewPayroll = false;
-      let prevPf = 0;
-      let prevMediclaim = 0;
-
-      let payroll;
-      if (existingPayroll) {
-        prevPf        = existingPayroll.pfDeduction || 0;
-        prevMediclaim = existingPayroll.mediclaimDeduction || 0;
-
-        existingPayroll.baseSalary                  = proratedSalary;
-        existingPayroll.bonus                       = bonus;
-        existingPayroll.bonusReason                 = bonusReason;
-        existingPayroll.pfDeduction                 = pfDeduction;
-        existingPayroll.mediclaimDeduction           = mediclaimDeduction;
-        existingPayroll.leaveDeduction              = leaveDeduction;
-        existingPayroll.inactiveCount               = inactiveCount;
-        existingPayroll.inactiveDeduction           = inactiveDeduction;
-        existingPayroll.yearlyUnapprovedAbsences    = yearlyUnapprovedAbsences;
-        existingPayroll.unapprovedAbsenceDeduction  = unapprovedAbsenceDeduction;
-        existingPayroll.postAbsenceApprovedLeaves   = postAbsenceApprovedLeaves;
-        existingPayroll.postAbsenceApprovedDeduction = postAbsenceApprovedDeduction;
-        existingPayroll.postAbsenceRejectedLeaves   = postAbsenceRejectedLeaves;
-        existingPayroll.postAbsenceRejectedDeduction = postAbsenceRejectedDeduction;
-        existingPayroll.penaltyDeductions           = penaltyDeductions;
-        existingPayroll.deductionBreakdownNotes     = breakdownNotes;
-        existingPayroll.deductions                  = totalDeductions;
-        existingPayroll.netSalary                   = netSalary;
-        existingPayroll.totalDaysInMonth            = totalDaysInMonth;
-        existingPayroll.effectiveDays               = effectiveDays;
-        payroll = await existingPayroll.save();
-        payrollResults.push({ employee: emp.name, status: 'Updated', payroll });
-      } else {
-        isNewPayroll = true;
-        payroll = await Payroll.create({
-          employeeId: emp._id,
+      try {
+        const { payroll, isNew } = await processEmployeePayrollRecord({
+          emp,
+          month,
+          year,
           monthYear,
-          baseSalary: proratedSalary,
-          bonus,
-          bonusReason,
-          pfDeduction,
-          mediclaimDeduction,
-          leaveDeduction,
-          inactiveCount,
-          inactiveDeduction,
-          yearlyUnapprovedAbsences,
-          unapprovedAbsenceDeduction,
-          postAbsenceApprovedLeaves,
-          postAbsenceApprovedDeduction,
-          postAbsenceRejectedLeaves,
-          postAbsenceRejectedDeduction,
-          penaltyDeductions,
-          deductionBreakdownNotes: breakdownNotes,
-          deductions: totalDeductions,
-          netSalary,
           totalDaysInMonth,
-          effectiveDays,
-          status: 'Unpaid',
+          isAutoCron: false,
         });
-        payrollResults.push({ employee: emp.name, status: 'Generated', payroll });
+        payrollResults.push({ employee: emp.name, status: isNew ? 'Generated' : 'Updated', payroll });
+      } catch (err) {
+        console.error(`Error processing payroll for ${emp.name}:`, err);
       }
-
-      // ── Accumulate PF & Mediclaim on User (delta-safe for re-generation) ──
-      const pfDelta        = pfDeduction - prevPf;
-      const mediclaimDelta = mediclaimDeduction - prevMediclaim;
-
-      if (pfDelta !== 0 || mediclaimDelta !== 0) {
-        await User.findByIdAndUpdate(emp._id, {
-          $inc: {
-            totalPfAccumulated:        pfDelta,
-            totalMediclaimAccumulated: mediclaimDelta,
-          },
-        });
-      }
-
-      // In-app notification for the employee (fire and forget)
-      Notification.create({
-        userId: emp._id,
-        type: 'payroll_generated',
-        title: 'Payslip Updated',
-        message: `Your payslip for ${monthYear} has been generated. Net salary: ₹${netSalary.toLocaleString()}.`,
-        link: '/employee/payslips',
-      }).catch(err => console.error('Payroll Notif Error:', err));
-
-      // Send email notification (fire and forget)
-      sendEmail({
-        to: emp.email,
-        subject: `Payslip Generated - ${monthYear}`,
-        html: `
-          <h2>Monthly Payslip - ${monthYear}</h2>
-          <p>Dear ${emp.name},</p>
-          <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse;">
-            <tr><td><strong>Base Salary</strong></td><td>₹${proratedSalary.toLocaleString()}</td></tr>
-            ${effectiveDays < totalDaysInMonth
-              ? `<tr><td><strong>Note</strong></td><td>Prorated for ${effectiveDays} of ${totalDaysInMonth} days</td></tr>`
-              : ''}
-            ${bonus > 0 ? `<tr><td><strong>Bonus ${bonusReason ? `(${bonusReason})` : ''}</strong></td><td style="color:#059669;font-weight:bold;">+ ₹${bonus.toLocaleString()}</td></tr>` : ''}
-            <tr><td><strong>Provident Fund (PF - 12%)</strong></td><td style="color:#dc2626;">- ₹${pfDeduction.toLocaleString()}</td></tr>
-            <tr><td><strong>Mediclaim Health Fund</strong></td><td style="color:#dc2626;">- ₹${mediclaimDeduction.toLocaleString()}</td></tr>
-            ${inactiveDeduction > 0 ? `<tr><td><strong>Inactivity Penalty (≥155 times, 1%)</strong></td><td style="color:#dc2626;">- ₹${inactiveDeduction.toLocaleString()}</td></tr>` : ''}
-            ${unapprovedAbsenceDeduction > 0 ? `<tr><td><strong>Unapproved Absences Penalty (≥5/yr, 1%)</strong></td><td style="color:#dc2626;">- ₹${unapprovedAbsenceDeduction.toLocaleString()}</td></tr>` : ''}
-            ${postAbsenceApprovedDeduction > 0 ? `<tr><td><strong>Post-Absence Approved Leave Penalty (0.5%)</strong></td><td style="color:#d97706;">- ₹${postAbsenceApprovedDeduction.toLocaleString()}</td></tr>` : ''}
-            ${postAbsenceRejectedDeduction > 0 ? `<tr><td><strong>Post-Absence Rejected Leave Penalty (1%)</strong></td><td style="color:#dc2626;">- ₹${postAbsenceRejectedDeduction.toLocaleString()}</td></tr>` : ''}
-            <tr style="border-top:2px solid #cbd5e1;"><td><strong>Total Deductions</strong></td><td style="color:#dc2626;font-weight:bold;">- ₹${totalDeductions.toLocaleString()}</td></tr>
-            <tr style="background:#f0fdf4;border-top:2px solid #16a34a;"><td><strong>Net Take-Home Salary</strong></td><td style="color:#16a34a;font-weight:bold;font-size:16px;">₹${netSalary.toLocaleString()}</td></tr>
-          </table>
-          ${breakdownNotes.length > 0 ? `
-            <div style="margin-top:16px;padding:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;color:#475569;">
-              <strong>Salary Calculation &amp; Deduction Details:</strong>
-              <ul style="margin:6px 0 0;padding-left:18px;">
-                ${breakdownNotes.map(n => `<li>${n}</li>`).join('')}
-              </ul>
-            </div>
-          ` : ''}
-          <p>Best regards,<br/>HR Team</p>
-        `,
-      }).catch(err => console.error('Payroll Email Error:', err));
     }
 
     res.status(201).json({
@@ -403,6 +531,79 @@ const generatePayroll = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// @desc    Generate payroll for a single employee
+// @route   POST /api/payroll/generate-single
+// @access  Private (Admin, HR)
+const generateSinglePayroll = async (req, res) => {
+  req.body.employeeId = req.body.employeeId || req.params.employeeId;
+  return generatePayroll(req, res);
+};
+
+// @desc    Automated Payroll & Fund Deductions Runner (Triggered on 2nd of each month by cron or test)
+const runAutoPayrollJob = async (customMonthYear = null) => {
+  let targetMonthYear = customMonthYear;
+  if (!targetMonthYear) {
+    const now = new Date();
+    // On 2nd of month M, process completed month M-1
+    const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const m = prevMonthDate.getMonth() + 1;
+    const y = prevMonthDate.getFullYear();
+    targetMonthYear = `${String(m).padStart(2, '0')}-${y}`;
+  }
+
+  const [monthStr, yearStr] = targetMonthYear.split('-');
+  const month = parseInt(monthStr, 10);
+  const year  = parseInt(yearStr, 10);
+  const totalDaysInMonth = getDaysInMonth(month, year);
+  const lastDayOfMonth   = new Date(year, month, 0, 23, 59, 59, 999);
+
+  const ADMIN_ROLES = ['Admin'];
+  const employees = await User.find({
+    role: { $nin: ADMIN_ROLES },
+    basicSalary: { $gt: 0 },
+    joiningDate: { $lte: lastDayOfMonth },
+  });
+
+  console.log(`[Auto Payroll Runner] Starting automated payroll run for ${targetMonthYear} across ${employees.length} employees...`);
+
+  const results = [];
+  for (const emp of employees) {
+    try {
+      const { payroll, isNew } = await processEmployeePayrollRecord({
+        emp,
+        month,
+        year,
+        monthYear: targetMonthYear,
+        totalDaysInMonth,
+        isAutoCron: true,
+      });
+      results.push({ employee: emp.name, status: isNew ? 'Generated' : 'Updated', payroll });
+      console.log(`[Auto Payroll Runner] ✅ ${emp.name} (${emp.employeeCode}) processed. Net: ₹${payroll.netSalary}`);
+    } catch (err) {
+      console.error(`[Auto Payroll Runner] ❌ Failed for ${emp.name}:`, err.message);
+    }
+  }
+
+  console.log(`[Auto Payroll Runner] Finished run for ${targetMonthYear}. ${results.length} processed.`);
+  return { targetMonthYear, count: results.length, results };
+};
+
+// @desc    Admin manual trigger for auto-payroll scheduler (test / on-demand)
+// @route   POST /api/payroll/trigger-auto-job
+// @access  Private (Admin)
+const triggerAutoPayroll = async (req, res) => {
+  try {
+    const { monthYear } = req.body;
+    const result = await runAutoPayrollJob(monthYear);
+    res.json({
+      message: `Automated payroll job executed successfully for ${result.targetMonthYear}`,
+      result,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Auto payroll execution failed', error: error.message });
   }
 };
 
@@ -660,8 +861,12 @@ const generateBonus = async (req, res) => {
 
 module.exports = {
   generatePayroll,
+  generateSinglePayroll,
   getMyPayslips,
   getAllPayroll,
   markAsPaid,
   generateBonus,
+  runAutoPayrollJob,
+  triggerAutoPayroll,
+  processEmployeePayrollRecord,
 };

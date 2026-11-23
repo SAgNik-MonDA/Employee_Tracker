@@ -103,6 +103,72 @@ body {
 
 /* ===== Glass Card ===== */
 @layer components {
+  /* ── Liquid Glass & Modern Glassmorphism ─────────────────────────── */
+  .liquid-glass {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  }
+  .light .liquid-glass {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.75) 100%);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(203, 213, 225, 0.8);
+    box-shadow: 0 25px 60px -15px rgba(14, 75, 86, 0.15), inset 0 1px 2px rgba(255, 255, 255, 0.95);
+  }
+
+  .liquid-glass-teal {
+    background: linear-gradient(135deg, rgba(14, 75, 86, 0.35) 0%, rgba(17, 94, 89, 0.15) 100%);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(45, 212, 191, 0.25);
+    box-shadow: 0 16px 36px rgba(13, 72, 85, 0.28), inset 0 1px 1px rgba(94, 234, 212, 0.25);
+  }
+  .light .liquid-glass-teal {
+    background: linear-gradient(135deg, rgba(240, 253, 250, 0.9) 0%, rgba(204, 251, 241, 0.6) 100%);
+    border: 1px solid rgba(45, 212, 191, 0.5);
+    box-shadow: 0 16px 36px rgba(13, 72, 85, 0.12), inset 0 1px 2px rgba(255, 255, 255, 0.9);
+  }
+
+  .liquid-glass-amber {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(217, 119, 6, 0.08) 100%);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(251, 191, 36, 0.3);
+    box-shadow: 0 16px 36px rgba(245, 158, 11, 0.2), inset 0 1px 1px rgba(253, 230, 138, 0.3);
+  }
+  .light .liquid-glass-amber {
+    background: linear-gradient(135deg, rgba(255, 251, 235, 0.9) 0%, rgba(254, 243, 199, 0.6) 100%);
+    border: 1px solid rgba(251, 191, 36, 0.5);
+    box-shadow: 0 16px 36px rgba(245, 158, 11, 0.1), inset 0 1px 2px rgba(255, 255, 255, 0.9);
+  }
+
+  .liquid-glass-blue {
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.25) 0%, rgba(30, 64, 175, 0.08) 100%);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(96, 165, 250, 0.3);
+    box-shadow: 0 16px 36px rgba(37, 99, 235, 0.2), inset 0 1px 1px rgba(191, 219, 254, 0.3);
+  }
+  .light .liquid-glass-blue {
+    background: linear-gradient(135deg, rgba(239, 246, 255, 0.9) 0%, rgba(219, 234, 254, 0.6) 100%);
+    border: 1px solid rgba(96, 165, 250, 0.5);
+    box-shadow: 0 16px 36px rgba(37, 99, 235, 0.1), inset 0 1px 2px rgba(255, 255, 255, 0.9);
+  }
+
+  .btn-brand-teal {
+    @apply bg-gradient-to-r from-teal-900 via-teal-800 to-teal-700 text-white font-semibold px-6 py-2.5 rounded-xl
+           hover:from-teal-800 hover:via-teal-700 hover:to-teal-600 transition-all duration-300
+           shadow-lg shadow-teal-900/30 hover:shadow-teal-800/40 hover:-translate-y-0.5
+           active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-brand-amber {
+    @apply bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold px-6 py-2.5 rounded-xl
+           hover:from-amber-400 hover:to-orange-400 transition-all duration-300
+           shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 hover:-translate-y-0.5
+           active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
   /* ── Components ─────────────────────────────────────────── */
   .glass-card {
     @apply bg-surface-800/50 backdrop-blur-xl border border-surface-700/50 rounded-2xl shadow-xl;

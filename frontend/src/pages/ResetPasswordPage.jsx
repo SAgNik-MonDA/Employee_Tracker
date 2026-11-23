@@ -54,22 +54,22 @@ const ResetPasswordPage = () => {
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-surface-950">
       {/* Background */}
       <div className="absolute inset-0">
-        <div className="absolute top-1/4 -left-20 w-96 h-96 bg-primary-500/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-violet-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-1/4 -left-20 w-96 h-96 bg-teal-500/15 rounded-full blur-3xl animate-pulse-slow" />
+        <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '1.5s' }} />
       </div>
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(99,102,241,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(99,102,241,0.03)_1px,transparent_1px)] bg-[size:64px_64px]" />
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(14,75,86,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(14,75,86,0.04)_1px,transparent_1px)] bg-[size:48px_48px]" />
 
       <div className="relative z-10 w-full max-w-md mx-4 animate-slide-up">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 shadow-2xl shadow-primary-500/30 mb-4">
-            <span className="text-white font-bold text-2xl font-display">ET</span>
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-700 via-teal-800 to-teal-950 shadow-2xl shadow-teal-900/40 mb-4 border border-teal-500/30">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-300 via-teal-100 to-amber-300 font-bold text-2xl font-display">ET</span>
           </div>
-          <h1 className="text-3xl font-display font-bold text-surface-100">Employee Tracker</h1>
-          <p className="text-surface-500 mt-1">Set your new password</p>
+          <h1 className="text-3xl font-display font-extrabold text-surface-100 tracking-tight">Employee Tracker</h1>
+          <p className="text-surface-400 mt-1 text-sm">Secure Password Recovery Portal</p>
         </div>
 
-        <div className="glass-card p-8">
+        <div className="liquid-glass p-8 rounded-3xl shadow-2xl border border-white/20 dark:border-white/10">
           {success ? (
             /* ── Success state ──────────────────────────────────────────── */
             <div className="text-center py-4">
@@ -150,7 +150,7 @@ const ResetPasswordPage = () => {
                 <button
                   type="submit"
                   disabled={loading || (confirmPassword && newPassword !== confirmPassword)}
-                  className="btn-primary w-full flex items-center justify-center gap-2 py-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="btn-brand-teal w-full flex items-center justify-center gap-2 py-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                 >
                   {loading ? (
                     <>
