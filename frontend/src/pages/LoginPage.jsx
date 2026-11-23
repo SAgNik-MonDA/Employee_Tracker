@@ -212,13 +212,13 @@ const LoginPage = () => {
             </div>
           </div>
           <div>
-            <span className="text-lg font-display font-extrabold tracking-tight text-slate-900 dark:text-surface-100 flex items-center gap-1.5">
+            <span className="text-lg font-display font-extrabold tracking-tight text-surface-100 flex items-center gap-1.5">
               EMPLOYEE TRACKER
               <span className="text-xs px-2 py-0.5 rounded-full bg-teal-500/15 dark:bg-teal-500/20 text-teal-800 dark:text-teal-300 font-bold border border-teal-500/30">
                 PRO
               </span>
             </span>
-            <span className="text-[11px] font-semibold text-teal-700 dark:text-teal-400 block -mt-1 tracking-wider uppercase">
+            <span className="text-[11px] font-bold text-teal-700 dark:text-teal-400 block -mt-1 tracking-wider uppercase">
               Smart Attendance &amp; Payroll Suite
             </span>
           </div>
@@ -226,8 +226,8 @@ const LoginPage = () => {
 
         {/* Right Action: System Status & Theme Toggle */}
         <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full liquid-glass text-xs text-teal-300 font-medium">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full liquid-glass text-xs text-teal-800 dark:text-teal-300 font-semibold border border-teal-500/30">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span>Portal Operational</span>
           </div>
 
@@ -268,16 +268,16 @@ const LoginPage = () => {
 
             {/* Headline */}
             <div className="space-y-3">
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-extrabold text-slate-900 dark:text-surface-100 tracking-tight leading-[1.12]">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-black text-surface-100 tracking-tight leading-[1.12]">
                 SMART ATTENDANCE <br className="hidden sm:inline" />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-700 via-emerald-600 to-amber-600 dark:from-teal-300 dark:via-emerald-400 dark:to-amber-300">
                   &amp; PAYROLL SUITE
                 </span>
               </h1>
-              <p className="text-base sm:text-lg font-semibold text-slate-800 dark:text-surface-200 leading-snug">
+              <p className="text-base sm:text-lg font-semibold text-surface-200 leading-snug">
                 Automated biometric attendance, monthly PF &amp; Mediclaim deductions, and instant bank payout advice.
               </p>
-              <p className="text-xs sm:text-sm text-slate-600 dark:text-surface-400 leading-relaxed max-w-2xl">
+              <p className="text-xs sm:text-sm font-medium text-surface-400 leading-relaxed max-w-2xl">
                 Scheduled auto-deductions every 2nd of the month with dual payroll generation (bulk &amp; manual) and one-click finance bank transfer schedules.
               </p>
             </div>
@@ -294,8 +294,8 @@ const LoginPage = () => {
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-800 to-teal-950 border border-teal-400/30 flex items-center justify-center text-teal-300 shadow-md shadow-teal-900/30 mb-3 group-hover:scale-105 transition-transform">
                   <HiOutlineQrcode className="w-5 h-5 text-teal-300" />
                 </div>
-                <h4 className="text-sm font-bold text-slate-900 dark:text-surface-100 mb-1">Smart Attendance</h4>
-                <p className="text-[11px] text-slate-600 dark:text-surface-400 leading-relaxed">
+                <h4 className="text-sm font-bold text-surface-100 mb-1">Smart Attendance</h4>
+                <p className="text-[11px] font-medium text-surface-400 leading-relaxed">
                   Biometric face verify &amp; QR badge check-in with auto-checkout &amp; late penalty rules.
                 </p>
               </div>
@@ -305,8 +305,8 @@ const LoginPage = () => {
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-600 to-orange-700 border border-amber-400/30 flex items-center justify-center text-white shadow-md shadow-amber-900/30 mb-3 group-hover:scale-105 transition-transform">
                   <HiOutlineCash className="w-5 h-5 text-amber-100" />
                 </div>
-                <h4 className="text-sm font-bold text-slate-900 dark:text-surface-100 mb-1">Automated PF &amp; Mediclaim</h4>
-                <p className="text-[11px] text-slate-600 dark:text-surface-400 leading-relaxed">
+                <h4 className="text-sm font-bold text-surface-100 mb-1">Automated PF &amp; Mediclaim</h4>
+                <p className="text-[11px] font-medium text-surface-400 leading-relaxed">
                   Auto-deductions executed on the 2nd of each month with real-time employee email alerts.
                 </p>
               </div>
@@ -316,8 +316,8 @@ const LoginPage = () => {
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-700 to-emerald-900 border border-teal-400/30 flex items-center justify-center text-white shadow-md shadow-teal-900/30 mb-3 group-hover:scale-105 transition-transform">
                   <HiOutlineDocumentReport className="w-5 h-5 text-teal-100" />
                 </div>
-                <h4 className="text-sm font-bold text-slate-900 dark:text-surface-100 mb-1">Bank Payout Advice</h4>
-                <p className="text-[11px] text-slate-600 dark:text-surface-400 leading-relaxed">
+                <h4 className="text-sm font-bold text-surface-100 mb-1">Bank Payout Advice</h4>
+                <p className="text-[11px] font-medium text-surface-400 leading-relaxed">
                   Bulk or single payslip generation with downloadable finance team bank disbursement PDF.
                 </p>
               </div>
@@ -339,21 +339,21 @@ const LoginPage = () => {
                     <HiOutlineLockClosed className="w-6 h-6 text-teal-300" />
                   </div>
                 </div>
-                <h2 className="text-2xl font-display font-bold text-slate-900 dark:text-surface-100">Sign In to Portal</h2>
-                <p className="text-xs text-slate-600 dark:text-surface-400 mt-1">
+                <h2 className="text-2xl font-display font-bold text-surface-100">Sign In to Portal</h2>
+                <p className="text-xs font-medium text-surface-400 mt-1">
                   Access your HR, attendance, payroll &amp; financial workspace
                 </p>
               </div>
 
               {/* Mode Switcher Tabs */}
-              <div className="flex rounded-xl bg-surface-900/80 p-1 mb-6 border border-surface-700/60 shadow-inner">
+              <div className="flex rounded-xl bg-surface-900/80 dark:bg-surface-900/80 p-1 mb-6 border border-surface-700/60 shadow-inner">
                 <button
                   type="button"
                   onClick={() => setLoginMode('credentials')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition-all duration-300 ${
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all duration-300 ${
                     loginMode === 'credentials'
                       ? 'bg-gradient-to-r from-teal-800 to-teal-700 text-white shadow-md shadow-teal-900/40 border border-teal-500/30'
-                      : 'text-surface-400 hover:text-surface-200'
+                      : 'text-surface-400 hover:text-surface-100'
                   }`}
                 >
                   <HiOutlineLockClosed className="w-3.5 h-3.5" />
@@ -362,10 +362,10 @@ const LoginPage = () => {
                 <button
                   type="button"
                   onClick={() => setLoginMode('qr')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition-all duration-300 ${
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all duration-300 ${
                     loginMode === 'qr'
                       ? 'bg-gradient-to-r from-teal-800 to-teal-700 text-white shadow-md shadow-teal-900/40 border border-teal-500/30'
-                      : 'text-surface-400 hover:text-surface-200'
+                      : 'text-surface-400 hover:text-surface-100'
                   }`}
                 >
                   <HiOutlineQrcode className="w-3.5 h-3.5" />
@@ -378,7 +378,7 @@ const LoginPage = () => {
                 <form onSubmit={handleSubmit} className="space-y-4">
                   {/* Employee Code */}
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-surface-300 mb-1.5">
+                    <label className="block text-xs font-bold text-surface-200 mb-1.5">
                       Employee Code
                     </label>
                     <div className="relative">
@@ -397,7 +397,7 @@ const LoginPage = () => {
 
                   {/* Email Address */}
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-surface-300 mb-1.5">
+                    <label className="block text-xs font-bold text-surface-200 mb-1.5">
                       Corporate Email
                     </label>
                     <div className="relative">
@@ -417,7 +417,7 @@ const LoginPage = () => {
                   {/* Password */}
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-surface-300">
+                      <label className="block text-xs font-bold text-surface-200">
                         Password
                       </label>
                       <button
@@ -549,8 +549,8 @@ const LoginPage = () => {
             </div>
 
             {/* Bottom Security Badge */}
-            <div className="flex items-center justify-center gap-2 text-xs text-surface-500 mt-4">
-              <HiOutlineShieldCheck className="w-4 h-4 text-emerald-400" />
+            <div className="flex items-center justify-center gap-2 text-xs font-medium text-surface-400 mt-4">
+              <HiOutlineShieldCheck className="w-4 h-4 text-emerald-500" />
               <span>TLS 256-Bit Encrypted Corporate Authentication</span>
             </div>
           </div>
