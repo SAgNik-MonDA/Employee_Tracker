@@ -225,7 +225,7 @@ const ManageEmployees = () => {
     name: '', email: '', password: '', role: '',
     designation: '', department: '', basicSalary: '', pfAmount: '', mediclaimAmount: '',
     employeeCode: '', phone: '', alternatePhone: '',
-    permanentAddress: '', currentAddress: '', joiningDate: '',
+    permanentAddress: '', currentAddress: '', joiningDate: '', gender: '',
     weeklyHolidays: [],
   };
   const emptyBank = { bankName: '', branchName: '', ifscCode: '', bankAddress: '', accountHolderName: '', accountNumber: '' };
@@ -380,6 +380,7 @@ const ManageEmployees = () => {
       permanentAddress: emp.permanentAddress || '',
       currentAddress: emp.currentAddress || '',
       joiningDate: emp.joiningDate ? emp.joiningDate.split('T')[0] : '',
+      gender: emp.gender || '',
       weeklyHolidays: emp.weeklyHolidays || [],
     });
     setBankData(emp.bankDetails || emptyBank);
@@ -642,12 +643,27 @@ const ManageEmployees = () => {
                 </div>
               </div>
 
-              {/* Alternate Phone */}
-              <div>
-                <label className="block text-sm font-medium text-surface-300 mb-1.5">Alternate Phone</label>
-                <input type="tel" value={formData.alternatePhone}
-                  onChange={(e) => setFormData({ ...formData, alternatePhone: e.target.value })}
-                  className="input-field" placeholder="+91 98765 43211" />
+              {/* Alternate Phone + Gender */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-surface-300 mb-1.5">Alternate Phone</label>
+                  <input type="tel" value={formData.alternatePhone}
+                    onChange={(e) => setFormData({ ...formData, alternatePhone: e.target.value })}
+                    className="input-field" placeholder="+91 98765 43211" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-surface-300 mb-1.5">Gender</label>
+                  <select
+                    value={formData.gender || ''}
+                    onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                    className="input-field"
+                  >
+                    <option value="">Default / Unspecified</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
               </div>
 
               {/* Password */}
@@ -835,6 +851,7 @@ const ManageEmployees = () => {
                   <InfoRow label="Alternate Phone"   value={selectedEmp.alternatePhone} />
                   <InfoRow label="Current Address"   value={selectedEmp.currentAddress} />
                   <InfoRow label="Permanent Address" value={selectedEmp.permanentAddress} />
+                  <InfoRow label="Gender"            value={selectedEmp.gender} />
                   <InfoRow label="Date of Joining"   value={selectedEmp.joiningDate ? new Date(selectedEmp.joiningDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : null} />
                   <InfoRow label="Date of Birth"     value={selectedEmp.dateOfBirth ? new Date(selectedEmp.dateOfBirth).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : null} />
                 </div>

@@ -55,6 +55,7 @@ const ProfilePage = () => {
   // Profile Details editing
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileForm, setProfileForm] = useState({
+    gender: '',
     phone: '',
     alternatePhone: '',
     currentAddress: '',
@@ -175,6 +176,7 @@ const ProfilePage = () => {
     try {
       const { data } = await API.put('/auth/my-profile', { dateOfBirth: dobValue || null });
       setProfile(data);
+      if (updateSessionUser) updateSessionUser(data);
       setEditingDOB(false);
       toast.success('Date of Birth updated! 🎂');
     } catch (error) {
@@ -191,6 +193,7 @@ const ProfilePage = () => {
     try {
       const { data } = await API.put('/auth/my-profile', profileForm);
       setProfile(data);
+      if (updateSessionUser) updateSessionUser(data);
       setShowProfileModal(false);
       toast.success('Profile details updated successfully! 🎉');
     } catch (error) {
@@ -314,6 +317,7 @@ const ProfilePage = () => {
           <button
             onClick={() => {
               setProfileForm({
+                gender: profile?.gender || '',
                 phone: profile?.phone || '',
                 alternatePhone: profile?.alternatePhone || '',
                 currentAddress: profile?.currentAddress || '',
@@ -333,40 +337,9 @@ const ProfilePage = () => {
           <InfoRow label="Role"          value={profile?.role} />
           <InfoRow label="Department"    value={profile?.department} />
           <InfoRow label="Designation"   value={profile?.designation} />
-          <InfoRow label="Phone"         value={profile?.phone} />
-          <InfoRow label="Alternate Phone" value={profile?.alternatePhone} />
-          <InfoRow label="Current Address" value={profile?.currentAddress} />
-          <InfoRow label="Permanent Address" value={profile?.permanentAddress} />
-          <InfoRow label="Date of Joining" value={profile?.joiningDate ? new Date(profile.joiningDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : null} />
+          <InfoRow label="Gender"        value={profile?.gender || 'Not set'} />
 
-          {/* Corporate Benefit IDs */}
-          <div className="pt-4 mt-2 border-t border-surface-600/40">
-            <h3 className="text-sm font-semibold text-surface-400 uppercase tracking-wider mb-3">Corporate Benefit IDs</h3>
-          </div>
-          <InfoRow label="Mediclaim ID" value={profile?.mediclaimId || 'Not Generated'} mono />
-          <InfoRow label="PF ID"        value={profile?.pfId || 'Not Generated'} mono />
-
-          {/* Financial Details */}
-          {profile?.basicSalary > 0 && (
-            <>
-              <div className="pt-4 mt-2 border-t border-surface-600/40">
-                <h3 className="text-sm font-semibold text-surface-400 uppercase tracking-wider mb-3">Salary &amp; Fund Balances</h3>
-              </div>
-              <InfoRow label="Basic Salary"        value={`₹${(profile.basicSalary || 0).toLocaleString()}`} />
-              <InfoRow label="PF Deduction"        value={`₹${(profile.pfAmount || 0).toLocaleString()}`} />
-              <InfoRow label="Mediclaim Deduction"  value={`₹${(profile.mediclaimAmount || 0).toLocaleString()}`} />
-              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 py-3 border-b border-surface-700/40 last:border-0">
-                <span className="text-sm text-emerald-400 sm:w-44 flex-shrink-0 font-semibold">Net Salary</span>
-                <span className="text-sm font-bold text-emerald-300">
-                  ₹{((profile.basicSalary || 0) - (profile.pfAmount || 0) - (profile.mediclaimAmount || 0)).toLocaleString()}
-                </span>
-              </div>
-              <InfoRow label="Total PF Accumulated"        value={`₹${(profile.totalPfAccumulated || 0).toLocaleString()}`} />
-              <InfoRow label="Total Mediclaim Accumulated"  value={`₹${(profile.totalMediclaimAccumulated || 0).toLocaleString()}`} />
-            </>
-          )}
-
-          {/* Date of Birth — EDITABLE */}
+          {/* Date of Birth — Moved to Personal Details */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 py-3 border-b border-surface-700/40">
             <span className="text-sm text-surface-500 sm:w-44 flex-shrink-0">Date of Birth</span>
             {editingDOB ? (
@@ -410,6 +383,39 @@ const ProfilePage = () => {
               </div>
             )}
           </div>
+
+          <InfoRow label="Phone"         value={profile?.phone} />
+          <InfoRow label="Alternate Phone" value={profile?.alternatePhone} />
+          <InfoRow label="Current Address" value={profile?.currentAddress} />
+          <InfoRow label="Permanent Address" value={profile?.permanentAddress} />
+          <InfoRow label="Date of Joining" value={profile?.joiningDate ? new Date(profile.joiningDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : null} />
+
+          {/* Corporate Benefit IDs */}
+          <div className="pt-4 mt-2 border-t border-surface-600/40">
+            <h3 className="text-sm font-semibold text-surface-400 uppercase tracking-wider mb-3">Corporate Benefit IDs</h3>
+          </div>
+          <InfoRow label="Mediclaim ID" value={profile?.mediclaimId || 'Not Generated'} mono />
+          <InfoRow label="PF ID"        value={profile?.pfId || 'Not Generated'} mono />
+
+          {/* Financial Details */}
+          {profile?.basicSalary > 0 && (
+            <>
+              <div className="pt-4 mt-2 border-t border-surface-600/40">
+                <h3 className="text-sm font-semibold text-surface-400 uppercase tracking-wider mb-3">Salary &amp; Fund Balances</h3>
+              </div>
+              <InfoRow label="Basic Salary"        value={`₹${(profile.basicSalary || 0).toLocaleString()}`} />
+              <InfoRow label="PF Deduction"        value={`₹${(profile.pfAmount || 0).toLocaleString()}`} />
+              <InfoRow label="Mediclaim Deduction"  value={`₹${(profile.mediclaimAmount || 0).toLocaleString()}`} />
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 py-3 border-b border-surface-700/40 last:border-0">
+                <span className="text-sm text-emerald-400 sm:w-44 flex-shrink-0 font-semibold">Net Salary</span>
+                <span className="text-sm font-bold text-emerald-300">
+                  ₹{((profile.basicSalary || 0) - (profile.pfAmount || 0) - (profile.mediclaimAmount || 0)).toLocaleString()}
+                </span>
+              </div>
+              <InfoRow label="Total PF Accumulated"        value={`₹${(profile.totalPfAccumulated || 0).toLocaleString()}`} />
+              <InfoRow label="Total Mediclaim Accumulated"  value={`₹${(profile.totalMediclaimAccumulated || 0).toLocaleString()}`} />
+            </>
+          )}
         </div>
 
         {/* ── Leave Balances ────────────────────────────────────────────── */}
@@ -648,6 +654,23 @@ const ProfilePage = () => {
             </div>
 
             <form onSubmit={handleSaveProfile} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-surface-300 mb-1.5">Gender</label>
+                <select
+                  value={profileForm.gender}
+                  onChange={(e) => setProfileForm({ ...profileForm, gender: e.target.value })}
+                  className="select-field"
+                >
+                  <option value="">Select Gender (Default Avatar)</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+                <p className="text-[11px] text-surface-400 mt-1">
+                  Selecting Male or Female activates your custom corporate avatar!
+                </p>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-surface-300 mb-1.5">Phone Number</label>
                 <input

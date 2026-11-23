@@ -36,6 +36,7 @@ const userResponse = (user) => ({
   alternatePhone:   user.alternatePhone   || '',
   permanentAddress: user.permanentAddress || '',
   currentAddress:   user.currentAddress   || '',
+  gender:           user.gender           || '',
   bankDetails:      user.bankDetails      || { bankName: '', branchName: '', ifscCode: '', bankAddress: '', accountHolderName: '', accountNumber: '' },
   basicSalary:      user.basicSalary      || 0,
   pfAmount:         user.pfAmount         || 0,
@@ -66,7 +67,7 @@ const registerUser = async (req, res) => {
       name, email, password, role,
       designation, department, basicSalary, pfAmount, mediclaimAmount,
       employeeCode, phone, alternatePhone,
-      permanentAddress, currentAddress, bankDetails, joiningDate,
+      permanentAddress, currentAddress, bankDetails, joiningDate, gender,
     } = req.body;
 
     if (!name || !email || !password) {
@@ -153,6 +154,7 @@ const registerUser = async (req, res) => {
       currentAddress:   currentAddress   || '',
       bankDetails:      bankDetails      || { bankName: '', branchName: '', ifscCode: '', bankAddress: '', accountHolderName: '', accountNumber: '' },
       joiningDate:      joiningDate      || Date.now(),
+      gender:           gender           || '',
       pfId:             uniquePfId,
       mediclaimId:      uniqueMediclaimId,
       isFirstLogin:     true,
@@ -429,7 +431,7 @@ const getMyFullProfile = async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 const updateMyProfile = async (req, res) => {
   try {
-    const { dateOfBirth, phone, alternatePhone, currentAddress, permanentAddress, bankDetails } = req.body;
+    const { dateOfBirth, phone, alternatePhone, currentAddress, permanentAddress, bankDetails, gender } = req.body;
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
@@ -437,6 +439,7 @@ const updateMyProfile = async (req, res) => {
     if (phone !== undefined) user.phone = phone || '';
     if (alternatePhone !== undefined) user.alternatePhone = alternatePhone || '';
     if (currentAddress !== undefined) user.currentAddress = currentAddress || '';
+    if (gender !== undefined) user.gender = gender || '';
 
     // Permanent Address: Only allow if it's currently empty
     if (permanentAddress !== undefined) {
@@ -737,7 +740,7 @@ const updateEmployee = async (req, res) => {
       name, email, role, designation, department,
       basicSalary, pfAmount, mediclaimAmount, employeeCode, phone, alternatePhone,
       permanentAddress, currentAddress, bankDetails, joiningDate, password,
-      weeklyHolidays, holidayStartDate, holidayValidUntil,
+      weeklyHolidays, holidayStartDate, holidayValidUntil, gender,
     } = req.body;
 
     if (employeeCode && employeeCode !== user.employeeCode) {
@@ -760,6 +763,7 @@ const updateEmployee = async (req, res) => {
     user.alternatePhone = alternatePhone !== undefined ? alternatePhone : user.alternatePhone;
     user.permanentAddress = permanentAddress !== undefined ? permanentAddress : user.permanentAddress;
     user.currentAddress = currentAddress !== undefined ? currentAddress : user.currentAddress;
+    user.gender       = gender         !== undefined ? gender         : user.gender;
 
     if (bankDetails !== undefined) {
       user.bankDetails = {

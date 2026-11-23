@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import maleAvatar from '../../assets/avatars/male.jpg';
+import femaleAvatar from '../../assets/avatars/female.jpg';
 
 /**
  * UserAvatar — shows profile picture if available, else displays a stylish
@@ -47,6 +49,18 @@ const UserAvatar = ({ user, size = "md", className = "", onClick }) => {
           className="w-full h-full object-cover"
           onError={() => setImgError(true)}
         />
+      ) : user?.gender === 'Male' ? (
+        <img
+          src={maleAvatar}
+          alt={user?.name || "Male Avatar"}
+          className="w-full h-full object-cover"
+        />
+      ) : user?.gender === 'Female' ? (
+        <img
+          src={femaleAvatar}
+          alt={user?.name || "Female Avatar"}
+          className="w-full h-full object-cover"
+        />
       ) : (
         /* Modern corporate default avatar vector with emerald/teal gradient */
         <div className="w-full h-full bg-gradient-to-br from-teal-800 via-teal-700 to-emerald-600 flex items-center justify-center relative border border-teal-400/40 shadow-inner">
@@ -62,11 +76,6 @@ const UserAvatar = ({ user, size = "md", className = "", onClick }) => {
               fillOpacity="0.9"
             />
           </svg>
-          {(size === 'xl' || size === 'lg') && (
-            <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded-full bg-surface-900/90 text-teal-300 font-bold text-[10px] border border-teal-400/50 shadow">
-              {initial}
-            </span>
-          )}
         </div>
       )}
     </div>

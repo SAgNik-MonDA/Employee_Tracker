@@ -74,6 +74,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    gender: {
+      type: String,
+      enum: ['Male', 'Female', 'Other', ''],
+      default: '',
+    },
     bankDetails: {
       bankName:          { type: String, default: '' },
       branchName:        { type: String, default: '' },

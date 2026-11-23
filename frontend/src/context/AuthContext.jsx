@@ -79,7 +79,17 @@ export const AuthProvider = ({ children }) => {
     sessionStorage.removeItem('token');
   };
 
-  const updateSessionUser = async () => {
+  const updateSessionUser = async (explicitData) => {
+    if (explicitData && (explicitData.role || explicitData.name)) {
+      setUser((prev) => ({ ...prev, ...explicitData }));
+      try {
+        const currentStored = JSON.parse(sessionStorage.getItem('user') || '{}');
+        sessionStorage.setItem('user', JSON.stringify({ ...currentStored, ...explicitData }));
+      } catch (err) {
+        console.error(err);
+      }
+      return;
+    }
     try {
       const { data } = await API.get('/auth/profile');
       if (data && data.role) {

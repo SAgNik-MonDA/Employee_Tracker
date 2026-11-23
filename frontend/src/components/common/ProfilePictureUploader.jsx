@@ -344,12 +344,12 @@ const ProfilePictureUploader = () => {
 
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="absolute inset-0 rounded-full bg-surface-950/50 opacity-0 group-hover:opacity-100
-                     transition-opacity duration-200 flex flex-col items-center justify-center gap-1"
+          className="absolute inset-0 rounded-full bg-slate-950/70 opacity-0 group-hover:opacity-100
+                     transition-opacity duration-200 flex flex-col items-center justify-center gap-1 backdrop-blur-[2px] shadow-inner"
           title="Change profile picture"
         >
-          <HiOutlineCamera className="w-7 h-7 text-white" />
-          <span className="text-white text-xs font-medium">Change</span>
+          <HiOutlineCamera className="w-7 h-7 text-white drop-shadow-md" />
+          <span className="text-white text-xs font-bold drop-shadow-md tracking-wide">Change</span>
         </button>
 
         {user?.profilePicture && (
