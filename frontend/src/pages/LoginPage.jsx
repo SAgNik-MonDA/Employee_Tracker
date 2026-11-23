@@ -53,6 +53,18 @@ const LoginPage = () => {
   const [forgotLoading, setForgotLoading]     = useState(false);
   const [forgotSent, setForgotSent]           = useState(false);
 
+  // Clear prefilled/cached credentials on initial mount and prevent browser auto-injection
+  useEffect(() => {
+    setEmployeeCode('');
+    setEmail('');
+    setPassword('');
+    const clearTimer = setTimeout(() => {
+      setEmployeeCode('');
+      setPassword('');
+    }, 150);
+    return () => clearTimeout(clearTimer);
+  }, []);
+
   // ── Sign In ──────────────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -375,7 +387,11 @@ const LoginPage = () => {
 
               {/* ── MODE A: CREDENTIALS SIGN IN ────────────────────────────── */}
               {loginMode === 'credentials' && (
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
+                  {/* Hidden inputs to divert aggressive browser password autofill */}
+                  <input type="text" name="fake_username_remember" className="hidden" tabIndex="-1" autoComplete="off" />
+                  <input type="password" name="fake_password_remember" className="hidden" tabIndex="-1" autoComplete="new-password" />
+
                   {/* Employee Code */}
                   <div>
                     <label className="block text-xs font-bold text-surface-200 mb-1.5">
@@ -385,7 +401,9 @@ const LoginPage = () => {
                       <HiOutlineIdentification className="absolute left-3.5 top-1/2 -translate-y-1/2 text-surface-400 w-5 h-5 pointer-events-none" />
                       <input
                         id="login-employee-code"
+                        name="emp_code_no_fill"
                         type="text"
+                        autoComplete="off"
                         value={employeeCode}
                         onChange={(e) => setEmployeeCode(e.target.value)}
                         className="input-field pl-11 text-sm focus:border-teal-500 focus:ring-teal-500/20"
@@ -404,7 +422,9 @@ const LoginPage = () => {
                       <HiOutlineMail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-surface-400 w-5 h-5 pointer-events-none" />
                       <input
                         id="login-email"
+                        name="corp_email_no_fill"
                         type="email"
+                        autoComplete="off"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         className="input-field pl-11 text-sm focus:border-teal-500 focus:ring-teal-500/20"
@@ -432,7 +452,9 @@ const LoginPage = () => {
                       <HiOutlineLockClosed className="absolute left-3.5 top-1/2 -translate-y-1/2 text-surface-400 w-5 h-5 pointer-events-none" />
                       <input
                         id="login-password"
+                        name="login_pass_no_fill"
                         type={showPassword ? 'text' : 'password'}
+                        autoComplete="new-password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         className="input-field pl-11 pr-11 text-sm focus:border-teal-500 focus:ring-teal-500/20"
