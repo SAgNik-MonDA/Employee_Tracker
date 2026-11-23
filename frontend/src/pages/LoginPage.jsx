@@ -53,21 +53,6 @@ const LoginPage = () => {
   const [forgotLoading, setForgotLoading]     = useState(false);
   const [forgotSent, setForgotSent]           = useState(false);
 
-  // ── Quick Demo Login Auto-fill ───────────────────────────────────────────
-  const fillDemoAdmin = () => {
-    setEmployeeCode('ADMIN-001');
-    setEmail('admin@company.com');
-    setPassword('Admin@123');
-    toast.success('Admin demo credentials populated! 👑');
-  };
-
-  const fillDemoEmployee = () => {
-    setEmployeeCode('EMP-001');
-    setEmail('sagnikmondal011@gmail.com');
-    setPassword('Password@123');
-    toast.success('Employee demo credentials populated! 👤');
-  };
-
   // ── Sign In ──────────────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -238,14 +223,6 @@ const LoginPage = () => {
             </span>
           </div>
         </div>
-
-        {/* Center Links (Desktop only) */}
-        <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-surface-400">
-          <span className="text-surface-200 hover:text-teal-400 transition-colors cursor-pointer">Services</span>
-          <span className="hover:text-teal-400 transition-colors cursor-pointer">Payroll &amp; PF</span>
-          <span className="hover:text-teal-400 transition-colors cursor-pointer">Bank Advice</span>
-          <span className="hover:text-teal-400 transition-colors cursor-pointer">Security</span>
-        </nav>
 
         {/* Right Action: System Status & Theme Toggle */}
         <div className="flex items-center gap-3">
@@ -475,35 +452,12 @@ const LoginPage = () => {
                     </div>
                   </div>
 
-                  {/* Quick Demo Credentials Bar */}
-                  <div className="pt-1">
-                    <p className="text-[11px] text-surface-500 mb-2 font-medium flex items-center gap-1">
-                      <span>⚡</span> Quick Demo Auto-Fill:
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={fillDemoAdmin}
-                        className="flex-1 py-1.5 px-2.5 rounded-lg bg-surface-900/60 hover:bg-surface-800 text-[11px] font-semibold text-amber-300 border border-amber-500/30 hover:border-amber-400/50 transition-all flex items-center justify-center gap-1"
-                      >
-                        👑 Admin Demo
-                      </button>
-                      <button
-                        type="button"
-                        onClick={fillDemoEmployee}
-                        className="flex-1 py-1.5 px-2.5 rounded-lg bg-surface-900/60 hover:bg-surface-800 text-[11px] font-semibold text-teal-300 border border-teal-500/30 hover:border-teal-400/50 transition-all flex items-center justify-center gap-1"
-                      >
-                        👤 Employee Demo
-                      </button>
-                    </div>
-                  </div>
-
                   {/* Sign In Submit Button */}
                   <button
                     id="login-submit"
                     type="submit"
                     disabled={loading}
-                    className="w-full btn-brand-teal flex items-center justify-center gap-2 py-3 rounded-xl mt-2 text-sm"
+                    className="w-full btn-brand-teal flex items-center justify-center gap-2 py-3 rounded-xl mt-4 text-sm shadow-xl"
                   >
                     {loading ? (
                       <>
@@ -605,15 +559,8 @@ const LoginPage = () => {
       </main>
 
       {/* ── FOOTER ── */}
-      <footer className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 border-t border-surface-800/60 flex flex-col sm:flex-row items-center justify-between text-xs text-surface-500 gap-2">
+      <footer className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 border-t border-surface-800/60 text-center text-xs text-surface-500">
         <p>&copy; 2026 Employee Tracker Enterprise HR &amp; Accounting System. All Rights Reserved.</p>
-        <div className="flex items-center gap-4">
-          <span className="hover:text-surface-300 transition-colors cursor-pointer">Privacy Policy</span>
-          <span>•</span>
-          <span className="hover:text-surface-300 transition-colors cursor-pointer">Terms of Service</span>
-          <span>•</span>
-          <span className="hover:text-surface-300 transition-colors cursor-pointer">Help &amp; Support</span>
-        </div>
       </footer>
 
       {/* ── FORGOT PASSWORD LIQUID GLASS MODAL ── */}
