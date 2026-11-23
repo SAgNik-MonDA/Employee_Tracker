@@ -204,22 +204,22 @@ const LoginPage = () => {
       <header className="relative z-30 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between">
         {/* Logo Mark */}
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-teal-700 via-teal-800 to-teal-950 p-0.5 shadow-xl shadow-teal-900/30 border border-teal-500/30 flex items-center justify-center">
-            <div className="w-full h-full rounded-[14px] bg-surface-900/70 backdrop-blur-md flex items-center justify-center">
-              <span className="font-display font-black text-xl text-transparent bg-clip-text bg-gradient-to-r from-teal-300 via-teal-200 to-amber-300">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-teal-600 via-teal-700 to-emerald-800 p-0.5 shadow-xl shadow-teal-900/30 border border-teal-400/40 flex items-center justify-center">
+            <div className="w-full h-full rounded-[14px] bg-teal-950 flex items-center justify-center">
+              <span className="font-display font-black text-xl text-transparent bg-clip-text bg-gradient-to-r from-teal-200 via-emerald-300 to-amber-300">
                 ET
               </span>
             </div>
           </div>
           <div>
-            <span className="text-lg font-display font-extrabold tracking-tight text-surface-100 flex items-center gap-1.5">
+            <span className="text-lg font-display font-extrabold tracking-tight text-slate-900 dark:text-surface-100 flex items-center gap-1.5">
               EMPLOYEE TRACKER
-              <span className="text-xs px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 font-semibold border border-teal-400/30">
+              <span className="text-xs px-2 py-0.5 rounded-full bg-teal-500/15 dark:bg-teal-500/20 text-teal-800 dark:text-teal-300 font-bold border border-teal-500/30">
                 PRO
               </span>
             </span>
-            <span className="text-[11px] font-medium text-surface-400 block -mt-1 tracking-wider uppercase">
-              Financial Insights &amp; Payroll Suite
+            <span className="text-[11px] font-semibold text-teal-700 dark:text-teal-400 block -mt-1 tracking-wider uppercase">
+              Smart Attendance &amp; Payroll Suite
             </span>
           </div>
         </div>
@@ -261,25 +261,24 @@ const LoginPage = () => {
              ══════════════════════════════════════════════════════════════════════ */}
           <div className="lg:col-span-7 flex flex-col justify-center space-y-6">
             {/* Pill Tag */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full liquid-glass-teal text-xs font-semibold text-teal-200 border border-teal-500/30 w-fit shadow-lg shadow-teal-950/20">
-              <HiOutlineSparkles className="w-4 h-4 text-amber-300 animate-spin" style={{ animationDuration: '6s' }} />
-              <span>Next-Gen Enterprise HR &amp; Financial Strategy</span>
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-teal-500/10 dark:liquid-glass-teal text-xs font-bold text-teal-800 dark:text-teal-200 border border-teal-500/30 w-fit shadow-md shadow-teal-950/10">
+              <HiOutlineSparkles className="w-4 h-4 text-amber-500 dark:text-amber-300 animate-spin" style={{ animationDuration: '6s' }} />
+              <span>ENTERPRISE WORKFORCE &amp; STATUTORY PAYROLL</span>
             </div>
 
-            {/* Headline matching user's screenshot */}
+            {/* Headline */}
             <div className="space-y-3">
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-extrabold text-surface-100 tracking-tight leading-[1.12]">
-                FINANCIAL INSIGHTS <br className="hidden sm:inline" />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-amber-400 to-orange-500">
-                  &amp; WORKFORCE STRATEGY
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-extrabold text-slate-900 dark:text-surface-100 tracking-tight leading-[1.12]">
+                SMART ATTENDANCE <br className="hidden sm:inline" />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-700 via-emerald-600 to-amber-600 dark:from-teal-300 dark:via-emerald-400 dark:to-amber-300">
+                  &amp; PAYROLL SUITE
                 </span>
               </h1>
-              <p className="text-base sm:text-lg font-medium text-surface-300 leading-snug">
-                Empowering businesses with precise biometric tracking, automated payroll, and statutory fund advisory.
+              <p className="text-base sm:text-lg font-semibold text-slate-800 dark:text-surface-200 leading-snug">
+                Automated biometric attendance, monthly PF &amp; Mediclaim deductions, and instant bank payout advice.
               </p>
-              <p className="text-xs sm:text-sm text-surface-400 leading-relaxed max-w-2xl">
-                Our platform delivers intelligent HR solutions to optimize performance, calculate monthly PF &amp;
-                Mediclaim deductions automatically on the 2nd of every month, and generate comprehensive bank transfer schedules for your finance team.
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-surface-400 leading-relaxed max-w-2xl">
+                Scheduled auto-deductions every 2nd of the month with dual payroll generation (bulk &amp; manual) and one-click finance bank transfer schedules.
               </p>
             </div>
 
@@ -288,38 +287,38 @@ const LoginPage = () => {
               <LoginIllustration />
             </div>
 
-            {/* 3 Interactive Feature Cards Matching Screenshot (Tax Planning, Bookkeeping, Audit) */}
+            {/* 3 Interactive Feature Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-2">
-              {/* Feature 1: Tax & PF Planning */}
-              <div className="liquid-glass p-4 rounded-2xl border border-surface-700/60 hover:border-teal-500/40 transition-all duration-300 group hover:-translate-y-1">
+              {/* Feature 1: Smart Attendance */}
+              <div className="liquid-glass p-4 rounded-2xl border-[1.5px] border-teal-500/40 hover:border-teal-400 transition-all duration-300 group hover:-translate-y-1 shadow-lg shadow-teal-950/10">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-800 to-teal-950 border border-teal-400/30 flex items-center justify-center text-teal-300 shadow-md shadow-teal-900/30 mb-3 group-hover:scale-105 transition-transform">
-                  <HiOutlineCash className="w-5 h-5 text-teal-300" />
+                  <HiOutlineQrcode className="w-5 h-5 text-teal-300" />
                 </div>
-                <h4 className="text-sm font-bold text-surface-100 mb-1">Tax &amp; PF Planning</h4>
-                <p className="text-[11px] text-surface-400 leading-relaxed">
-                  Automated statutory PF (12%) &amp; Mediclaim accumulation with transparent deductions.
+                <h4 className="text-sm font-bold text-slate-900 dark:text-surface-100 mb-1">Smart Attendance</h4>
+                <p className="text-[11px] text-slate-600 dark:text-surface-400 leading-relaxed">
+                  Biometric face verify &amp; QR badge check-in with auto-checkout &amp; late penalty rules.
                 </p>
               </div>
 
-              {/* Feature 2: Bookkeeping & Payroll */}
-              <div className="liquid-glass p-4 rounded-2xl border border-surface-700/60 hover:border-amber-500/40 transition-all duration-300 group hover:-translate-y-1">
+              {/* Feature 2: Automated PF & Mediclaim */}
+              <div className="liquid-glass p-4 rounded-2xl border-[1.5px] border-teal-500/40 hover:border-amber-400 transition-all duration-300 group hover:-translate-y-1 shadow-lg shadow-teal-950/10">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-600 to-orange-700 border border-amber-400/30 flex items-center justify-center text-white shadow-md shadow-amber-900/30 mb-3 group-hover:scale-105 transition-transform">
-                  <HiOutlineDocumentReport className="w-5 h-5 text-amber-100" />
+                  <HiOutlineCash className="w-5 h-5 text-amber-100" />
                 </div>
-                <h4 className="text-sm font-bold text-surface-100 mb-1">Bookkeeping</h4>
-                <p className="text-[11px] text-surface-400 leading-relaxed">
-                  Prorated salaries, bonus incentives, and 5-rule attendance deduction calculations.
+                <h4 className="text-sm font-bold text-slate-900 dark:text-surface-100 mb-1">Automated PF &amp; Mediclaim</h4>
+                <p className="text-[11px] text-slate-600 dark:text-surface-400 leading-relaxed">
+                  Auto-deductions executed on the 2nd of each month with real-time employee email alerts.
                 </p>
               </div>
 
-              {/* Feature 3: Audit & Assurance */}
-              <div className="liquid-glass p-4 rounded-2xl border border-surface-700/60 hover:border-blue-500/40 transition-all duration-300 group hover:-translate-y-1">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-800 border border-blue-400/30 flex items-center justify-center text-white shadow-md shadow-blue-900/30 mb-3 group-hover:scale-105 transition-transform">
-                  <HiOutlineShieldCheck className="w-5 h-5 text-blue-100" />
+              {/* Feature 3: Bank Payout Advice */}
+              <div className="liquid-glass p-4 rounded-2xl border-[1.5px] border-teal-500/40 hover:border-teal-300 transition-all duration-300 group hover:-translate-y-1 shadow-lg shadow-teal-950/10">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-700 to-emerald-900 border border-teal-400/30 flex items-center justify-center text-white shadow-md shadow-teal-900/30 mb-3 group-hover:scale-105 transition-transform">
+                  <HiOutlineDocumentReport className="w-5 h-5 text-teal-100" />
                 </div>
-                <h4 className="text-sm font-bold text-surface-100 mb-1">Audit &amp; Assurance</h4>
-                <p className="text-[11px] text-surface-400 leading-relaxed">
-                  Instant bank disbursement PDF schedules and secure biometric QR code verification.
+                <h4 className="text-sm font-bold text-slate-900 dark:text-surface-100 mb-1">Bank Payout Advice</h4>
+                <p className="text-[11px] text-slate-600 dark:text-surface-400 leading-relaxed">
+                  Bulk or single payslip generation with downloadable finance team bank disbursement PDF.
                 </p>
               </div>
             </div>
@@ -329,19 +328,19 @@ const LoginPage = () => {
               RIGHT COLUMN: PRODUCTION-GRADE LIQUID GLASS AUTH CARD
              ══════════════════════════════════════════════════════════════════════ */}
           <div className="lg:col-span-5 w-full max-w-md mx-auto">
-            <div className="liquid-glass rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden border border-white/20 dark:border-white/10">
+            <div className="liquid-glass rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden border-[1.5px] border-teal-500/40 dark:border-teal-400/40">
               {/* Specular top rim shine */}
               <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-teal-400/60 to-transparent" />
 
               {/* Card Header */}
               <div className="text-center mb-6">
                 <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-700 via-teal-800 to-teal-950 p-0.5 shadow-xl shadow-teal-900/40 mb-3 border border-teal-500/30">
-                  <div className="w-full h-full rounded-[14px] bg-surface-900/60 backdrop-blur-md flex items-center justify-center">
+                  <div className="w-full h-full rounded-[14px] bg-teal-950/80 dark:bg-surface-900/60 backdrop-blur-md flex items-center justify-center">
                     <HiOutlineLockClosed className="w-6 h-6 text-teal-300" />
                   </div>
                 </div>
-                <h2 className="text-2xl font-display font-bold text-surface-100">Sign In to Portal</h2>
-                <p className="text-xs text-surface-400 mt-1">
+                <h2 className="text-2xl font-display font-bold text-slate-900 dark:text-surface-100">Sign In to Portal</h2>
+                <p className="text-xs text-slate-600 dark:text-surface-400 mt-1">
                   Access your HR, attendance, payroll &amp; financial workspace
                 </p>
               </div>
@@ -379,7 +378,7 @@ const LoginPage = () => {
                 <form onSubmit={handleSubmit} className="space-y-4">
                   {/* Employee Code */}
                   <div>
-                    <label className="block text-xs font-semibold text-surface-300 mb-1.5">
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-surface-300 mb-1.5">
                       Employee Code
                     </label>
                     <div className="relative">
@@ -398,7 +397,7 @@ const LoginPage = () => {
 
                   {/* Email Address */}
                   <div>
-                    <label className="block text-xs font-semibold text-surface-300 mb-1.5">
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-surface-300 mb-1.5">
                       Corporate Email
                     </label>
                     <div className="relative">
@@ -418,13 +417,13 @@ const LoginPage = () => {
                   {/* Password */}
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <label className="block text-xs font-semibold text-surface-300">
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-surface-300">
                         Password
                       </label>
                       <button
                         type="button"
                         onClick={() => setShowForgotModal(true)}
-                        className="text-[11px] text-teal-400 hover:text-teal-300 font-medium transition-colors"
+                        className="text-[11px] text-teal-700 dark:text-teal-400 hover:text-teal-600 dark:hover:text-teal-300 font-bold transition-colors"
                       >
                         Forgot Password?
                       </button>

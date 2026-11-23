@@ -1,8 +1,11 @@
+import { useState } from 'react';
+
 /**
- * UserAvatar — shows profile picture if available, else shows initials circle.
+ * UserAvatar — shows profile picture if available, else displays a stylish
+ * corporate vector avatar in the brand teal/emerald theme.
  * Props:
  *   user        — user object { name, profilePicture }
- *   size        — "sm" | "md" | "lg" | "xl"  (default: "md")
+ *   size        — "xs" | "sm" | "md" | "lg" | "xl"  (default: "md")
  *   className   — extra tailwind classes
  *   onClick     — optional click handler
  */
@@ -19,9 +22,10 @@ const sizeMap = {
 };
 
 const UserAvatar = ({ user, size = "md", className = "", onClick }) => {
+  const [imgError, setImgError] = useState(false);
   const sizeClass = sizeMap[size] || sizeMap.md;
   const initial = user?.name?.charAt(0)?.toUpperCase() || "?";
-  const hasPhoto = user?.profilePicture && user.profilePicture !== "";
+  const hasPhoto = Boolean(user?.profilePicture && user.profilePicture !== "");
   const photoUrl = hasPhoto
     ? (user.profilePicture.startsWith('http://') || user.profilePicture.startsWith('https://')
         ? user.profilePicture
@@ -31,28 +35,38 @@ const UserAvatar = ({ user, size = "md", className = "", onClick }) => {
   return (
     <div
       onClick={onClick}
-      className={`${sizeClass} rounded-full overflow-hidden flex-shrink-0
+      className={`${sizeClass} rounded-full overflow-hidden flex-shrink-0 relative
                   ${onClick ? "cursor-pointer" : ""}
                   ${className}`}
+      title={user?.name || "User"}
     >
-      {hasPhoto && photoUrl ? (
+      {hasPhoto && photoUrl && !imgError ? (
         <img
           src={photoUrl}
           alt={user?.name || "Avatar"}
           className="w-full h-full object-cover"
-          onError={(e) => {
-            // Fallback to initials if image fails to load
-            e.target.style.display = "none";
-            e.target.parentElement.classList.add(
-              "bg-gradient-to-br", "from-primary-500", "to-violet-500",
-              "flex", "items-center", "justify-center"
-            );
-            e.target.parentElement.innerHTML = `<span class="text-white font-bold">${initial}</span>`;
-          }}
+          onError={() => setImgError(true)}
         />
       ) : (
-        <div className="w-full h-full bg-gradient-to-br from-primary-500 to-violet-500 flex items-center justify-center">
-          <span className="text-white font-bold">{initial}</span>
+        /* Modern corporate default avatar vector with emerald/teal gradient */
+        <div className="w-full h-full bg-gradient-to-br from-teal-800 via-teal-700 to-emerald-600 flex items-center justify-center relative border border-teal-400/40 shadow-inner">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            className="w-[72%] h-[72%] text-teal-100 drop-shadow"
+          >
+            <circle cx="12" cy="7.5" r="4" fill="currentColor" fillOpacity="0.95" />
+            <path
+              d="M4 19.5C4 15.91 7.58 13 12 13C16.42 13 20 15.91 20 19.5V20.5H4V19.5Z"
+              fill="currentColor"
+              fillOpacity="0.9"
+            />
+          </svg>
+          {(size === 'xl' || size === 'lg') && (
+            <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded-full bg-surface-900/90 text-teal-300 font-bold text-[10px] border border-teal-400/50 shadow">
+              {initial}
+            </span>
+          )}
         </div>
       )}
     </div>

@@ -138,9 +138,9 @@ const Sidebar = ({ isOpen, onClose }) => {
               to={link.to}
               onClick={onClose}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 border focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40
+                `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 border focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40
                  ${isActive
-                   ? 'bg-primary-500/15 text-primary-400 border-primary-500/20 shadow-sm'
+                   ? 'bg-gradient-to-r from-teal-500/20 to-emerald-500/10 text-teal-300 border-teal-400/50 shadow-sm shadow-teal-950/20 font-semibold'
                    : 'text-surface-400 hover:text-surface-200 hover:bg-surface-800/50 border-transparent'
                  }`
               }

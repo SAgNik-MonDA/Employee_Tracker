@@ -273,8 +273,8 @@ const ProfilePictureUploader = () => {
                   border: "none",
                   cursor: uploading ? "not-allowed" : "pointer",
                   opacity: uploading ? 0.6 : 1,
-                  background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
-                  boxShadow: "0 4px 20px rgba(99, 102, 241, 0.4)",
+                  background: "linear-gradient(135deg, #0d9488 0%, #10b981 100%)",
+                  boxShadow: "0 4px 20px rgba(16, 185, 129, 0.4)",
                   transition: "all 0.2s",
                   fontFamily: "inherit",
                 }}

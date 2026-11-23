@@ -25,8 +25,8 @@
     --surface-900: 15 23 42;
     --surface-950: 2 6 23;
 
-    /* Semantic (Dark Mode Defaults) */
-    --primary-50: 238 242 255; --primary-100: 224 231 255; --primary-200: 199 210 254; --primary-300: 165 180 252; --primary-400: 129 140 248; --primary-500: 99 102 241; --primary-600: 79 70 229; --primary-700: 67 56 202; --primary-800: 55 48 163; --primary-900: 49 46 129; --primary-950: 30 27 75;
+    /* Semantic (Dark Mode Defaults) - Emerald / Teal Brand Theme */
+    --primary-50: 236 253 245; --primary-100: 209 250 229; --primary-200: 167 243 208; --primary-300: 110 231 183; --primary-400: 52 211 153; --primary-500: 16 185 129; --primary-600: 5 150 105; --primary-700: 4 120 87; --primary-800: 6 95 70; --primary-900: 6 78 59; --primary-950: 2 44 34;
     --amber-50: 255 251 235; --amber-100: 254 243 199; --amber-200: 253 230 138; --amber-300: 252 211 77; --amber-400: 251 191 36; --amber-500: 245 158 11; --amber-600: 217 119 6; --amber-700: 180 83 9; --amber-800: 146 64 14; --amber-900: 120 53 15; --amber-950: 69 26 3;
     --emerald-50: 236 253 245; --emerald-100: 209 250 229; --emerald-200: 167 243 208; --emerald-300: 110 231 183; --emerald-400: 52 211 153; --emerald-500: 16 185 129; --emerald-600: 5 150 105; --emerald-700: 4 120 87; --emerald-800: 6 95 70; --emerald-900: 6 78 59; --emerald-950: 2 44 34;
     --rose-50: 255 241 242; --rose-100: 255 228 230; --rose-200: 254 205 211; --rose-300: 253 164 175; --rose-400: 251 113 133; --rose-500: 244 63 94; --rose-600: 225 29 72; --rose-700: 190 18 60; --rose-800: 159 18 57; --rose-900: 136 19 55; --rose-950: 76 5 25;
@@ -36,9 +36,9 @@
 
     --bg-body: #0f172a;
     --text-body: #e2e8f0;
-    --scrollbar-track: #1e293b;
-    --scrollbar-thumb: #4f46e5;
-    --scrollbar-thumb-hover: #6366f1;
+    --scrollbar-track: #0f172a;
+    --scrollbar-thumb: #0d9488;
+    --scrollbar-thumb-hover: #10b981;
   }
 
   .light {
@@ -55,8 +55,8 @@
     --surface-900: 255 255 255;  /* Clean white raised elements */
     --surface-950: 248 250 252;  /* Slate-50 base background */
 
-    /* Semantic (Light Mode Inverted - Deepened for Contrast) */
-    --primary-50: 30 27 75; --primary-100: 49 46 129; --primary-200: 55 48 163; --primary-300: 67 56 202; --primary-400: 67 56 202; --primary-500: 79 70 229; --primary-600: 99 102 241; --primary-700: 165 180 252; --primary-800: 199 210 254; --primary-900: 224 231 255; --primary-950: 238 242 255;
+    /* Semantic (Light Mode Inverted - Emerald / Teal Brand Theme) */
+    --primary-50: 2 44 34; --primary-100: 6 78 59; --primary-200: 6 95 70; --primary-300: 4 120 87; --primary-400: 4 120 87; --primary-500: 5 150 105; --primary-600: 16 185 129; --primary-700: 110 231 183; --primary-800: 167 243 208; --primary-900: 209 250 229; --primary-950: 236 253 245;
     --amber-50: 69 26 3; --amber-100: 120 53 15; --amber-200: 146 64 14; --amber-300: 180 83 9; --amber-400: 180 83 9; --amber-500: 217 119 6; --amber-600: 251 191 36; --amber-700: 252 211 77; --amber-800: 253 230 138; --amber-900: 254 243 199; --amber-950: 255 251 235;
     --emerald-50: 2 44 34; --emerald-100: 6 78 59; --emerald-200: 6 95 70; --emerald-300: 4 120 87; --emerald-400: 4 120 87; --emerald-500: 5 150 105; --emerald-600: 52 211 153; --emerald-700: 110 231 183; --emerald-800: 167 243 208; --emerald-900: 209 250 229; --emerald-950: 236 253 245;
     --rose-50: 76 5 25; --rose-100: 136 19 55; --rose-200: 159 18 57; --rose-300: 190 18 60; --rose-400: 190 18 60; --rose-500: 225 29 72; --rose-600: 251 113 133; --rose-700: 253 164 175; --rose-800: 254 205 211; --rose-900: 255 228 230; --rose-950: 255 241 242;
@@ -67,8 +67,8 @@
     --bg-body: #f8fafc;
     --text-body: #0f172a;
     --scrollbar-track: #f1f5f9;
-    --scrollbar-thumb: #6366f1;
-    --scrollbar-thumb-hover: #4f46e5;
+    --scrollbar-thumb: #14b8a6;
+    --scrollbar-thumb-hover: #0d9488;
   }
 }
 
@@ -169,13 +169,20 @@ body {
            active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
-  /* ── Components ─────────────────────────────────────────── */
+  /* ── Components with Screenshot 3 Glowing Teal Card Borders ──────────────── */
   .glass-card {
-    @apply bg-surface-800/50 backdrop-blur-xl border border-surface-700/50 rounded-2xl shadow-xl;
+    @apply bg-surface-800/60 backdrop-blur-xl border-[1.5px] border-teal-500/50 rounded-2xl shadow-xl shadow-teal-950/20;
+  }
+  .light .glass-card {
+    @apply bg-white/95 border-[1.5px] border-teal-600/40 shadow-xl shadow-teal-900/10;
   }
   .glass-card-hover {
-    @apply bg-surface-800/50 backdrop-blur-xl border border-surface-700/50 rounded-2xl shadow-xl
-           transition-all duration-300 hover:border-primary-500/30 hover:shadow-primary-500/10 hover:shadow-2xl hover:-translate-y-0.5;
+    @apply bg-surface-800/60 backdrop-blur-xl border-[1.5px] border-teal-500/50 rounded-2xl shadow-xl shadow-teal-950/20
+           transition-all duration-300 hover:border-teal-400 hover:shadow-teal-500/25 hover:shadow-2xl hover:-translate-y-0.5;
+  }
+  .light .glass-card-hover {
+    @apply bg-white/95 border-[1.5px] border-teal-600/40 shadow-xl shadow-teal-900/10
+           transition-all duration-300 hover:border-teal-500 hover:shadow-teal-600/20 hover:shadow-2xl hover:-translate-y-0.5;
   }
 
   .btn-primary {

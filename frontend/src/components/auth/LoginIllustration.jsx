@@ -19,7 +19,7 @@ const LoginIllustration = () => {
       </div>
 
       {/* Floating Stat Pill 3: Bottom Right */}
-      <div className="absolute -bottom-3 right-8 z-20 pointer-events-auto animate-float hidden sm:flex items-center gap-2.5 px-3.5 py-2 rounded-2xl liquid-glass-blue text-xs font-semibold text-blue-200 shadow-xl border border-blue-400/30">
+      <div className="absolute -bottom-3 right-8 z-20 pointer-events-auto animate-float hidden sm:flex items-center gap-2.5 px-3.5 py-2 rounded-2xl liquid-glass-teal text-xs font-semibold text-teal-200 shadow-xl border border-teal-400/40">
         <span className="text-base">💳</span>
         <span>Bank Transfer Advice Ready</span>
       </div>
@@ -59,13 +59,13 @@ const LoginIllustration = () => {
           </linearGradient>
 
           <linearGradient id="blueBarGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#3b82f6" />
-            <stop offset="100%" stopColor="#2563eb" />
+            <stop offset="0%" stopColor="#14b8a6" />
+            <stop offset="100%" stopColor="#0d9488" />
           </linearGradient>
 
           <linearGradient id="chartAreaGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.25" />
-            <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.0" />
+            <stop offset="0%" stopColor="#14b8a6" stopOpacity="0.25" />
+            <stop offset="100%" stopColor="#14b8a6" stopOpacity="0.0" />
           </linearGradient>
 
           {/* Shadows */}
@@ -289,21 +289,21 @@ const LoginIllustration = () => {
           <path d="M26 22 Q32 8 54 15 Q55 24 53 28 Q45 14 30 18 Z" fill="#1e293b" />
           {/* Neck */}
           <rect x="36" y="38" width="8" height="8" fill="#fdba74" />
-          {/* Royal Blue Suit Jacket */}
-          <path d="M18 46 Q40 42 62 46 L68 135 L12 135 Z" fill="#2563eb" />
+          {/* Deep Teal Corporate Suit Jacket */}
+          <path d="M18 46 Q40 42 62 46 L68 135 L12 135 Z" fill="#0e4b56" />
           {/* White Dress Shirt & Tie */}
           <path d="M34 46 L40 70 L46 46 Z" fill="#ffffff" />
           <polygon points="38,52 42,52 41,75 39,75" fill="#ea580c" />
           {/* Suit Trousers */}
-          <path d="M14 135 L66 135 L62 215 L42 215 L40 150 L38 215 L18 215 Z" fill="#1e3a8a" />
+          <path d="M14 135 L66 135 L62 215 L42 215 L40 150 L38 215 L18 215 Z" fill="#08252b" />
           {/* Arm & Hand holding financial document */}
-          <path d="M20 55 Q10 85 24 100" stroke="#2563eb" strokeWidth="8" strokeLinecap="round" />
-          <path d="M60 55 Q72 85 54 105" stroke="#2563eb" strokeWidth="8" strokeLinecap="round" />
+          <path d="M20 55 Q10 85 24 100" stroke="#0e4b56" strokeWidth="8" strokeLinecap="round" />
+          <path d="M60 55 Q72 85 54 105" stroke="#0e4b56" strokeWidth="8" strokeLinecap="round" />
           <circle cx="26" cy="102" r="5" fill="#fed7aa" />
           <circle cx="52" cy="106" r="5" fill="#fed7aa" />
           {/* Financial Document Sheet */}
           <rect x="22" y="92" width="35" height="48" rx="2" fill="#ffffff" stroke="#cbd5e1" strokeWidth="1.5" transform="rotate(4, 22, 92)" />
-          <line x1="28" y1="102" x2="48" y2="102" stroke="#2563eb" strokeWidth="2" />
+          <line x1="28" y1="102" x2="48" y2="102" stroke="#0d9488" strokeWidth="2" />
           <line x1="28" y1="110" x2="52" y2="110" stroke="#94a3b8" strokeWidth="1.5" />
           <line x1="28" y1="117" x2="50" y2="117" stroke="#94a3b8" strokeWidth="1.5" />
           <line x1="28" y1="124" x2="44" y2="124" stroke="#94a3b8" strokeWidth="1.5" />

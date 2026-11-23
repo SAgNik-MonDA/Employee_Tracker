@@ -98,9 +98,9 @@ const typeConfig = {
   },
   general_request_submitted: {
     icon: <HiOutlineDocumentText className="w-5 h-5" />,
-    color: 'text-indigo-400',
-    bg: 'bg-indigo-500/10',
-    border: 'border-indigo-500/20',
+    color: 'text-teal-400',
+    bg: 'bg-teal-500/10',
+    border: 'border-teal-500/20',
   },
   general_request_reviewed: {
     icon: <HiOutlineDocumentText className="w-5 h-5" />,

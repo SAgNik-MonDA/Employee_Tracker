@@ -150,7 +150,7 @@ const AdminDashboard = () => {
 
       {/* Financial Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard icon="💼" label="Total Basic Salary" value={`₹${financeStats.totalBasic.toLocaleString()}`} color="violet" />
+        <StatCard icon="💼" label="Total Basic Salary" value={`₹${financeStats.totalBasic.toLocaleString()}`} color="primary" />
         <StatCard icon="💸" label="Total Net Salary" value={`₹${financeStats.totalNet.toLocaleString()}`} color="emerald" />
         <Link to="/admin/pf-withdrawals" className="block transform hover:-translate-y-1 transition-transform group">
           <StatCard icon="🏦" label="Total PF Fund (View Requests ➔)" value={`₹${financeStats.totalPf.toLocaleString()}`} color="amber" />
@@ -225,7 +225,7 @@ const AdminDashboard = () => {
                       color: '#e2e8f0',
                     }}
                   />
-                  <Bar dataKey="salary" fill="#6366f1" radius={[8, 8, 0, 0]} maxBarSize={60} />
+                  <Bar dataKey="salary" fill="#0d9488" radius={[8, 8, 0, 0]} maxBarSize={60} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

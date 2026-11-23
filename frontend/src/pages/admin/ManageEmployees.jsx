@@ -54,7 +54,7 @@ const getRoleBadgeClass = (role) => {
     return 'bg-orange-500/20 text-orange-300 border border-orange-500/30';
   // Management / Leadership
   if (['Project Manager','Project Lead','General Manager'].includes(role))
-    return 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30';
+    return 'bg-teal-500/20 text-teal-300 border border-teal-500/30';
   // Default
   return 'bg-surface-700/50 text-surface-300 border border-surface-600/30';
 };

@@ -18,9 +18,9 @@ const Topbar = ({ onMenuToggle }) => {
   };
 
   const roleBadgeColors = {
-    Admin: 'bg-rose-500/20 text-rose-400 border-rose-500/30',
-    HR: 'bg-violet-500/20 text-violet-400 border-violet-500/30',
-    Employee: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+    Admin: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+    HR: 'bg-teal-500/20 text-teal-400 border-teal-500/30',
+    Employee: 'bg-teal-500/20 text-teal-300 border-teal-500/30',
   };
 
   return (
@@ -56,7 +56,7 @@ const Topbar = ({ onMenuToggle }) => {
             {user?.role}
           </span>
           {user?.employeeCode && (
-            <span className="badge border text-xs bg-indigo-500/15 text-indigo-300 border-indigo-500/30 font-mono font-semibold" title="Employee Code">
+            <span className="badge border text-xs bg-teal-500/15 text-teal-300 border-teal-500/30 font-mono font-semibold" title="Employee Code">
               {user.employeeCode}
             </span>
           )}

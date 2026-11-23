@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import ExcelJS from 'exceljs';
+import UserAvatar from '../../components/common/UserAvatar';
 
 const GeneratePayroll = () => {
   const { user } = useAuth();
@@ -154,7 +155,7 @@ const GeneratePayroll = () => {
       doc.rect(0, 0, 297, 26, 'F');
 
       // Accent color stripe
-      doc.setFillColor(79, 70, 229); // indigo-600
+      doc.setFillColor(13, 148, 136); // teal-600
       doc.rect(0, 25, 297, 1.5, 'F');
 
       doc.setTextColor(255, 255, 255);
@@ -163,7 +164,7 @@ const GeneratePayroll = () => {
       doc.text('EMPLOYEE TRACKER ENTERPRISE HRMS', 14, 11);
 
       doc.setFontSize(10.5);
-      doc.setTextColor(199, 210, 254); // indigo-200
+      doc.setTextColor(204, 251, 241); // teal-100
       doc.text(`MONTHLY SALARY DISBURSEMENT & BANK TRANSFER ADVICE — ${monthLabel.toUpperCase()}`, 14, 19);
 
       // Top Right metadata
@@ -790,7 +791,7 @@ const GeneratePayroll = () => {
           <button
             onClick={() => handleDownloadBankTransferPDF(viewMonthYear)}
             disabled={downloadingPdf || payrolls.length === 0}
-            className="px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 disabled:opacity-50 text-white font-semibold rounded-xl shadow-lg shadow-indigo-600/25 transition-all flex items-center gap-2 text-sm"
+            className="px-4 py-2.5 bg-gradient-to-r from-teal-700 to-emerald-700 hover:from-teal-600 hover:to-emerald-600 disabled:opacity-50 text-white font-semibold rounded-xl shadow-lg shadow-teal-900/30 transition-all flex items-center gap-2 text-sm"
             title="Download Bank Transfer PDF for Finance Team"
           >
             {downloadingPdf ? (
@@ -813,13 +814,13 @@ const GeneratePayroll = () => {
       </div>
 
       {/* Automated Deduction Schedule Information Banner */}
-      <div className="bg-indigo-950/40 border border-indigo-500/30 rounded-2xl p-4 flex items-start gap-3.5 text-sm text-indigo-200">
+      <div className="bg-teal-950/40 border border-teal-500/30 rounded-2xl p-4 flex items-start gap-3.5 text-sm text-teal-200">
         <span className="text-2xl leading-none">⏰</span>
         <div className="flex-1">
-          <p className="font-semibold text-indigo-100">
+          <p className="font-semibold text-teal-100">
             Automated Monthly Statutory Deductions Active (2nd of Every Month at 00:05 AM IST)
           </p>
-          <p className="text-xs text-indigo-300/90 mt-1 leading-relaxed">
+          <p className="text-xs text-teal-300/90 mt-1 leading-relaxed">
             The background scheduler automatically calculates PF &amp; Mediclaim deductions, evaluates 5 enterprise
             attendance/disciplinary rules, deposits funds into employee accounts, generates monthly payslips, and dispatches email advice to all employees on the 2nd of each month.
           </p>
@@ -925,7 +926,7 @@ const GeneratePayroll = () => {
             <button
               onClick={() => handleDownloadBankTransferPDF(selectedMonthYear)}
               disabled={downloadingPdf}
-              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl shadow-lg shadow-indigo-600/25 transition-all flex items-center gap-2 text-sm"
+              className="px-4 py-2.5 bg-gradient-to-r from-teal-700 to-emerald-700 hover:from-teal-600 text-white font-semibold rounded-xl shadow-lg shadow-teal-900/25 transition-all flex items-center gap-2 text-sm"
               title="Download Bank Transfer PDF for Finance Team"
             >
               {downloadingPdf ? (
@@ -973,7 +974,7 @@ const GeneratePayroll = () => {
 
             <button
               onClick={() => handleDownloadBankTransferPDF(viewMonthYear)}
-              className="px-3.5 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 font-semibold rounded-xl transition-all flex items-center gap-1.5 text-xs"
+              className="px-3.5 py-2 bg-teal-600/20 hover:bg-teal-600/30 text-teal-300 border border-teal-500/40 font-semibold rounded-xl transition-all flex items-center gap-1.5 text-xs"
               title="Download Bank Transfer PDF for viewed month"
             >
               📄 Bank Transfer PDF
@@ -1038,9 +1039,7 @@ const GeneratePayroll = () => {
                       {/* Employee details */}
                       <td>
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold shadow-md shadow-indigo-500/20">
-                            {emp.name?.charAt(0)?.toUpperCase() || '?'}
-                          </div>
+                          <UserAvatar user={emp} size="sm" />
                           <div>
                             <p className="font-medium text-surface-200">
                               {emp.name || 'Unknown'}{' '}
@@ -1157,7 +1156,7 @@ const GeneratePayroll = () => {
                             <button
                               onClick={() => handleGenerate(emp._id)}
                               disabled={isThisGenerating}
-                              className="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 transition-colors flex items-center gap-1"
+                              className="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-teal-600/20 hover:bg-teal-600/30 text-teal-300 border border-teal-500/40 transition-colors flex items-center gap-1"
                               title="Recalculate / Update this employee's payslip"
                             >
                               {isThisGenerating ? (

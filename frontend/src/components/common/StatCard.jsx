@@ -1,20 +1,22 @@
 const StatCard = ({ icon, label, value, color = 'primary', trend }) => {
   const colorMap = {
-    primary: 'from-primary-600/20 to-primary-500/10 border-primary-500/30 text-primary-400',
-    emerald: 'from-emerald-600/20 to-emerald-500/10 border-emerald-500/30 text-emerald-400',
-    amber: 'from-amber-600/20 to-amber-500/10 border-amber-500/30 text-amber-400',
-    rose: 'from-rose-600/20 to-rose-500/10 border-rose-500/30 text-rose-400',
-    violet: 'from-violet-600/20 to-violet-500/10 border-violet-500/30 text-violet-400',
-    cyan: 'from-cyan-600/20 to-cyan-500/10 border-cyan-500/30 text-cyan-400',
+    primary: 'from-emerald-600/15 to-teal-500/10 border-teal-500/50 text-teal-300',
+    emerald: 'from-emerald-600/15 to-emerald-500/10 border-teal-500/50 text-emerald-300',
+    amber: 'from-amber-600/15 to-amber-500/10 border-amber-500/50 text-amber-300',
+    rose: 'from-rose-600/15 to-rose-500/10 border-rose-500/50 text-rose-300',
+    violet: 'from-teal-600/15 to-emerald-500/10 border-teal-500/50 text-teal-300',
+    cyan: 'from-teal-600/15 to-cyan-500/10 border-teal-500/50 text-teal-300',
+    teal: 'from-teal-600/15 to-emerald-500/10 border-teal-500/50 text-teal-300',
   };
 
   const iconBgMap = {
-    primary: 'bg-primary-500/20 text-primary-400',
-    emerald: 'bg-emerald-500/20 text-emerald-400',
-    amber: 'bg-amber-500/20 text-amber-400',
-    rose: 'bg-rose-500/20 text-rose-400',
-    violet: 'bg-violet-500/20 text-violet-400',
-    cyan: 'bg-cyan-500/20 text-cyan-400',
+    primary: 'bg-teal-500/20 text-teal-300',
+    emerald: 'bg-emerald-500/20 text-emerald-300',
+    amber: 'bg-amber-500/20 text-amber-300',
+    rose: 'bg-rose-500/20 text-rose-300',
+    violet: 'bg-teal-500/20 text-teal-300',
+    cyan: 'bg-teal-500/20 text-teal-300',
+    teal: 'bg-teal-500/20 text-teal-300',
   };
 
   return (

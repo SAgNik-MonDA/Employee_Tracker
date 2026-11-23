@@ -196,7 +196,7 @@ const EmployeeDashboard = () => {
 
       {/* Holiday Banner */}
       {isTodayHoliday && (
-        <div className="glass-card bg-gradient-to-r from-amber-500/15 via-purple-500/15 to-indigo-500/15 border border-amber-500/30 p-4 flex items-center justify-between text-amber-300 shadow-xl backdrop-blur-md animate-fade-in">
+        <div className="glass-card bg-gradient-to-r from-amber-500/15 via-emerald-500/15 to-teal-500/15 border border-amber-500/30 p-4 flex items-center justify-between text-amber-300 shadow-xl backdrop-blur-md animate-fade-in">
           <div className="flex items-center gap-3">
             <span className="text-2xl">🎉</span>
             <div>
