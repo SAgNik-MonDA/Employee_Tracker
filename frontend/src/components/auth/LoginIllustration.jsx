@@ -7,21 +7,21 @@ const LoginIllustration = () => {
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4/5 h-4/5 bg-gradient-to-tr from-teal-500/20 via-amber-500/15 to-blue-600/20 rounded-full blur-3xl -z-10 animate-pulse-slow" />
 
       {/* Floating Stat Pill 1: Top Right */}
-      <div className="absolute -top-3 right-4 z-20 pointer-events-auto animate-float hidden sm:flex items-center gap-2.5 px-3.5 py-2 rounded-2xl liquid-glass-teal text-xs font-bold text-teal-950 dark:text-teal-200 shadow-xl border border-teal-500/40 dark:border-teal-400/30">
+      <div className="absolute -top-3 right-4 z-20 pointer-events-auto animate-float hidden sm:flex items-center gap-2.5 px-3.5 py-2 rounded-2xl liquid-glass-teal text-xs font-bold text-[#08252b] dark:text-teal-200 shadow-xl border border-teal-500/40 dark:border-teal-400/30">
         <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
-        <span className="text-teal-950 dark:text-white font-black">99.4%</span> On-Time Attendance
+        <span className="text-[#08252b] dark:text-white font-black">99.4%</span> On-Time Attendance
       </div>
 
       {/* Floating Stat Pill 2: Left Middle */}
-      <div className="absolute top-1/3 -left-4 z-20 pointer-events-auto animate-float-slow hidden md:flex items-center gap-2.5 px-3.5 py-2 rounded-2xl liquid-glass-amber text-xs font-bold text-amber-950 dark:text-amber-200 shadow-xl border border-amber-500/40 dark:border-amber-400/30">
+      <div className="absolute top-1/3 -left-4 z-20 pointer-events-auto animate-float-slow hidden md:flex items-center gap-2.5 px-3.5 py-2 rounded-2xl liquid-glass-amber text-xs font-bold text-[#78350f] dark:text-amber-200 shadow-xl border border-amber-500/40 dark:border-amber-400/30">
         <span className="text-base">🛡️</span>
-        <span>PF &amp; Mediclaim Automated</span>
+        <span className="font-bold text-[#78350f] dark:text-amber-200">PF &amp; Mediclaim Automated</span>
       </div>
 
       {/* Floating Stat Pill 3: Bottom Right */}
-      <div className="absolute -bottom-3 right-8 z-20 pointer-events-auto animate-float hidden sm:flex items-center gap-2.5 px-3.5 py-2 rounded-2xl liquid-glass-teal text-xs font-bold text-teal-950 dark:text-teal-200 shadow-xl border border-teal-500/40 dark:border-teal-400/40">
+      <div className="absolute -bottom-3 right-8 z-20 pointer-events-auto animate-float hidden sm:flex items-center gap-2.5 px-3.5 py-2 rounded-2xl liquid-glass-teal text-xs font-bold text-[#08252b] dark:text-teal-200 shadow-xl border border-teal-500/40 dark:border-teal-400/40">
         <span className="text-base">💳</span>
-        <span>Bank Transfer Advice Ready</span>
+        <span className="font-bold text-[#08252b] dark:text-teal-200">Bank Transfer Advice Ready</span>
       </div>
 
       {/* Main SVG Vector Graphic */}
