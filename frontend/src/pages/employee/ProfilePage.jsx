@@ -521,8 +521,8 @@ const ProfilePage = () => {
 
       {/* ── Reset Password Modal ───────────────────────────────────────────── */}
       {showResetModal && (
-        <div className="fixed inset-0 bg-surface-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="glass-card w-full max-w-md animate-slide-up">
+        <div className="fixed inset-0 bg-surface-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="glass-card w-full max-w-md animate-slide-up max-h-[90vh] overflow-y-auto my-auto">
             <div className="flex items-center justify-between p-6 border-b border-surface-700/50">
               <h2 className="text-xl font-display font-bold text-surface-100">🔐 Reset Password</h2>
               <button onClick={() => setShowResetModal(false)} className="p-2 rounded-lg hover:bg-surface-700 text-surface-400">
@@ -644,82 +644,84 @@ const ProfilePage = () => {
 
       {/* ── Edit Profile Info Modal ─────────────────────────────────────────── */}
       {showProfileModal && (
-        <div className="fixed inset-0 bg-surface-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="glass-card w-full max-w-lg animate-slide-up">
-            <div className="flex items-center justify-between p-6 border-b border-surface-700/50">
+        <div className="fixed inset-0 bg-surface-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="glass-card w-full max-w-lg animate-slide-up max-h-[90vh] flex flex-col my-auto overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-surface-700/50 flex-shrink-0">
               <h2 className="text-xl font-display font-bold text-surface-100">✏️ Edit Personal Info</h2>
               <button onClick={() => setShowProfileModal(false)} className="p-2 rounded-lg hover:bg-surface-700 text-surface-400">
                 <HiOutlineX className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveProfile} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-surface-300 mb-1.5">Gender</label>
-                <select
-                  value={profileForm.gender}
-                  onChange={(e) => setProfileForm({ ...profileForm, gender: e.target.value })}
-                  className="select-field"
-                >
-                  <option value="">Select Gender (Default Avatar)</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-                </select>
-                <p className="text-[11px] text-surface-400 mt-1">
-                  Selecting Male or Female activates your custom corporate avatar!
-                </p>
+            <form onSubmit={handleSaveProfile} className="flex flex-col flex-1 overflow-hidden">
+              <div className="p-6 space-y-4 overflow-y-auto flex-1">
+                <div>
+                  <label className="block text-sm font-medium text-surface-300 mb-1.5">Gender</label>
+                  <select
+                    value={profileForm.gender}
+                    onChange={(e) => setProfileForm({ ...profileForm, gender: e.target.value })}
+                    className="select-field"
+                  >
+                    <option value="">Select Gender (Default Avatar)</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                  <p className="text-[11px] text-surface-400 mt-1">
+                    Selecting Male or Female activates your custom corporate avatar!
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-surface-300 mb-1.5">Phone Number</label>
+                  <input
+                    type="tel"
+                    value={profileForm.phone}
+                    onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                    className="input-field"
+                    placeholder="+91 98765 43210"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-surface-300 mb-1.5">Alternate Phone Number</label>
+                  <input
+                    type="tel"
+                    value={profileForm.alternatePhone}
+                    onChange={(e) => setProfileForm({ ...profileForm, alternatePhone: e.target.value })}
+                    className="input-field"
+                    placeholder="+91 98765 43211"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-surface-300 mb-1.5">Current Address</label>
+                  <textarea
+                    value={profileForm.currentAddress}
+                    onChange={(e) => setProfileForm({ ...profileForm, currentAddress: e.target.value })}
+                    className="input-field h-20 resize-none py-2"
+                    placeholder="Enter current address"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-surface-300 mb-1.5">
+                    Permanent Address {profile?.permanentAddress && '(Locked)'}
+                  </label>
+                  <textarea
+                    value={profileForm.permanentAddress}
+                    onChange={(e) => setProfileForm({ ...profileForm, permanentAddress: e.target.value })}
+                    disabled={!!profile?.permanentAddress && profile.permanentAddress.trim() !== ''}
+                    className="input-field h-20 resize-none py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    placeholder={profile?.permanentAddress || "Enter permanent address (can only be set once)"}
+                  />
+                  {!profile?.permanentAddress && (
+                    <p className="text-xs text-amber-400 mt-1">⚠️ Note: Permanent address can only be set once.</p>
+                  )}
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-surface-300 mb-1.5">Phone Number</label>
-                <input
-                  type="tel"
-                  value={profileForm.phone}
-                  onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
-                  className="input-field"
-                  placeholder="+91 98765 43210"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-surface-300 mb-1.5">Alternate Phone Number</label>
-                <input
-                  type="tel"
-                  value={profileForm.alternatePhone}
-                  onChange={(e) => setProfileForm({ ...profileForm, alternatePhone: e.target.value })}
-                  className="input-field"
-                  placeholder="+91 98765 43211"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-surface-300 mb-1.5">Current Address</label>
-                <textarea
-                  value={profileForm.currentAddress}
-                  onChange={(e) => setProfileForm({ ...profileForm, currentAddress: e.target.value })}
-                  className="input-field h-20 resize-none py-2"
-                  placeholder="Enter current address"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-surface-300 mb-1.5">
-                  Permanent Address {profile?.permanentAddress && '(Locked)'}
-                </label>
-                <textarea
-                  value={profileForm.permanentAddress}
-                  onChange={(e) => setProfileForm({ ...profileForm, permanentAddress: e.target.value })}
-                  disabled={!!profile?.permanentAddress && profile.permanentAddress.trim() !== ''}
-                  className="input-field h-20 resize-none py-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  placeholder={profile?.permanentAddress || "Enter permanent address (can only be set once)"}
-                />
-                {!profile?.permanentAddress && (
-                  <p className="text-xs text-amber-400 mt-1">⚠️ Note: Permanent address can only be set once.</p>
-                )}
-              </div>
-
-              <div className="pt-2 flex gap-3">
+              <div className="p-4 sm:p-6 border-t border-surface-700/50 bg-surface-900/60 flex-shrink-0 flex gap-3">
                 <button
                   type="submit"
                   disabled={savingProfile}
@@ -742,8 +744,8 @@ const ProfilePage = () => {
 
       {/* ── Add Bank Details Modal — BankDetailsForm uses backend proxy ── */}
       {showBankModal && (
-        <div className="fixed inset-0 bg-surface-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="glass-card w-full max-w-lg animate-slide-up max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-surface-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="glass-card w-full max-w-lg animate-slide-up max-h-[90vh] overflow-y-auto my-auto">
             <div className="flex items-center justify-between p-6 border-b border-surface-700/50">
               <h2 className="text-xl font-display font-bold text-surface-100">🏦 Add Bank Details</h2>
               <button onClick={() => setShowBankModal(false)} className="p-2 rounded-lg hover:bg-surface-700 text-surface-400">
