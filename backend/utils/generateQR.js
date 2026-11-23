@@ -54,7 +54,7 @@ const generateQrPdf = (user, qrDataUrl, plainPassword) => {
       // ── Header ──────────────────────────────────────────────────────────
       doc
         .rect(0, 0, doc.page.width, 120)
-        .fill('#1e1b4b');
+        .fill('#08252b');
 
       doc
         .fontSize(28)
@@ -65,7 +65,7 @@ const generateQrPdf = (user, qrDataUrl, plainPassword) => {
       doc
         .fontSize(12)
         .font('Helvetica')
-        .fillColor('#c7d2fe')
+        .fillColor('#5eead4')
         .text('QR Code Login Credential Card', 50, 72, { align: 'center' });
 
       // ── Employee Info ───────────────────────────────────────────────────
@@ -74,7 +74,7 @@ const generateQrPdf = (user, qrDataUrl, plainPassword) => {
       doc
         .fontSize(18)
         .font('Helvetica-Bold')
-        .fillColor('#1e1b4b')
+        .fillColor('#0f172a')
         .text(`Welcome, ${user.name}!`, 50, infoY);
 
       doc

@@ -171,68 +171,167 @@ const registerUser = async (req, res) => {
 
     // ── Send registration credentials email with QR PDF attached ─────────────
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    sendEmail({
-      to: cleanEmail,
-      subject: '🎉 Welcome to Employee Tracker — Your Account & QR Login Card',
-      html: `
-        <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:560px;margin:0 auto;background:#0f172a;color:#e2e8f0;border-radius:12px;overflow:hidden;">
-          <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:32px 32px 24px;">
-            <h1 style="margin:0;font-size:24px;font-weight:700;color:#fff;">Employee Tracker</h1>
-            <p style="margin:6px 0 0;color:rgba(255,255,255,0.8);font-size:14px;">Performance & Payroll Management</p>
-          </div>
-          <div style="padding:32px;">
-            <h2 style="margin:0 0 8px;font-size:20px;color:#c7d2fe;">Welcome, ${name}! 👋</h2>
-            <p style="color:#94a3b8;margin:0 0 24px;font-size:14px;">Your account has been created successfully. Here are your login credentials:</p>
+    try {
+      const emailResult = await sendEmail({
+        to: cleanEmail,
+        subject: `🎉 Welcome to Employee Tracker — Your Account Credentials (${finalEmployeeCode})`,
+        html: `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Welcome to Employee Tracker</title>
+          </head>
+          <body style="margin:0;padding:0;background-color:#0b1120;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
+            <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#0b1120;padding:24px 12px;">
+              <tr>
+                <td align="center">
+                  <!-- Main Card Container -->
+                  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width:580px;background:#0f172a;border-radius:18px;overflow:hidden;border:1px solid #1e293b;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
+                    
+                    <!-- Gradient Top Rim / Brand Header -->
+                    <tr>
+                      <td style="background:linear-gradient(135deg,#08252b 0%,#0e4b56 50%,#065f46 100%);padding:36px 32px 30px;border-bottom:2px solid #14b8a6;">
+                        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
+                          <tr>
+                            <td>
+                              <div style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#10b981);color:#ffffff;font-weight:900;font-size:20px;padding:6px 14px;border-radius:10px;letter-spacing:1.5px;box-shadow:0 4px 12px rgba(20,184,166,0.3);margin-bottom:12px;">
+                                ET
+                              </div>
+                              <h1 style="margin:0;font-size:24px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">EMPLOYEE TRACKER <span style="font-size:12px;padding:3px 8px;border-radius:20px;background:rgba(20,184,166,0.2);color:#5eead4;border:1px solid #14b8a6;vertical-align:middle;">PRO</span></h1>
+                              <p style="margin:6px 0 0;color:#99f6e4;font-size:13px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;">Smart Attendance &amp; Statutory Payroll Suite</p>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
 
-            <div style="background:#1e293b;border:1px solid #334155;border-radius:10px;padding:20px;margin-bottom:20px;">
-              <table style="width:100%;border-collapse:collapse;">
-                <tr>
-                  <td style="color:#64748b;font-size:13px;padding:8px 0;width:150px;">Employee Code (EMP-no)</td>
-                  <td style="color:#e2e8f0;font-weight:600;font-size:14px;padding:8px 0;font-family:monospace;letter-spacing:1px;">${finalEmployeeCode}</td>
-                </tr>
-                <tr>
-                  <td style="color:#64748b;font-size:13px;padding:8px 0;">Mediclaim ID</td>
-                  <td style="color:#14b8a6;font-weight:600;font-size:14px;padding:8px 0;font-family:monospace;letter-spacing:1px;">${user.mediclaimId}</td>
-                </tr>
-                <tr>
-                  <td style="color:#64748b;font-size:13px;padding:8px 0;">PF Account ID</td>
-                  <td style="color:#a78bfa;font-weight:600;font-size:14px;padding:8px 0;font-family:monospace;letter-spacing:1px;">${user.pfId}</td>
-                </tr>
-                <tr>
-                  <td style="color:#64748b;font-size:13px;padding:8px 0;">Email Address</td>
-                  <td style="color:#e2e8f0;font-weight:600;font-size:14px;padding:8px 0;">${cleanEmail}</td>
-                </tr>
-                <tr>
-                  <td style="color:#64748b;font-size:13px;padding:8px 0;">Password</td>
-                  <td style="color:#e2e8f0;font-weight:600;font-size:14px;padding:8px 0;font-family:monospace;letter-spacing:2px;">${password}</td>
-                </tr>
-              </table>
-            </div>
+                    <!-- Body Content -->
+                    <tr>
+                      <td style="padding:32px 28px;">
+                        <h2 style="margin:0 0 10px;font-size:21px;font-weight:700;color:#ffffff;">Welcome to the Team, ${name}! 👋</h2>
+                        <p style="color:#94a3b8;margin:0 0 24px;font-size:14px;line-height:1.6;">
+                          Your official employee portal profile has been created. Use the credentials below or your personal QR login badge for instant, secure workspace access:
+                        </p>
 
-            <div style="background:#1e293b;border:1px solid #334155;border-radius:10px;padding:20px;margin-bottom:20px;text-align:center;">
-              <p style="color:#a78bfa;font-weight:600;font-size:14px;margin:0 0 8px;">📱 QR Code Login</p>
-              <p style="color:#94a3b8;font-size:12px;margin:0 0 12px;">Scan the QR code from the attached PDF on the login page for instant access — no password needed!</p>
-              <img src="${qrDataUrl}" alt="QR Code" style="width:160px;height:160px;border-radius:8px;" />
-            </div>
+                        <!-- Credentials Box -->
+                        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background:#1e293b;border:1px solid #334155;border-radius:14px;overflow:hidden;margin-bottom:24px;">
+                          <tr>
+                            <td style="padding:16px 20px;background:#162032;border-bottom:1px solid #334155;">
+                              <span style="font-size:12px;font-weight:700;color:#2dd4bf;text-transform:uppercase;letter-spacing:1px;">🔐 Access Credentials</span>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style="padding:16px 20px;">
+                              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
+                                <tr>
+                                  <td style="color:#94a3b8;font-size:13px;padding:8px 0;width:150px;border-bottom:1px solid rgba(51,65,85,0.6);">Employee Code</td>
+                                  <td style="color:#ffffff;font-weight:700;font-size:15px;padding:8px 0;font-family:monospace;letter-spacing:1px;border-bottom:1px solid rgba(51,65,85,0.6);">
+                                    <span style="background:rgba(20,184,166,0.15);color:#2dd4bf;padding:3px 8px;border-radius:6px;border:1px solid rgba(45,212,191,0.3);">${finalEmployeeCode}</span>
+                                  </td>
+                                </tr>
+                                <tr>
+                                  <td style="color:#94a3b8;font-size:13px;padding:8px 0;border-bottom:1px solid rgba(51,65,85,0.6);">Corporate Email</td>
+                                  <td style="color:#f8fafc;font-weight:600;font-size:14px;padding:8px 0;border-bottom:1px solid rgba(51,65,85,0.6);">${cleanEmail}</td>
+                                </tr>
+                                <tr>
+                                  <td style="color:#94a3b8;font-size:13px;padding:8px 0;border-bottom:1px solid rgba(51,65,85,0.6);">Temporary Password</td>
+                                  <td style="color:#fef08a;font-weight:700;font-size:14px;padding:8px 0;font-family:monospace;letter-spacing:2px;border-bottom:1px solid rgba(51,65,85,0.6);">${password}</td>
+                                </tr>
+                                <tr>
+                                  <td style="color:#94a3b8;font-size:13px;padding:8px 0;border-bottom:1px solid rgba(51,65,85,0.6);">Mediclaim ID</td>
+                                  <td style="color:#14b8a6;font-weight:600;font-size:13px;padding:8px 0;font-family:monospace;letter-spacing:1px;border-bottom:1px solid rgba(51,65,85,0.6);">${user.mediclaimId}</td>
+                                </tr>
+                                <tr>
+                                  <td style="color:#94a3b8;font-size:13px;padding:8px 0;border-bottom:1px solid rgba(51,65,85,0.6);">PF Account ID</td>
+                                  <td style="color:#fbbf24;font-weight:600;font-size:13px;padding:8px 0;font-family:monospace;letter-spacing:1px;border-bottom:1px solid rgba(51,65,85,0.6);">${user.pfId}</td>
+                                </tr>
+                                <tr>
+                                  <td style="color:#94a3b8;font-size:13px;padding:8px 0;">Designation / Role</td>
+                                  <td style="color:#e2e8f0;font-weight:600;font-size:13px;padding:8px 0;">${user.designation || user.role} (${user.department || 'General'})</td>
+                                </tr>
+                              </table>
+                            </td>
+                          </tr>
+                        </table>
 
-            <a href="${frontendUrl}/login" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;margin-bottom:24px;">
-              🚀 Login to Dashboard
-            </a>
+                        <!-- QR Code Card -->
+                        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background:rgba(14,75,86,0.15);border:1px solid rgba(45,212,191,0.3);border-radius:14px;padding:20px;margin-bottom:24px;text-align:center;">
+                          <tr>
+                            <td align="center">
+                              <div style="display:inline-block;background:#0d9488;color:#ffffff;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;margin-bottom:10px;">
+                                📱 1-Click QR Code Login
+                              </div>
+                              <p style="color:#94a3b8;font-size:13px;margin:0 0 14px;line-height:1.5;">
+                                Scan the QR code below on the login page for instant biometric badge access — no password typing required:
+                              </p>
+                              <div style="display:inline-block;background:#ffffff;padding:12px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.3);">
+                                <img src="${qrDataUrl}" alt="Login QR Code" width="150" height="150" style="display:block;border-radius:4px;" />
+                              </div>
+                              <p style="color:#64748b;font-size:11px;margin:12px 0 0;">
+                                (Also attached as a printable high-resolution PDF badge)
+                              </p>
+                            </td>
+                          </tr>
+                        </table>
 
-            <p style="color:#ef4444;font-size:12px;margin:0;border-top:1px solid #334155;padding-top:16px;">
-              ⚠️ Please keep your password and QR code safe. The attached PDF contains your personal QR login card.
-            </p>
-          </div>
-        </div>
-      `,
-      attachments: [
-        {
-          filename: `${finalEmployeeCode}_QR_Login_Card.pdf`,
-          content: pdfBuffer,
-          contentType: 'application/pdf',
-        },
-      ],
-    }).catch((err) => { console.error('Registration email error:', err); });
+                        <!-- Action Button CTA -->
+                        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom:24px;">
+                          <tr>
+                            <td align="center">
+                              <a href="${frontendUrl}/login" style="display:inline-block;background:linear-gradient(135deg,#0d9488 0%,#10b981 100%);color:#ffffff;text-decoration:none;padding:14px 34px;border-radius:12px;font-weight:700;font-size:15px;box-shadow:0 10px 24px rgba(16,185,129,0.25);letter-spacing:0.3px;">
+                                🚀 Sign In to Workspace &rarr;
+                              </a>
+                            </td>
+                          </tr>
+                        </table>
+
+                        <!-- Security Warning -->
+                        <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:10px;padding:14px 16px;">
+                          <p style="color:#fcd34d;font-size:12px;margin:0;line-height:1.5;">
+                            ⚠️ <strong>Security Notice:</strong> Please keep your credentials and attached QR login card safe. You can change your password anytime under <em>Profile &rarr; Security</em>.
+                          </p>
+                        </div>
+
+                      </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                      <td style="background:#0b1120;padding:20px;text-align:center;border-top:1px solid #1e293b;">
+                        <p style="color:#64748b;font-size:12px;margin:0 0 4px;">
+                          &copy; 2026 Employee Tracker Pro &bull; Enterprise HR &amp; Accounting System
+                        </p>
+                        <p style="color:#475569;font-size:11px;margin:0;">
+                          Confidential automated corporate notification. Do not reply to this email.
+                        </p>
+                      </td>
+                    </tr>
+
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </body>
+          </html>
+        `,
+        attachments: [
+          {
+            filename: `${finalEmployeeCode}_QR_Login_Card.pdf`,
+            content: pdfBuffer,
+            contentType: 'application/pdf',
+          },
+        ],
+      });
+      if (emailResult) {
+        console.log(`✅ Registration credentials email dispatched to ${cleanEmail}`);
+      } else {
+        console.warn(`⚠️ Warning: Registration email could not be delivered to ${cleanEmail}`);
+      }
+    } catch (emailErr) {
+      console.error('❌ Registration email sending exception:', emailErr);
+    }
 
     res.status(201).json({
       ...userResponse(user),
@@ -291,20 +390,20 @@ const loginUser = async (req, res) => {
         subject: `🚀 Welcome to the Team, ${firstName}! Your First Login is Confirmed`,
         html: `
           <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:580px;margin:0 auto;background:#0f172a;color:#e2e8f0;border-radius:16px;overflow:hidden;border:1px solid #334155;">
-            <div style="background:linear-gradient(135deg,#6366f1 0%,#a855f7 50%,#ec4899 100%);padding:40px 32px;text-align:center;">
+            <div style="background:linear-gradient(135deg,#08252b 0%,#0e4b56 50%,#065f46 100%);padding:40px 32px;text-align:center;border-bottom:2px solid #14b8a6;">
               <div style="font-size:40px;margin-bottom:8px;">🎉</div>
               <h1 style="margin:0;font-size:26px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">Welcome Aboard, ${firstName}!</h1>
-              <p style="margin:8px 0 0;color:rgba(255,255,255,0.9);font-size:15px;">Your first login to Employee Tracker is complete</p>
+              <p style="margin:8px 0 0;color:#99f6e4;font-size:14px;font-weight:600;letter-spacing:0.5px;">Your first login to Employee Tracker is complete</p>
             </div>
 
             <div style="padding:36px 32px;">
-              <h2 style="margin:0 0 12px;font-size:20px;color:#c7d2fe;">Hey ${firstName}, welcome! 👋</h2>
+              <h2 style="margin:0 0 12px;font-size:20px;color:#2dd4bf;">Hey ${firstName}, welcome! 👋</h2>
               <p style="color:#94a3b8;font-size:15px;line-height:1.7;margin:0 0 24px;">
-                We're thrilled to have you with us! You have successfully logged into your <strong style="color:#a78bfa">Employee Tracker</strong> account for the very first time.
+                We're thrilled to have you with us! You have successfully logged into your <strong style="color:#14b8a6">Employee Tracker</strong> account for the very first time.
               </p>
 
-              <div style="background:linear-gradient(135deg,rgba(99,102,241,0.1),rgba(168,85,247,0.1));border:1px solid rgba(168,85,247,0.3);border-radius:12px;padding:20px;margin-bottom:28px;">
-                <h3 style="margin:0 0 12px;font-size:15px;color:#f0abfc;">💡 What you can do in your portal:</h3>
+              <div style="background:rgba(14,75,86,0.15);border:1px solid rgba(45,212,191,0.3);border-radius:12px;padding:20px;margin-bottom:28px;">
+                <h3 style="margin:0 0 12px;font-size:15px;color:#5eead4;">💡 What you can do in your portal:</h3>
                 <ul style="margin:0;padding-left:20px;color:#cbd5e1;font-size:14px;line-height:1.8;">
                   <li><strong>Attendance:</strong> Mark your daily Check-in &amp; Check-out with ease.</li>
                   <li><strong>Leaves:</strong> Apply for casual or emergency leaves and track your remaining balance.</li>
@@ -516,9 +615,9 @@ const changePassword = async (req, res) => {
       subject: '🔐 Your Password Has Been Changed',
       html: `
         <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:560px;margin:0 auto;background:#0f172a;color:#e2e8f0;border-radius:12px;overflow:hidden;">
-          <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:32px 32px 24px;">
+          <div style="background:linear-gradient(135deg,#08252b 0%,#0e4b56 50%,#065f46 100%);padding:32px 32px 24px;border-bottom:2px solid #14b8a6;">
             <h1 style="margin:0;font-size:24px;font-weight:700;color:#fff;">Password Changed Successfully</h1>
-            <p style="margin:6px 0 0;color:rgba(255,255,255,0.8);font-size:14px;">Employee Tracker Account Security</p>
+            <p style="margin:6px 0 0;color:#99f6e4;font-size:14px;font-weight:600;">Employee Tracker Account Security</p>
           </div>
           <div style="padding:32px;">
             <p>Hi <strong>${user.name}</strong>,</p>

@@ -9,7 +9,8 @@ const { startBirthdayScheduler } = require('./utils/birthdayScheduler');
 const TeamChat = require('./models/TeamChat');
 
 
-// Load env vars
+// Load env vars explicitly from backend/.env
+dotenv.config({ path: path.join(__dirname, '.env') });
 dotenv.config();
 
 // Connect to MongoDB
