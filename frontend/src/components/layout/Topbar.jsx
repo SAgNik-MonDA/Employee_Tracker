@@ -23,6 +23,14 @@ const Topbar = ({ onMenuToggle }) => {
     Employee: 'bg-teal-500/20 text-teal-300 border-teal-500/30',
   };
 
+  const ADMIN_ROLES = [
+    'Admin', 'HR', 'Payroll Manager', 'Accounts Payable (AP) Specialist', 
+    'Chief Financial Officer (CFO)', 'CTO', 'COO', 'CEO'
+  ];
+  const profilePath = ADMIN_ROLES.includes(user?.role)
+    ? '/admin/profile'
+    : '/employee/profile';
+
   return (
     <header className="sticky top-0 z-30 bg-surface-900/80 dark:bg-surface-900/80 backdrop-blur-xl border-b border-surface-700/50 light:bg-white/80 light:border-surface-200">
       <div className="flex items-center justify-between px-4 lg:px-8 py-4">
@@ -34,19 +42,25 @@ const Topbar = ({ onMenuToggle }) => {
           >
             <HiOutlineMenuAlt2 className="w-6 h-6" />
           </button>
-          <UserAvatar user={user} size="sm" />
-          <div>
-            <h2 className="text-lg font-display font-bold text-surface-100 dark:text-surface-100">
-              Welcome back, {user?.name?.split(' ')[0]} 👋
-            </h2>
-            <p className="text-xs text-surface-500">
-              {new Date().toLocaleDateString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
-            </p>
+          <div
+            onClick={() => navigate(profilePath)}
+            className="flex items-center gap-3 cursor-pointer group"
+            title="Go to My Profile"
+          >
+            <UserAvatar user={user} size="sm" className="group-hover:ring-2 group-hover:ring-teal-400/50 transition-all" />
+            <div>
+              <h2 className="text-lg font-display font-bold text-surface-100 dark:text-surface-100 group-hover:text-teal-300 transition-colors">
+                Welcome back, {user?.name?.split(' ')[0]} 👋
+              </h2>
+              <p className="text-xs text-surface-500">
+                {new Date().toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+              </p>
+            </div>
           </div>
         </div>
 

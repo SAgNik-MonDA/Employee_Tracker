@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import UserAvatar from '../common/UserAvatar';
 import {
@@ -14,6 +14,7 @@ import {
   HiOutlineVideoCamera,
   HiOutlineShieldCheck,
   HiOutlineX,
+  HiOutlineChevronRight,
 } from 'react-icons/hi';
 
 const Sidebar = ({ isOpen, onClose }) => {
@@ -88,6 +89,10 @@ const Sidebar = ({ isOpen, onClose }) => {
     : user?.role === 'HR' ? hrLinks
     : adminLinks;
 
+  const profilePath = ADMIN_ROLES.includes(user?.role)
+    ? '/admin/profile'
+    : '/employee/profile';
+
   return (
     <>
       {/* Overlay for mobile */}
@@ -151,15 +156,25 @@ const Sidebar = ({ isOpen, onClose }) => {
           ))}
         </nav>
 
-        {/* Bottom user info */}
-        <div className="p-4 border-t shrink-0 border-surface-700/50 bg-surface-900/95">
-          <div className="flex items-center gap-3 px-3">
-            <UserAvatar user={user} size="sm" />
+        {/* Bottom user info — Clickable profile card */}
+        <div className="p-3 border-t shrink-0 border-surface-700/50 bg-surface-900/95">
+          <Link
+            to={profilePath}
+            onClick={onClose}
+            className="flex items-center gap-3 p-2 rounded-xl transition-all duration-200 hover:bg-surface-800/80 group border border-transparent hover:border-teal-500/30"
+            title="Go to My Profile"
+          >
+            <UserAvatar user={user} size="sm" className="group-hover:ring-2 group-hover:ring-teal-400/50 transition-all" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate text-surface-200">{user?.name}</p>
-              <p className="text-xs text-surface-500 truncate">{user?.designation || user?.role}</p>
+              <p className="text-sm font-medium truncate text-surface-200 group-hover:text-teal-300 transition-colors">
+                {user?.name}
+              </p>
+              <p className="text-xs text-surface-500 truncate group-hover:text-surface-400 transition-colors">
+                {user?.designation || user?.role}
+              </p>
             </div>
-          </div>
+            <HiOutlineChevronRight className="w-4 h-4 text-surface-500 group-hover:text-teal-300 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+          </Link>
         </div>
       </aside>
     </>
