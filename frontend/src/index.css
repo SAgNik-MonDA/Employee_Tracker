@@ -297,3 +297,23 @@ body {
   .light .badge-paid    { @apply bg-emerald-100 text-emerald-700 border-emerald-300; }
   .light .badge-unpaid  { @apply bg-rose-100 text-rose-700 border-rose-300; }
 }
+
+/* ── Continuous Clients Infinite Marquee Loop ───────────────────────────── */
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 28s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}

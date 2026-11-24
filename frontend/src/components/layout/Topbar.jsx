@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
+import API from '../../api/axios';
 import { HiOutlineMenuAlt2, HiOutlineLogout, HiOutlineSun, HiOutlineMoon } from 'react-icons/hi';
 import UserAvatar from '../common/UserAvatar';
 import NotificationDropdown from '../common/NotificationDropdown';
@@ -10,23 +12,22 @@ const Topbar = ({ onMenuToggle }) => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
-
-  const handleLogout = () => {
-    logout();
-    toast.success('Logged out successfully');
-    navigate('/login');
-  };
-
-  const roleBadgeColors = {
-    Admin: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
-    HR: 'bg-teal-500/15 text-teal-300 border-teal-500/30',
-    Employee: 'bg-teal-500/15 text-teal-300 border-teal-500/30',
-  };
+  const [subStatus, setSubStatus] = useState(null);
 
   const ADMIN_ROLES = [
     'Admin', 'HR', 'Payroll Manager', 'Accounts Payable (AP) Specialist', 
     'Chief Financial Officer (CFO)', 'CTO', 'COO', 'CEO'
   ];
+
+  useEffect(() => {
+    if (ADMIN_ROLES.includes(user?.role)) {
+      API.get('/subscription/my-status')
+        .then(({ data }) => {
+          if (data.hasSubscription) setSubStatus(data);
+        })
+        .catch(() => {});
+    }
+  }, [user]);
   const profilePath = ADMIN_ROLES.includes(user?.role)
     ? '/admin/profile'
     : '/employee/profile';
@@ -78,6 +79,26 @@ const Topbar = ({ onMenuToggle }) => {
 
         {/* Right Section: Badges & Controls */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0">
+          {/* Subscription Status Pill for Admin */}
+          {subStatus && (
+            <span
+              className={`hidden lg:inline-flex badge border text-xs font-semibold whitespace-nowrap cursor-default ${
+                subStatus.daysRemaining > 5
+                  ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                  : subStatus.daysRemaining > 0
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 animate-pulse'
+                  : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+              }`}
+              title={`Subscription active until ${new Date(subStatus.endDate).toLocaleDateString()}`}
+            >
+              {subStatus.daysRemaining > 5
+                ? `⭐ ${subStatus.planName} (${subStatus.daysRemaining}d left)`
+                : subStatus.daysRemaining > 0
+                ? `⚠️ Expiring in ${subStatus.daysRemaining}d`
+                : '🚨 Grace Period'}
+            </span>
+          )}
+
           {/* Role Badge (Visible on md and up, so long role names don't break mobile) */}
           {user?.role && (
             <span

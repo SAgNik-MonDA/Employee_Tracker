@@ -16,6 +16,10 @@ dotenv.config();
 // Connect to MongoDB
 connectDB();
 
+// Seed default SuperAdmin account
+const seedSuperAdmin = require('./utils/superAdminSeed');
+seedSuperAdmin();
+
 // Start birthday email scheduler (runs daily at 08:00 AM IST)
 startBirthdayScheduler();
 
@@ -26,6 +30,10 @@ startHolidayScheduler();
 // Start automated payroll & fund deductions scheduler (runs on 2nd of each month at 00:05 AM IST)
 const { startAutoPayrollScheduler } = require('./utils/autoPayrollScheduler');
 startAutoPayrollScheduler();
+
+// Start enterprise subscription lifecycle & auto-purge scheduler (runs daily at 00:05 AM IST)
+const { startSubscriptionScheduler } = require('./utils/subscriptionScheduler');
+startSubscriptionScheduler();
 const app    = express();
 const server = http.createServer(app);
 const io     = new Server(server, { cors: { origin: '*' } });
@@ -137,6 +145,8 @@ app.use('/api/leave-configs', require('./routes/leaveConfigRoutes'));
 app.use('/api/settings', require('./routes/settingsRoutes'));
 app.use('/api/salary-structures', require('./routes/salaryStructureRoutes'));
 app.use('/api/withdrawals', require('./routes/withdrawalRoutes'));
+app.use('/api/subscription', require('./routes/subscriptionRoutes'));
+app.use('/api/landing', require('./routes/landingRoutes'));
 
 // Health check
 app.get('/', (req, res) => {

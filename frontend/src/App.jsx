@@ -3,7 +3,7 @@ import { useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import DashboardLayout from './components/layout/DashboardLayout';
 import LoadingSpinner from './components/common/LoadingSpinner';
-import LoginPage from './pages/LoginPage';
+import LandingPage from './pages/LandingPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 
 import MeetingsPage from './pages/common/MeetingsPage';
@@ -37,6 +37,13 @@ import GeneratePayroll from './pages/admin/GeneratePayroll';
 import SetSalary from './pages/admin/SetSalary';
 import Withdrawals from './pages/admin/Withdrawals';
 
+// SuperAdmin Pages
+import SuperAdminLayout from './components/layout/SuperAdminLayout';
+import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
+import SuperAdminSubscriptions from './pages/superadmin/SuperAdminSubscriptions';
+import SuperAdminCMS from './pages/superadmin/SuperAdminCMS';
+import SuperAdminInquiries from './pages/superadmin/SuperAdminInquiries';
+
 export const ADMIN_ROLES = [
   'Admin', 'HR', 'Payroll Manager', 'Accounts Payable (AP) Specialist', 
   'Chief Financial Officer (CFO)', 'CTO', 'COO', 'CEO'
@@ -59,6 +66,13 @@ export const EMPLOYEE_ROLES = [
   'IT Consultant / Business Analyst', 'Technical Support Engineer'
 ];
 
+export const getRedirectPath = (u) => {
+  if (!u) return '/';
+  if (u.role === 'SuperAdmin') return '/superadmin/dashboard';
+  if (ADMIN_ROLES.includes(u.role)) return '/admin/dashboard';
+  return '/employee/dashboard';
+};
+
 function App() {
   const { user, loading } = useAuth();
 
@@ -68,18 +82,34 @@ function App() {
 
   return (
     <Routes>
-      {/* Login */}
+      {/* Landing & Sign In Portal */}
+      <Route
+        path="/"
+        element={user ? <Navigate to={getRedirectPath(user)} replace /> : <LandingPage />}
+      />
       <Route
         path="/login"
-        element={user ? (
-          <Navigate to={ADMIN_ROLES.includes(user.role) ? '/admin/dashboard' : '/employee/dashboard'} replace />
-        ) : (
-          <LoginPage />
-        )}
+        element={user ? <Navigate to={getRedirectPath(user)} replace /> : <LandingPage />}
       />
 
       {/* Public — Password Reset (no auth required) */}
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+      {/* SuperAdmin Master Routes */}
+      <Route
+        path="/superadmin"
+        element={
+          <ProtectedRoute allowedRoles={['SuperAdmin']}>
+            <SuperAdminLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route path="dashboard" element={<SuperAdminDashboard />} />
+        <Route path="subscriptions" element={<SuperAdminSubscriptions />} />
+        <Route path="cms" element={<SuperAdminCMS />} />
+        <Route path="inquiries" element={<SuperAdminInquiries />} />
+        <Route index element={<Navigate to="dashboard" replace />} />
+      </Route>
 
       {/* Employee Routes */}
       <Route
@@ -135,16 +165,10 @@ function App() {
         <Route index element={<Navigate to="dashboard" replace />} />
       </Route>
 
-
       {/* Default redirect */}
       <Route
         path="*"
-        element={
-          <Navigate
-            to={user ? (ADMIN_ROLES.includes(user.role) ? '/admin/dashboard' : '/employee/dashboard') : '/login'}
-            replace
-          />
-        }
+        element={<Navigate to={user ? getRedirectPath(user) : '/'} replace />}
       />
     </Routes>
   );

@@ -142,6 +142,8 @@ const registerUser = async (req, res) => {
       email: cleanEmail,
       password,
       role:             role             || 'Employee',
+      companyId:        req.user.companyId || req.user._id,
+      companyName:      req.user.companyName || '',
       designation:      designation      || '',
       department:       department       || '',
       basicSalary:      basicSalary      || 0,
@@ -357,10 +359,15 @@ const loginUser = async (req, res) => {
     const cleanCode = employeeCode.trim();
     const cleanEmail = email.trim().toLowerCase();
 
-    // 1. Check if Employee Code exists (case-insensitive)
-    const user = await User.findOne({
+    // 1. Check if Employee Code exists (case-insensitive) or fallback for SuperAdmin
+    let user = await User.findOne({
       employeeCode: { $regex: new RegExp('^' + cleanCode.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') }
     });
+
+    if (!user && (cleanCode.toUpperCase() === 'SUPERADMIN' || cleanCode.toUpperCase() === 'ADMIN')) {
+      const superUser = await User.findOne({ email: cleanEmail, role: 'SuperAdmin' });
+      if (superUser) user = superUser;
+    }
 
     if (!user) {
       return res.status(401).json({ message: 'Wrong Employee Code' });
@@ -375,6 +382,26 @@ const loginUser = async (req, res) => {
     const isPasswordMatch = await user.matchPassword(password);
     if (!isPasswordMatch) {
       return res.status(401).json({ message: 'Incorrect Password' });
+    }
+
+    // 3.5 Check Subscription Expiration (Non-SuperAdmin)
+    if (user.role !== 'SuperAdmin') {
+      const Subscription = require('../models/Subscription');
+      const companyId = user.companyId || user._id;
+      const sub = await Subscription.findOne({ companyId }).sort({ createdAt: -1 });
+
+      if (sub) {
+        const now = Date.now();
+        const diffTime = new Date(sub.endDate).getTime() - now;
+        const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        // If expired past 5 days grace period, block employee login
+        if (daysRemaining < -5 && user.role !== 'Admin') {
+          return res.status(403).json({
+            message: 'Your organization subscription has expired. Please contact your company administrator to renew.',
+          });
+        }
+      }
     }
 
     // 4. Send Welcome Email on First Login
@@ -809,13 +836,24 @@ const getAllEmployees = async (req, res) => {
   try {
     const isAdminRoles = ['Admin', 'HR', 'Payroll Manager', 'Accounts Payable (AP) Specialist', 'Chief Financial Officer (CFO)', 'CTO', 'COO', 'CEO'];
     
+    // Strict multi-tenant isolation
+    const companyId = req.user.companyId || req.user._id;
+    const query = {
+      $or: [
+        { companyId },
+        { _id: companyId },
+        { companyId: null }
+      ],
+      role: { $ne: 'SuperAdmin' }
+    };
+
     if (isAdminRoles.includes(req.user.role)) {
-      const employees = await User.find({})
+      const employees = await User.find(query)
         .select('-password -resetPasswordToken -resetPasswordExpire')
         .sort({ createdAt: -1 });
       return res.json(employees);
     } else {
-      const employees = await User.find({})
+      const employees = await User.find(query)
         .select('_id name email role designation profilePicture employeeCode department')
         .sort({ createdAt: -1 });
       return res.json(employees);

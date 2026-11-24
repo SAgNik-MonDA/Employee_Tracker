@@ -24,7 +24,7 @@ const userSchema = new mongoose.Schema(
     role: {
       type: String,
       enum: [
-        'Admin', 'HR', 'Employee',
+        'SuperAdmin', 'Admin', 'HR', 'Employee',
         'Project Manager', 'Project Lead', 'General Manager',
         'CEO', 'CTO', 'CIO', 'CISO', 'COO',
         'Frontend Engineer', 'Backend Engineer', 'Full-Stack Engineer', 'Mobile Developer', 'QA Engineer',
@@ -42,6 +42,16 @@ const userSchema = new mongoose.Schema(
         'Accounts Payable (AP) Specialist', 'Chief Financial Officer (CFO)'
       ],
       default: 'Employee',
+    },
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    companyName: {
+      type: String,
+      default: '',
+      trim: true,
     },
     employeeCode: {
       type: String,
