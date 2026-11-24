@@ -218,7 +218,7 @@ const ManageEmployees = () => {
   const [bonusEmp, setBonusEmp]             = useState(null);
   const [bonusAmount, setBonusAmount]       = useState('');
   const [bonusMonthYear, setBonusMonthYear] = useState('');
-  const [bonusReason, setBonusReason]       = useState('Performance Incentive');
+  const [bonusReason, setBonusReason]       = useState('');
   const [submittingBonus, setSubmittingBonus] = useState(false);
 
   const emptyForm = {
@@ -313,8 +313,15 @@ const ManageEmployees = () => {
     setBonusEmp(emp);
     setBonusAmount('');
     setBonusMonthYear(currentMY);
-    setBonusReason('Performance Incentive');
+    setBonusReason('');
     setShowBonusModal(true);
+  };
+
+  const handleCloseBonusModal = () => {
+    setShowBonusModal(false);
+    setBonusEmp(null);
+    setBonusAmount('');
+    setBonusReason('');
   };
 
   const handleGenerateBonusSubmit = async (e) => {
@@ -328,15 +335,15 @@ const ManageEmployees = () => {
 
     setSubmittingBonus(true);
     try {
+      const trimmedReason = bonusReason.trim();
       const { data } = await API.post('/payroll/generate-bonus', {
         employeeId: bonusEmp._id,
         amount: numAmount,
         monthYear: bonusMonthYear,
-        reason: bonusReason.trim(),
+        reason: trimmedReason || 'Performance Incentive',
       });
       toast.success(data.message || `Bonus of ₹${numAmount.toLocaleString()} generated for ${bonusEmp.name}! Added to payslip 🎉`);
-      setShowBonusModal(false);
-      setBonusEmp(null);
+      handleCloseBonusModal();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to generate bonus');
     } finally {
@@ -954,7 +961,7 @@ const ManageEmployees = () => {
               </div>
               <button
                 type="button"
-                onClick={() => { setShowBonusModal(false); setBonusEmp(null); }}
+                onClick={handleCloseBonusModal}
                 className="p-2 rounded-xl text-surface-400 hover:text-surface-100 hover:bg-surface-700/50 transition-colors"
                 title="Close"
               >
@@ -1054,7 +1061,7 @@ const ManageEmployees = () => {
                   type="text"
                   value={bonusReason}
                   onChange={(e) => setBonusReason(e.target.value)}
-                  placeholder="e.g. Performance Incentive, Festive Bonus, Project Completion"
+                  placeholder="Select or enter bonus reason (e.g. Performance Incentive, Festive Bonus...)"
                   className="input-field text-sm w-full"
                   list="bonus-reason-suggestions"
                 />
@@ -1096,7 +1103,7 @@ const ManageEmployees = () => {
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-surface-700/60 sticky bottom-0 bg-surface-800/95 dark:bg-surface-800/95 pb-1">
                 <button
                   type="button"
-                  onClick={() => { setShowBonusModal(false); setBonusEmp(null); }}
+                  onClick={handleCloseBonusModal}
                   className="btn-secondary text-sm px-4 py-2"
                   disabled={submittingBonus}
                 >
