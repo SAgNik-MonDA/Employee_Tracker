@@ -191,7 +191,7 @@ const NotificationDropdown = () => {
       <button
         id="notification-bell-btn"
         onClick={handleOpen}
-        className="p-2.5 rounded-xl hover:bg-surface-800 text-surface-400 hover:text-surface-200 transition-all duration-200 relative"
+        className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl bg-surface-800/40 hover:bg-surface-800 border border-surface-700/40 text-surface-400 hover:text-surface-200 transition-all duration-200 relative active:scale-95 flex-shrink-0"
         aria-label="Notifications"
       >
         <HiOutlineBell className="w-5 h-5" />
@@ -206,7 +206,7 @@ const NotificationDropdown = () => {
       {open && (
         <div
           id="notification-dropdown"
-          className="absolute right-0 top-full mt-2 w-[360px] max-h-[480px] flex flex-col
+          className="absolute -right-12 sm:right-0 top-full mt-2 w-[calc(100vw-24px)] max-w-[360px] max-h-[480px] flex flex-col
                      bg-surface-900/95 backdrop-blur-xl border border-surface-700/60
                      rounded-2xl shadow-2xl shadow-black/50 z-50
                      animate-in fade-in slide-in-from-top-2 duration-200"

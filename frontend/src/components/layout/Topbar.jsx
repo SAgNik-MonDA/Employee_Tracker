@@ -18,9 +18,9 @@ const Topbar = ({ onMenuToggle }) => {
   };
 
   const roleBadgeColors = {
-    Admin: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-    HR: 'bg-teal-500/20 text-teal-400 border-teal-500/30',
-    Employee: 'bg-teal-500/20 text-teal-300 border-teal-500/30',
+    Admin: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+    HR: 'bg-teal-500/15 text-teal-300 border-teal-500/30',
+    Employee: 'bg-teal-500/15 text-teal-300 border-teal-500/30',
   };
 
   const ADMIN_ROLES = [
@@ -31,76 +31,106 @@ const Topbar = ({ onMenuToggle }) => {
     ? '/admin/profile'
     : '/employee/profile';
 
+  const todayStr = new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+
+  const firstName = user?.name ? user.name.split(' ')[0] : 'User';
+
   return (
-    <header className="sticky top-0 z-30 bg-surface-900/80 dark:bg-surface-900/80 backdrop-blur-xl border-b border-surface-700/50 light:bg-white/80 light:border-surface-200">
-      <div className="flex items-center justify-between px-4 lg:px-8 py-4">
-        {/* Left */}
-        <div className="flex items-center gap-4">
+    <header className="sticky top-0 z-30 bg-surface-900/85 dark:bg-surface-900/85 backdrop-blur-xl border-b border-surface-700/50 light:bg-white/90 light:border-surface-200/80 transition-colors">
+      <div className="flex items-center justify-between px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3.5">
+        {/* Left Section: Menu Toggle, Avatar & Welcome greeting */}
+        <div className="flex items-center gap-2 sm:gap-3.5 min-w-0">
           <button
             onClick={onMenuToggle}
-            className="lg:hidden p-2 rounded-xl hover:bg-surface-800 text-surface-400 transition-colors"
+            className="lg:hidden p-2 rounded-xl bg-surface-800/40 hover:bg-surface-800 border border-surface-700/40 text-surface-300 hover:text-surface-100 transition-all flex-shrink-0 active:scale-95"
+            aria-label="Open sidebar menu"
           >
-            <HiOutlineMenuAlt2 className="w-6 h-6" />
+            <HiOutlineMenuAlt2 className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
+
           <div
             onClick={() => navigate(profilePath)}
-            className="flex items-center gap-3 cursor-pointer group"
+            className="flex items-center gap-2 sm:gap-3 cursor-pointer group min-w-0"
             title="Go to My Profile"
           >
-            <UserAvatar user={user} size="sm" className="group-hover:ring-2 group-hover:ring-teal-400/50 transition-all" />
-            <div>
-              <h2 className="text-lg font-display font-bold text-surface-100 dark:text-surface-100 group-hover:text-teal-300 transition-colors">
-                Welcome back, {user?.name?.split(' ')[0]} 👋
+            <UserAvatar
+              user={user}
+              size="sm"
+              className="flex-shrink-0 group-hover:ring-2 group-hover:ring-teal-400/50 transition-all shadow-sm"
+            />
+            <div className="min-w-0">
+              <h2 className="text-sm sm:text-base font-display font-bold text-surface-100 truncate group-hover:text-teal-300 transition-colors flex items-center gap-1">
+                <span className="hidden sm:inline">Welcome back, </span>
+                <span className="truncate">{firstName}</span>
+                <span className="select-none flex-shrink-0">👋</span>
               </h2>
-              <p className="text-xs text-surface-500">
-                {new Date().toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                })}
+              <p className="text-[11px] sm:text-xs text-surface-400 hidden sm:block whitespace-nowrap truncate">
+                {todayStr}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Right */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          <span className={`badge border text-xs ${roleBadgeColors[user?.role] || 'bg-surface-800 text-surface-300 border-surface-700'}`}>
-            {user?.role}
-          </span>
+        {/* Right Section: Badges & Controls */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0">
+          {/* Role Badge (Visible on md and up, so long role names don't break mobile) */}
+          {user?.role && (
+            <span
+              className={`hidden md:inline-flex badge border text-xs whitespace-nowrap ${
+                roleBadgeColors[user?.role] || 'bg-surface-800/80 text-surface-300 border-surface-700/60'
+              }`}
+            >
+              {user.role}
+            </span>
+          )}
+
+          {/* Employee Code (Visible on sm and up) */}
           {user?.employeeCode && (
-            <span className="badge border text-xs bg-teal-500/15 text-teal-300 border-teal-500/30 font-mono font-semibold" title="Employee Code">
+            <span
+              className="hidden sm:inline-flex badge border text-xs bg-teal-500/15 text-teal-300 border-teal-500/30 font-mono font-semibold whitespace-nowrap"
+              title="Employee Code"
+            >
               {user.employeeCode}
             </span>
           )}
-          
-          {/* Theme Toggle */}
+
+          {/* Theme Toggle Button */}
           <button
             onClick={toggleTheme}
-            className="p-2.5 rounded-xl hover:bg-surface-800 text-surface-400 hover:text-surface-200 transition-all duration-300 relative group"
+            className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl bg-surface-800/40 hover:bg-surface-800 border border-surface-700/40 text-surface-400 hover:text-surface-200 transition-all duration-200 active:scale-95 flex-shrink-0"
             aria-label="Toggle theme"
             title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
           >
             <div className="relative w-5 h-5">
-              <HiOutlineSun className={`w-5 h-5 absolute inset-0 transition-all duration-500 ${
-                theme === 'dark' ? 'rotate-0 scale-100 opacity-100' : '-rotate-90 scale-0 opacity-0'
-              }`} />
-              <HiOutlineMoon className={`w-5 h-5 absolute inset-0 transition-all duration-500 ${
-                theme === 'light' ? 'rotate-0 scale-100 opacity-100' : 'rotate-90 scale-0 opacity-0'
-              }`} />
+              <HiOutlineSun
+                className={`w-5 h-5 absolute inset-0 transition-all duration-500 ${
+                  theme === 'dark' ? 'rotate-0 scale-100 opacity-100 text-amber-300' : '-rotate-90 scale-0 opacity-0'
+                }`}
+              />
+              <HiOutlineMoon
+                className={`w-5 h-5 absolute inset-0 transition-all duration-500 ${
+                  theme === 'light' ? 'rotate-0 scale-100 opacity-100 text-teal-600' : 'rotate-90 scale-0 opacity-0'
+                }`}
+              />
             </div>
           </button>
 
+          {/* Notifications Dropdown */}
           <NotificationDropdown />
+
+          {/* Logout Button (Icon on mobile, Icon + Text on tablet/desktop) */}
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface-800/50 border border-surface-700/50
-                       hover:bg-rose-500/10 hover:border-rose-500/30 hover:text-rose-400
-                       text-surface-400 text-sm font-medium transition-all duration-300"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 rounded-xl bg-surface-800/40 hover:bg-rose-500/15 border border-surface-700/40 hover:border-rose-500/30 text-surface-400 hover:text-rose-400 transition-all duration-200 flex-shrink-0 active:scale-95"
+            title="Logout"
           >
-            <HiOutlineLogout className="w-4 h-4" />
-            <span className="hidden sm:inline">Logout</span>
+            <HiOutlineLogout className="w-4 h-4 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline text-xs font-semibold">Logout</span>
           </button>
         </div>
       </div>
