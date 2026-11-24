@@ -934,18 +934,18 @@ const ManageEmployees = () => {
 
       {/* Generate Bonus Modal */}
       {showBonusModal && bonusEmp && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto animate-fade-in">
-          <div className="bg-surface-800 border border-surface-700 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden my-8">
-            {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-surface-700 bg-gradient-to-r from-amber-500/10 via-yellow-500/5 to-transparent">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-950/70 backdrop-blur-md p-3 sm:p-4 animate-fade-in">
+          <div className="glass-card w-full max-w-lg max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden shadow-2xl animate-slide-up border-[1.5px] border-teal-500/50">
+            {/* Header (Pinned / Sticky Top) */}
+            <div className="flex-shrink-0 flex items-center justify-between px-5 py-4 sm:p-6 border-b border-surface-700/50 bg-gradient-to-r from-amber-500/10 via-yellow-500/5 to-transparent">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-xl shadow-inner">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-xl shadow-inner select-none">
                   🎁
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-surface-100 flex items-center gap-2">
                     Generate Bonus
-                    <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
                       Payroll Credit
                     </span>
                   </h2>
@@ -955,26 +955,27 @@ const ManageEmployees = () => {
               <button
                 type="button"
                 onClick={() => { setShowBonusModal(false); setBonusEmp(null); }}
-                className="p-2 rounded-xl text-surface-400 hover:text-white hover:bg-surface-700/60 transition-colors"
+                className="p-2 rounded-xl text-surface-400 hover:text-surface-100 hover:bg-surface-700/50 transition-colors"
+                title="Close"
               >
-                ✕
+                <HiOutlineX className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Form */}
-            <form onSubmit={handleGenerateBonusSubmit} className="p-6 space-y-5">
-              {/* Employee Summary Card */}
-              <div className="bg-surface-900/80 border border-surface-700/80 rounded-xl p-4 space-y-2">
+            {/* Form Body (Scrollable & Responsive) */}
+            <form onSubmit={handleGenerateBonusSubmit} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4 sm:space-y-5 custom-scrollbar">
+              {/* Employee Summary Card with Teal/Green Border */}
+              <div className="bg-surface-900/60 border-[1.5px] border-teal-500/40 rounded-xl p-4 space-y-2.5 shadow-sm">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h3 className="text-sm font-bold text-white">{bonusEmp.name}</h3>
-                    <p className="text-xs text-surface-400">{bonusEmp.email}</p>
+                    <h3 className="text-sm font-bold text-surface-100">{bonusEmp.name}</h3>
+                    <p className="text-xs text-surface-400 font-mono">{bonusEmp.email}</p>
                   </div>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded font-mono text-xs font-semibold bg-primary-500/15 text-primary-300 border border-primary-500/30">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded font-mono text-xs font-semibold bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-500/40">
                     {bonusEmp.employeeCode || 'N/A'}
                   </span>
                 </div>
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-surface-700/50 text-xs">
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-teal-500/20 text-xs">
                   <div>
                     <span className="text-surface-400 block">Project:</span>
                     <span className="font-semibold text-surface-200">
@@ -989,7 +990,7 @@ const ManageEmployees = () => {
                   </div>
                   <div>
                     <span className="text-surface-400 block">Base Salary:</span>
-                    <span className="font-semibold text-emerald-400">
+                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
                       ₹{(bonusEmp.basicSalary || 0).toLocaleString()}
                     </span>
                   </div>
@@ -1038,7 +1039,7 @@ const ManageEmployees = () => {
                     value={bonusAmount}
                     onChange={(e) => setBonusAmount(e.target.value)}
                     placeholder="e.g. 5000"
-                    className="input-field pl-8 text-sm w-full font-semibold text-amber-300"
+                    className="input-field pl-8 text-sm w-full font-semibold text-amber-600 dark:text-amber-300"
                     required
                   />
                 </div>
@@ -1069,12 +1070,12 @@ const ManageEmployees = () => {
 
               {/* Live Impact Preview */}
               {Number(bonusAmount) > 0 && (
-                <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs space-y-1.5">
+                <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs space-y-1.5">
                   <div className="flex items-center justify-between text-surface-300">
                     <span>Base Salary:</span>
                     <span>₹{(bonusEmp.basicSalary || 0).toLocaleString()}</span>
                   </div>
-                  <div className="flex items-center justify-between text-amber-300 font-medium">
+                  <div className="flex items-center justify-between text-amber-600 dark:text-amber-300 font-medium">
                     <span>+ Bonus Amount:</span>
                     <span>+₹{Number(bonusAmount).toLocaleString()}</span>
                   </div>
@@ -1082,7 +1083,7 @@ const ManageEmployees = () => {
                     <span>- Standard Deductions (PF & Mediclaim):</span>
                     <span>-₹{((bonusEmp.pfAmount || 0) + (bonusEmp.mediclaimAmount || 0)).toLocaleString()}</span>
                   </div>
-                  <div className="pt-1.5 border-t border-amber-500/30 flex items-center justify-between font-bold text-emerald-400 text-sm">
+                  <div className="pt-1.5 border-t border-amber-500/30 flex items-center justify-between font-bold text-emerald-600 dark:text-emerald-400 text-sm">
                     <span>Estimated Net Salary:</span>
                     <span>
                       ₹{Math.max(0, (bonusEmp.basicSalary || 0) - (bonusEmp.pfAmount || 0) - (bonusEmp.mediclaimAmount || 0) + Number(bonusAmount)).toLocaleString()}
@@ -1091,12 +1092,12 @@ const ManageEmployees = () => {
                 </div>
               )}
 
-              {/* Actions */}
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-surface-700">
+              {/* Actions Footer */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-surface-700/60 sticky bottom-0 bg-surface-800/95 dark:bg-surface-800/95 pb-1">
                 <button
                   type="button"
                   onClick={() => { setShowBonusModal(false); setBonusEmp(null); }}
-                  className="btn-secondary text-sm"
+                  className="btn-secondary text-sm px-4 py-2"
                   disabled={submittingBonus}
                 >
                   Cancel
