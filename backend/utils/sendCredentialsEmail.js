@@ -10,7 +10,7 @@ const {
  * Generates QR token + high-res Credentials PDF Card and sends a responsive
  * enterprise onboarding email to newly created Company Admins or Employees.
  */
-const sendCredentialsEmail = async ({
+const sendCredentialsEmailDetailed = async ({
   user,
   plainPassword,
   portalUrl,
@@ -208,7 +208,7 @@ const sendCredentialsEmail = async ({
       </html>
     `;
 
-    const info = await sendEmail({
+    const result = await sendEmail.sendDetailed({
       to: user.email,
       subject,
       html,
@@ -227,11 +227,22 @@ const sendCredentialsEmail = async ({
       ],
     });
 
-    return Boolean(info);
+    return {
+      sent: Boolean(result.ok),
+      provider: result.provider || '',
+      error: result.error || '',
+    };
   } catch (err) {
     console.error('❌ sendCredentialsEmail failed:', err.message);
-    return false;
+    return { sent: false, provider: '', error: err.message };
   }
 };
+
+const sendCredentialsEmail = async (opts) => {
+  const res = await sendCredentialsEmailDetailed(opts);
+  return res.sent;
+};
+
+sendCredentialsEmail.sendDetailed = sendCredentialsEmailDetailed;
 
 module.exports = sendCredentialsEmail;

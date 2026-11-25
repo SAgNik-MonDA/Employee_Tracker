@@ -13,10 +13,11 @@ import {
   HiOutlineBookOpen,
   HiOutlinePencil,
   HiOutlineX,
+  HiOutlineMail,
 } from 'react-icons/hi';
 
 const SuperAdminCMS = () => {
-  const [activeTab, setActiveTab] = useState('pricing'); // 'pricing' | 'rules' | 'clients' | 'faqs' | 'gateway'
+  const [activeTab, setActiveTab] = useState('pricing'); // 'pricing' | 'rules' | 'clients' | 'faqs' | 'gateway' | 'email'
 
   // Pricing Plans state
   const [pricing, setPricing] = useState({
@@ -62,10 +63,80 @@ const SuperAdminCMS = () => {
   const [rzpKeySecret, setRzpKeySecret] = useState('');
   const [savingGateway, setSavingGateway] = useState(false);
 
+  // Email / SMTP / Port-443 Relay Config state
+  const [emailStatus, setEmailStatus] = useState(null);
+  const [emailForm, setEmailForm] = useState({
+    provider: 'smtp',
+    host: 'smtp.gmail.com',
+    port: 587,
+    user: '',
+    pass: '',
+    fromEmail: '',
+    brevoApiKey: '',
+    resendApiKey: '',
+    webhookUrl: '',
+    webhookSecret: '',
+  });
+  const [testRecipient, setTestRecipient] = useState('');
+  const [savingEmail, setSavingEmail] = useState(false);
+  const [testingEmail, setTestingEmail] = useState(false);
+
   useEffect(() => {
     fetchCMSData();
     fetchGatewayConfig();
+    fetchEmailConfig();
   }, []);
+
+  const fetchEmailConfig = async () => {
+    try {
+      const { data } = await API.get('/subscription/email-config');
+      if (data.success) {
+        setEmailStatus(data);
+        setEmailForm((prev) => ({
+          ...prev,
+          provider: data.preferredProvider || 'smtp',
+          host: data.smtp?.host || 'smtp.gmail.com',
+          port: data.smtp?.port || 587,
+          user: data.smtp?.user || '',
+          fromEmail: data.fromEmail || data.smtp?.user || '',
+        }));
+        if (!testRecipient && (data.fromEmail || data.smtp?.user)) {
+          setTestRecipient(data.fromEmail || data.smtp?.user || '');
+        }
+      }
+    } catch {
+      // ignore initial load error
+    }
+  };
+
+  const handleSaveEmailConfig = async (e) => {
+    e.preventDefault();
+    setSavingEmail(true);
+    try {
+      const { data } = await API.put('/subscription/email-config', emailForm);
+      setEmailStatus(data);
+      setEmailForm((prev) => ({ ...prev, pass: '', brevoApiKey: '', resendApiKey: '', webhookSecret: '' }));
+      toast.success(data.message || 'Email gateway configuration saved! ✉️');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save email settings');
+    } finally {
+      setSavingEmail(false);
+    }
+  };
+
+  const handleRunTestEmail = async () => {
+    setTestingEmail(true);
+    try {
+      const { data } = await API.post('/subscription/test-email', { to: testRecipient });
+      toast.success(data.message || 'Test email delivered!');
+      fetchEmailConfig();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Test email delivery failed', { duration: 7000 });
+      fetchEmailConfig();
+    } finally {
+      setTestingEmail(false);
+    }
+  };
 
   const fetchGatewayConfig = async () => {
     try {
@@ -305,6 +376,11 @@ const SuperAdminCMS = () => {
         <button onClick={() => setActiveTab('gateway')} className={tabBtnClass('gateway')}>
           <HiOutlineCreditCard className="w-4 h-4" />
           <span>Razorpay Gateway</span>
+        </button>
+
+        <button onClick={() => setActiveTab('email')} className={tabBtnClass('email')}>
+          <HiOutlineMail className="w-4 h-4" />
+          <span>Email &amp; SMTP Relay</span>
         </button>
       </div>
 
@@ -898,6 +974,227 @@ const SuperAdminCMS = () => {
                     <span>Verify &amp; Save Razorpay Keys</span>
                   </>
                 )}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB 6: EMAIL & SMTP / PORT-443 RELAY DIAGNOSTICS ── */}
+      {activeTab === 'email' && (
+        <div className="space-y-6 max-w-3xl">
+          <div className="liquid-glass p-6 rounded-3xl space-y-5">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-[#D2F801] text-[#0B0D11] flex items-center justify-center">
+                  <HiOutlineMail className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-surface-100">Email &amp; SMTP Delivery Engine</h3>
+                  <p className="text-xs text-surface-400">
+                    Supports Direct IPv4 SMTP and Port-443 HTTPS Relays (works on Render Free Tier)
+                  </p>
+                </div>
+              </div>
+
+              <span className="px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-[#D2F801] text-[#0B0D11]">
+                Active: {emailStatus?.preferredProvider || 'smtp'}
+              </span>
+            </div>
+
+            {emailStatus?.lastDiagnostic?.timestamp && (
+              <div
+                className={`p-3.5 rounded-2xl border text-xs ${
+                  emailStatus.lastDiagnostic.ok
+                    ? 'bg-lime-500/10 border-lime-500/30 text-teal-400'
+                    : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+                }`}
+              >
+                <div className="font-bold">
+                  Last Server Dispatch ({emailStatus.lastDiagnostic.provider}):{' '}
+                  {emailStatus.lastDiagnostic.ok ? 'Delivered ✅' : 'Failed ❌'}
+                </div>
+                {emailStatus.lastDiagnostic.error && (
+                  <div className="mt-1 font-mono text-[11px] break-all">{emailStatus.lastDiagnostic.error}</div>
+                )}
+              </div>
+            )}
+
+            {/* Quick Live Server Email Test */}
+            <div className="p-4 rounded-2xl bg-surface-900/60 border border-surface-700 flex flex-col sm:flex-row gap-3 items-stretch sm:items-end">
+              <div className="flex-1">
+                <label className="block text-[11px] font-bold text-surface-300 mb-1">
+                  Run Live Delivery Test From Backend Server
+                </label>
+                <input
+                  type="email"
+                  value={testRecipient}
+                  onChange={(e) => setTestRecipient(e.target.value)}
+                  placeholder="recipient@gmail.com"
+                  className="input-field text-xs h-10"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleRunTestEmail}
+                disabled={testingEmail}
+                className="btn-primary rounded-full px-5 h-10 text-xs flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer"
+              >
+                {testingEmail ? 'Sending Test...' : 'Send Live Test Email'}
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEmailConfig} autoComplete="off" className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-surface-300 mb-1.5">Transport Provider</label>
+                <select
+                  value={emailForm.provider}
+                  onChange={(e) => setEmailForm({ ...emailForm, provider: e.target.value })}
+                  className="select-field text-xs h-10 py-2"
+                >
+                  <option value="smtp">Direct IPv4 SMTP (Gmail / Custom Host — Paid Render or Local/VPS)</option>
+                  <option value="brevo">Brevo HTTP API v3 (Port 443 — Bypasses Render Free Tier SMTP Block)</option>
+                  <option value="resend">Resend HTTP API (Port 443 — Bypasses Render Free Tier SMTP Block)</option>
+                  <option value="webhook">Google Apps Script / HTTPS Webhook Relay (Port 443 — Free Gmail)</option>
+                </select>
+              </div>
+
+              {emailForm.provider === 'smtp' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-surface-300 mb-1">SMTP Host</label>
+                    <input
+                      type="text"
+                      value={emailForm.host}
+                      onChange={(e) => setEmailForm({ ...emailForm, host: e.target.value })}
+                      className="input-field text-xs h-10 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-surface-300 mb-1">SMTP Port</label>
+                    <input
+                      type="number"
+                      value={emailForm.port}
+                      onChange={(e) => setEmailForm({ ...emailForm, port: Number(e.target.value) })}
+                      className="input-field text-xs h-10 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-surface-300 mb-1">Gmail / SMTP Username</label>
+                    <input
+                      type="email"
+                      value={emailForm.user}
+                      onChange={(e) => setEmailForm({ ...emailForm, user: e.target.value })}
+                      className="input-field text-xs h-10 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-surface-300 mb-1">
+                      App Password {emailStatus?.smtp?.maskedPass ? `(${emailStatus.smtp.maskedPass})` : ''}
+                    </label>
+                    <input
+                      type="password"
+                      autoComplete="new-password"
+                      value={emailForm.pass}
+                      onChange={(e) => setEmailForm({ ...emailForm, pass: e.target.value })}
+                      placeholder="Leave blank to keep existing password"
+                      className="input-field text-xs h-10 font-mono"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {emailForm.provider === 'brevo' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-surface-300 mb-1">Sender Email (Verified in Brevo)</label>
+                    <input
+                      type="email"
+                      value={emailForm.fromEmail}
+                      onChange={(e) => setEmailForm({ ...emailForm, fromEmail: e.target.value })}
+                      placeholder="sagnikm997@gmail.com"
+                      className="input-field text-xs h-10 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-surface-300 mb-1">
+                      Brevo v3 API Key {emailStatus?.httpRelays?.brevoMaskedKey ? `(${emailStatus.httpRelays.brevoMaskedKey})` : ''}
+                    </label>
+                    <input
+                      type="password"
+                      value={emailForm.brevoApiKey}
+                      onChange={(e) => setEmailForm({ ...emailForm, brevoApiKey: e.target.value })}
+                      placeholder="xkeysib-..."
+                      className="input-field text-xs h-10 font-mono"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {emailForm.provider === 'resend' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-surface-300 mb-1">Sender Email (Optional Verified Domain)</label>
+                    <input
+                      type="email"
+                      value={emailForm.fromEmail}
+                      onChange={(e) => setEmailForm({ ...emailForm, fromEmail: e.target.value })}
+                      placeholder="noreply@yourdomain.com"
+                      className="input-field text-xs h-10 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-surface-300 mb-1">
+                      Resend API Key {emailStatus?.httpRelays?.resendMaskedKey ? `(${emailStatus.httpRelays.resendMaskedKey})` : ''}
+                    </label>
+                    <input
+                      type="password"
+                      value={emailForm.resendApiKey}
+                      onChange={(e) => setEmailForm({ ...emailForm, resendApiKey: e.target.value })}
+                      placeholder="re_..."
+                      className="input-field text-xs h-10 font-mono"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {emailForm.provider === 'webhook' && (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-surface-300 mb-1">HTTPS Webhook / Apps Script URL</label>
+                      <input
+                        type="url"
+                        value={emailForm.webhookUrl}
+                        onChange={(e) => setEmailForm({ ...emailForm, webhookUrl: e.target.value })}
+                        placeholder="https://script.google.com/macros/s/.../exec"
+                        className="input-field text-xs h-10 font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-surface-300 mb-1">Shared Secret Token (Optional)</label>
+                      <input
+                        type="password"
+                        value={emailForm.webhookSecret}
+                        onChange={(e) => setEmailForm({ ...emailForm, webhookSecret: e.target.value })}
+                        placeholder="Optional shared secret"
+                        className="input-field text-xs h-10 font-mono"
+                      />
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-surface-900/70 border border-surface-700 text-[11px] text-surface-400">
+                    Deploy a Google Apps Script Web App (`doPost`) bound to your Gmail to relay HTML + PDF attachments over HTTPS Port 443 with zero Render SMTP blocks.
+                  </div>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={savingEmail}
+                className="btn-primary rounded-full px-6 py-2.5 text-xs flex items-center gap-2 cursor-pointer"
+              >
+                <HiOutlineCheck className="w-4 h-4" />
+                <span>{savingEmail ? 'Saving...' : 'Save Email Gateway Settings'}</span>
               </button>
             </form>
           </div>

@@ -185,7 +185,7 @@ const registerUser = async (req, res) => {
 
     // ── Send registration credentials email with Branded QR + Credentials PDF attached ──
     const portalOrigin = req.headers.origin || process.env.FRONTEND_URL || 'https://employee-tracker-project.sagnikmondal.in';
-    const emailSent = await sendCredentialsEmail({
+    const mailResult = await sendCredentialsEmail.sendDetailed({
       user,
       plainPassword: password,
       portalUrl: portalOrigin,
@@ -193,7 +193,9 @@ const registerUser = async (req, res) => {
 
     res.status(201).json({
       ...userResponse(user),
-      emailSent,
+      emailSent: mailResult.sent,
+      emailError: mailResult.error || undefined,
+      emailProvider: mailResult.provider || undefined,
       token: generateToken(user._id, user.role),
     });
   } catch (error) {

@@ -5,88 +5,384 @@ const SystemSettings = require('../models/SystemSettings');
 // Ensure environment variables are loaded regardless of process launch directory
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
-const resolveSmtpConfig = async () => {
-  const envUser = process.env.SMTP_USER?.trim();
-  const envPass = process.env.SMTP_PASS?.trim();
-  if (envUser && envPass) {
-    return {
-      host: (process.env.SMTP_HOST || 'smtp.gmail.com').trim(),
-      port: parseInt(process.env.SMTP_PORT, 10) || 587,
-      user: envUser,
-      pass: envPass,
-    };
-  }
+let lastDiagnostic = {
+  timestamp: null,
+  ok: null,
+  provider: null,
+  error: null,
+  to: null,
+};
+
+const maskSecret = (val) =>
+  val && val.length > 8
+    ? `${val.slice(0, 3)}${'•'.repeat(Math.min(12, Math.max(4, val.length - 6)))}${val.slice(-3)}`
+    : val
+    ? '••••••••'
+    : '';
+
+/**
+ * Resolves all configured email providers/credentials across CMS DB and environment.
+ */
+const resolveAllEmailConfigs = async () => {
+  let dbProvider = null;
+  let dbSmtp = null;
 
   try {
-    const setting = await SystemSettings.findOne({ key: 'smtp_credentials' });
-    if (setting?.value?.user && setting?.value?.pass) {
-      return {
-        host: (setting.value.host || 'smtp.gmail.com').trim(),
-        port: parseInt(setting.value.port, 10) || 587,
-        user: setting.value.user.trim(),
-        pass: setting.value.pass.trim(),
-      };
-    }
+    const [provDoc, smtpDoc] = await Promise.all([
+      SystemSettings.findOne({ key: 'email_provider_config' }).lean(),
+      SystemSettings.findOne({ key: 'smtp_credentials' }).lean(),
+    ]);
+    dbProvider = provDoc?.value || null;
+    dbSmtp = smtpDoc?.value || null;
   } catch {
     // ignore DB lookup failure if disconnected
   }
-  return null;
+
+  const smtpCandidates = [];
+  const pushSmtp = (src, host, port, user, pass) => {
+    if (!user || !pass) return;
+    const cleanHost = (host || 'smtp.gmail.com').trim();
+    const cleanPort = parseInt(port, 10) || 587;
+    const cleanUser = user.trim();
+    const cleanPass = pass.trim();
+    if (!smtpCandidates.some((c) => c.host === cleanHost && c.port === cleanPort && c.user === cleanUser && c.pass === cleanPass)) {
+      smtpCandidates.push({ source: src, host: cleanHost, port: cleanPort, user: cleanUser, pass: cleanPass });
+    }
+  };
+
+  if (dbSmtp?.updatedViaCMS) {
+    pushSmtp('cms', dbSmtp.host, dbSmtp.port, dbSmtp.user, dbSmtp.pass);
+    pushSmtp('environment', process.env.SMTP_HOST, process.env.SMTP_PORT, process.env.SMTP_USER, process.env.SMTP_PASS);
+  } else {
+    pushSmtp('environment', process.env.SMTP_HOST, process.env.SMTP_PORT, process.env.SMTP_USER, process.env.SMTP_PASS);
+    if (dbSmtp) pushSmtp('database', dbSmtp.host, dbSmtp.port, dbSmtp.user, dbSmtp.pass);
+  }
+
+  // HTTP / Port-443 API transports (never blocked on cloud free tiers like Render)
+  const webhookUrl = (dbProvider?.webhookUrl || process.env.EMAIL_WEBHOOK_URL || '').trim();
+  const webhookSecret = (dbProvider?.webhookSecret || process.env.EMAIL_WEBHOOK_SECRET || '').trim();
+  const brevoApiKey = (dbProvider?.brevoApiKey || process.env.BREVO_API_KEY || '').trim();
+  const resendApiKey = (dbProvider?.resendApiKey || process.env.RESEND_API_KEY || '').trim();
+  const fromEmail = (
+    dbProvider?.fromEmail ||
+    smtpCandidates[0]?.user ||
+    process.env.SMTP_USER ||
+    'noreply@employeetracker.com'
+  ).trim();
+  const preferredProvider = dbProvider?.provider || null; // 'webhook' | 'brevo' | 'resend' | 'smtp'
+
+  return {
+    preferredProvider,
+    fromEmail,
+    webhookUrl,
+    webhookSecret,
+    brevoApiKey,
+    resendApiKey,
+    smtpCandidates,
+  };
 };
 
-const attemptSend = async (cfg, portOverride, mailOptions) => {
+const toBase64Attachments = (attachments = []) =>
+  (attachments || []).map((att) => {
+    const buf = Buffer.isBuffer(att.content)
+      ? att.content
+      : Buffer.from(att.content || '', att.encoding || 'utf8');
+    return {
+      filename: att.filename || 'attachment',
+      contentBase64: buf.toString('base64'),
+      contentType: att.contentType || 'application/octet-stream',
+      cid: att.cid || undefined,
+    };
+  });
+
+// Resolve CID images to inline base64 data URIs when using HTTP APIs that don't render CID directly
+const inlineCidImagesForHttp = (html, attachments = []) => {
+  let out = html || '';
+  for (const att of attachments || []) {
+    if (att.cid && att.content) {
+      const b64 = Buffer.isBuffer(att.content)
+        ? att.content.toString('base64')
+        : Buffer.from(att.content).toString('base64');
+      const mime = att.contentType || 'image/png';
+      out = out.split(`cid:${att.cid}`).join(`data:${mime};base64,${b64}`);
+    }
+  }
+  return out;
+};
+
+const sendViaWebhook = async ({ webhookUrl, webhookSecret, fromEmail, to, subject, html, attachments }) => {
+  const res = await fetch(webhookUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      secret: webhookSecret || undefined,
+      fromName: 'Employee Tracker Enterprise',
+      fromEmail,
+      to,
+      subject,
+      html,
+      attachments: toBase64Attachments(attachments),
+    }),
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error(`Webhook HTTP ${res.status}: ${text.slice(0, 180)}`);
+  }
+  let parsed = {};
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    // some Apps Script deployments return plain text or HTML redirect notice if unauthorized
+  }
+  if (parsed.ok === false || parsed.error) {
+    throw new Error(parsed.error || 'Webhook reported delivery failure');
+  }
+  return { messageId: parsed.messageId || `webhook-${Date.now()}`, accepted: [to] };
+};
+
+const sendViaBrevo = async ({ brevoApiKey, fromEmail, to, subject, html, attachments }) => {
+  const nonCidAttachments = (attachments || [])
+    .filter((a) => !a.cid)
+    .map((att) => ({
+      name: att.filename || 'document.pdf',
+      content: Buffer.isBuffer(att.content)
+        ? att.content.toString('base64')
+        : Buffer.from(att.content || '').toString('base64'),
+    }));
+
+  const payload = {
+    sender: { name: 'Employee Tracker Enterprise', email: fromEmail },
+    to: [{ email: to }],
+    subject,
+    htmlContent: inlineCidImagesForHttp(html, attachments),
+  };
+  if (nonCidAttachments.length > 0) payload.attachment = nonCidAttachments;
+
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/json',
+      'api-key': brevoApiKey,
+    },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(`Brevo API ${res.status}: ${data.message || JSON.stringify(data)}`);
+  }
+  return { messageId: data.messageId || `brevo-${Date.now()}`, accepted: [to] };
+};
+
+const sendViaResend = async ({ resendApiKey, fromEmail, to, subject, html, attachments }) => {
+  const cleanFrom = fromEmail && !fromEmail.endsWith('@gmail.com')
+    ? `Employee Tracker Enterprise <${fromEmail}>`
+    : 'Employee Tracker Enterprise <onboarding@resend.dev>';
+
+  const mappedAttachments = (attachments || [])
+    .filter((a) => !a.cid)
+    .map((att) => ({
+      filename: att.filename || 'document.pdf',
+      content: Buffer.isBuffer(att.content)
+        ? att.content.toString('base64')
+        : Buffer.from(att.content || '').toString('base64'),
+    }));
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${resendApiKey}`,
+    },
+    body: JSON.stringify({
+      from: cleanFrom,
+      to: [to],
+      subject,
+      html: inlineCidImagesForHttp(html, attachments),
+      ...(mappedAttachments.length > 0 ? { attachments: mappedAttachments } : {}),
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(`Resend API ${res.status}: ${data.message || JSON.stringify(data)}`);
+  }
+  return { messageId: data.id || `resend-${Date.now()}`, accepted: [to] };
+};
+
+const attemptSmtpSend = async (cfg, portOverride, mailOptions) => {
   const port = portOverride || cfg.port;
   const transporter = nodemailer.createTransport({
     host: cfg.host,
     port,
     secure: port === 465,
+    requireTLS: port === 587,
+    family: 4, // Force IPv4 to avoid IPv6 ENETUNREACH on cloud containers
     auth: {
       user: cfg.user,
       pass: cfg.pass,
     },
     tls: {
       rejectUnauthorized: false,
+      servername: cfg.host,
     },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000,
+    connectionTimeout: 8000,
+    greetingTimeout: 8000,
+    socketTimeout: 12000,
   });
 
   return transporter.sendMail(mailOptions);
 };
 
-const sendEmail = async ({ to, subject, html, attachments = [] }) => {
-  try {
-    const cfg = await resolveSmtpConfig();
-    if (!cfg) {
-      console.error('❌ Email Error: SMTP_USER or SMTP_PASS missing in env and SystemSettings');
-      return null;
-    }
+const sendWithDiagnostics = async ({ to, subject, html, attachments = [] }) => {
+  const cfg = await resolveAllEmailConfigs();
+  const errors = [];
 
-    const mailOptions = {
-      from: `"Employee Tracker Enterprise" <${cfg.user}>`,
-      to,
-      subject,
-      html,
-      attachments,
-    };
+  // Ordered transports based on SuperAdmin preference or HTTPS-first resilience
+  const tryOrder = [];
+  if (cfg.preferredProvider === 'brevo' && cfg.brevoApiKey) tryOrder.push('brevo');
+  if (cfg.preferredProvider === 'resend' && cfg.resendApiKey) tryOrder.push('resend');
+  if (cfg.preferredProvider === 'webhook' && cfg.webhookUrl) tryOrder.push('webhook');
 
+  // If no explicit HTTP preference, add configured HTTP relays BEFORE or AFTER SMTP?
+  // Wait: HTTPS relays (Port 443) work everywhere including Render Free Tier! Add configured relays first if present.
+  if (cfg.webhookUrl && !tryOrder.includes('webhook')) tryOrder.push('webhook');
+  if (cfg.brevoApiKey && !tryOrder.includes('brevo')) tryOrder.push('brevo');
+  if (cfg.resendApiKey && !tryOrder.includes('resend')) tryOrder.push('resend');
+  if (cfg.smtpCandidates.length > 0) tryOrder.push('smtp');
+
+  if (tryOrder.length === 0) {
+    const errMsg = 'No SMTP credentials or Port-443 email provider configured in env or SystemSettings.';
+    lastDiagnostic = { timestamp: new Date(), ok: false, provider: 'none', error: errMsg, to };
+    console.error(`❌ Email Error for ${to}: ${errMsg}`);
+    return { ok: false, provider: 'none', error: errMsg, info: null };
+  }
+
+  for (const transportType of tryOrder) {
     try {
-      const info = await attemptSend(cfg, cfg.port, mailOptions);
-      console.log(`📧 Email sent successfully to ${to} via port ${cfg.port} (Message ID: ${info.messageId})`);
-      return info;
-    } catch (primaryErr) {
-      // Fallback between STARTTLS (587) and SSL (465) for cloud hosting environments
-      const fallbackPort = cfg.port === 465 ? 587 : 465;
-      console.warn(`⚠️ Primary SMTP port ${cfg.port} failed for ${to} (${primaryErr.message}). Retrying via port ${fallbackPort}...`);
-      const info = await attemptSend(cfg, fallbackPort, mailOptions);
-      console.log(`📧 Email sent successfully to ${to} via fallback port ${fallbackPort} (Message ID: ${info.messageId})`);
-      return info;
+      if (transportType === 'webhook') {
+        const info = await sendViaWebhook({
+          webhookUrl: cfg.webhookUrl,
+          webhookSecret: cfg.webhookSecret,
+          fromEmail: cfg.fromEmail,
+          to,
+          subject,
+          html,
+          attachments,
+        });
+        lastDiagnostic = { timestamp: new Date(), ok: true, provider: 'https-webhook', error: null, to };
+        console.log(`📧 Email sent via HTTPS Webhook to ${to} (${info.messageId})`);
+        return { ok: true, provider: 'https-webhook', error: null, info };
+      }
+
+      if (transportType === 'brevo') {
+        const info = await sendViaBrevo({
+          brevoApiKey: cfg.brevoApiKey,
+          fromEmail: cfg.fromEmail,
+          to,
+          subject,
+          html,
+          attachments,
+        });
+        lastDiagnostic = { timestamp: new Date(), ok: true, provider: 'brevo-https', error: null, to };
+        console.log(`📧 Email sent via Brevo HTTPS API to ${to} (${info.messageId})`);
+        return { ok: true, provider: 'brevo-https', error: null, info };
+      }
+
+      if (transportType === 'resend') {
+        const info = await sendViaResend({
+          resendApiKey: cfg.resendApiKey,
+          fromEmail: cfg.fromEmail,
+          to,
+          subject,
+          html,
+          attachments,
+        });
+        lastDiagnostic = { timestamp: new Date(), ok: true, provider: 'resend-https', error: null, to };
+        console.log(`📧 Email sent via Resend HTTPS API to ${to} (${info.messageId})`);
+        return { ok: true, provider: 'resend-https', error: null, info };
+      }
+
+      if (transportType === 'smtp') {
+        for (const smtpCfg of cfg.smtpCandidates) {
+          const ports = smtpCfg.port === 465 ? [465, 587] : [smtpCfg.port, 465];
+          const mailOptions = {
+            from: `"Employee Tracker Enterprise" <${smtpCfg.user}>`,
+            to,
+            subject,
+            html,
+            attachments,
+          };
+
+          for (const port of ports) {
+            try {
+              const info = await attemptSmtpSend(smtpCfg, port, mailOptions);
+              const label = `smtp-${smtpCfg.source}:${port}`;
+              lastDiagnostic = { timestamp: new Date(), ok: true, provider: label, error: null, to };
+              console.log(`📧 Email sent to ${to} via ${label} (${info.messageId})`);
+              return { ok: true, provider: label, error: null, info };
+            } catch (portErr) {
+              const hint =
+                /timeout/i.test(portErr.message)
+                  ? `${portErr.message} (Hint: Render Free Tier blocks outbound SMTP ports 25/465/587 — enable Port-443 HTTPS Relay/Brevo/Resend in SuperAdmin CMS)`
+                  : portErr.message;
+              errors.push(`[${smtpCfg.source}:${port}] ${hint}`);
+              console.warn(`⚠️ SMTP [${smtpCfg.source}:${port}] failed for ${to}: ${portErr.message}`);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      errors.push(`[${transportType}] ${err.message}`);
+      console.warn(`⚠️ Transport [${transportType}] failed for ${to}: ${err.message}`);
     }
+  }
+
+  const combinedErr = errors[0] || 'Email dispatch failed across all configured providers';
+  lastDiagnostic = { timestamp: new Date(), ok: false, provider: tryOrder.join(','), error: combinedErr, to };
+  console.error(`❌ Email Error for ${to}: ${combinedErr}`);
+  return { ok: false, provider: tryOrder.join(','), error: combinedErr, info: null };
+};
+
+const sendEmail = async (opts) => {
+  try {
+    const res = await sendWithDiagnostics(opts);
+    return res.info || null;
   } catch (error) {
-    console.error(`❌ Email Error for ${to}: ${error.message}`);
-    // Don't throw — email failure shouldn't break the main API flow
+    console.error(`❌ Email Error for ${opts?.to}: ${error.message}`);
     return null;
   }
+};
+
+sendEmail.sendDetailed = sendWithDiagnostics;
+sendEmail.getLastStatus = () => lastDiagnostic;
+sendEmail.getConfigSummary = async () => {
+  const cfg = await resolveAllEmailConfigs();
+  const primarySmtp = cfg.smtpCandidates[0] || null;
+  return {
+    preferredProvider:
+      cfg.preferredProvider ||
+      (cfg.webhookUrl ? 'webhook' : cfg.brevoApiKey ? 'brevo' : cfg.resendApiKey ? 'resend' : 'smtp'),
+    fromEmail: cfg.fromEmail,
+    smtp: primarySmtp
+      ? {
+          configured: true,
+          source: primarySmtp.source,
+          host: primarySmtp.host,
+          port: primarySmtp.port,
+          user: primarySmtp.user,
+          maskedPass: maskSecret(primarySmtp.pass),
+        }
+      : { configured: false },
+    httpRelays: {
+      webhookConfigured: Boolean(cfg.webhookUrl),
+      webhookUrlPreview: cfg.webhookUrl ? `${cfg.webhookUrl.slice(0, 42)}...` : '',
+      brevoConfigured: Boolean(cfg.brevoApiKey),
+      brevoMaskedKey: maskSecret(cfg.brevoApiKey),
+      resendConfigured: Boolean(cfg.resendApiKey),
+      resendMaskedKey: maskSecret(cfg.resendApiKey),
+    },
+    lastDiagnostic,
+  };
 };
 
 module.exports = sendEmail;

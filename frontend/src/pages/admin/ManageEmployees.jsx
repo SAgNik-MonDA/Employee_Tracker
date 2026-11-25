@@ -365,7 +365,12 @@ const ManageEmployees = () => {
         if (!formData.password) { toast.error('Password is required'); setSubmitting(false); return; }
         const { data: regData } = await API.post('/auth/register', payload);
         if (regData?.emailSent === false) {
-          toast('Employee registered, but credentials email delivery failed. Check SMTP settings.', { icon: '⚠️' });
+          toast(
+            regData.emailError
+              ? `Employee registered! Email failed: ${regData.emailError.slice(0, 140)}`
+              : 'Employee registered, but credentials email delivery failed. Check SMTP settings.',
+            { icon: '⚠️', duration: 6000 }
+          );
         } else {
           toast.success('Employee registered & credentials PDF emailed! 🎉');
         }

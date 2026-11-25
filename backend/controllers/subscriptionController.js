@@ -327,7 +327,7 @@ exports.verifyAndRegister = async (req, res) => {
 
     // Dispatch onboarding email WITH branded Credentials + QR Login Card PDF attached
     const portalOrigin = req.headers.origin || process.env.FRONTEND_URL || 'https://employee-tracker-project.sagnikmondal.in';
-    const emailSent = await sendCredentialsEmail({
+    const mailResult = await sendCredentialsEmail.sendDetailed({
       user: adminUser,
       plainPassword: password,
       portalUrl: portalOrigin,
@@ -338,6 +338,7 @@ exports.verifyAndRegister = async (req, res) => {
         razorpayPaymentId,
       },
     });
+    const emailSent = mailResult.sent;
 
     // Generate JWT token for auto login
     const token = jwt.sign(
@@ -352,6 +353,7 @@ exports.verifyAndRegister = async (req, res) => {
         ? 'Payment verified & Enterprise Admin account created! Credentials PDF sent to your email. 🎉'
         : 'Payment verified & Enterprise Admin account created! Save your Employee Code below. 🎉',
       emailSent,
+      emailError: mailResult.error || undefined,
       token,
       user: {
         _id: adminUser._id,
@@ -882,5 +884,139 @@ exports.updateGatewayConfig = async (req, res) => {
   } catch (error) {
     console.error('Update Gateway Config Error:', error);
     res.status(500).json({ message: 'Failed to save payment gateway credentials' });
+  }
+};
+
+/**
+ * 10. GET EMAIL / SMTP CONFIGURATION & DIAGNOSTICS (SUPERADMIN ONLY)
+ * GET /api/subscription/email-config
+ */
+exports.getEmailConfig = async (req, res) => {
+  try {
+    const summary = await sendEmail.getConfigSummary();
+    res.json({ success: true, ...summary });
+  } catch (error) {
+    console.error('Get Email Config Error:', error);
+    res.status(500).json({ message: 'Failed to load email settings' });
+  }
+};
+
+/**
+ * 11. UPDATE EMAIL / SMTP / PORT-443 HTTP RELAY CREDENTIALS (SUPERADMIN ONLY)
+ * PUT /api/subscription/email-config
+ */
+exports.updateEmailConfig = async (req, res) => {
+  try {
+    const {
+      provider, // 'smtp' | 'brevo' | 'resend' | 'webhook'
+      host,
+      port,
+      user,
+      pass,
+      fromEmail,
+      brevoApiKey,
+      resendApiKey,
+      webhookUrl,
+      webhookSecret,
+    } = req.body;
+
+    if (host || user || pass) {
+      const existingSmtp = await SystemSettings.findOne({ key: 'smtp_credentials' });
+      const prevVal = existingSmtp?.value || {};
+      const nextUser = user !== undefined ? user.trim() : prevVal.user;
+      const nextPass = pass !== undefined && pass.trim() ? pass.trim() : prevVal.pass;
+
+      if (!nextUser || !nextPass) {
+        return res.status(400).json({ message: 'SMTP User and App Password are required' });
+      }
+
+      await SystemSettings.findOneAndUpdate(
+        { key: 'smtp_credentials' },
+        {
+          key: 'smtp_credentials',
+          value: {
+            host: (host || prevVal.host || 'smtp.gmail.com').trim(),
+            port: parseInt(port || prevVal.port, 10) || 587,
+            user: nextUser,
+            pass: nextPass,
+            from: fromEmail ? fromEmail.trim() : nextUser,
+            updatedViaCMS: true,
+            updatedAt: new Date(),
+          },
+        },
+        { upsert: true, new: true }
+      );
+    }
+
+    const existingProv = await SystemSettings.findOne({ key: 'email_provider_config' });
+    const prevProv = existingProv?.value || {};
+
+    await SystemSettings.findOneAndUpdate(
+      { key: 'email_provider_config' },
+      {
+        key: 'email_provider_config',
+        value: {
+          provider: provider || prevProv.provider || 'smtp',
+          fromEmail: fromEmail !== undefined ? fromEmail.trim() : prevProv.fromEmail || '',
+          brevoApiKey: brevoApiKey !== undefined && brevoApiKey.trim() ? brevoApiKey.trim() : prevProv.brevoApiKey || '',
+          resendApiKey: resendApiKey !== undefined && resendApiKey.trim() ? resendApiKey.trim() : prevProv.resendApiKey || '',
+          webhookUrl: webhookUrl !== undefined ? webhookUrl.trim() : prevProv.webhookUrl || '',
+          webhookSecret: webhookSecret !== undefined && webhookSecret.trim() ? webhookSecret.trim() : prevProv.webhookSecret || '',
+          updatedAt: new Date(),
+        },
+      },
+      { upsert: true, new: true }
+    );
+
+    const summary = await sendEmail.getConfigSummary();
+    res.json({
+      success: true,
+      message: 'Email gateway configuration saved!',
+      ...summary,
+    });
+  } catch (error) {
+    console.error('Update Email Config Error:', error);
+    res.status(500).json({ message: 'Failed to save email settings' });
+  }
+};
+
+/**
+ * 12. RUN LIVE TEST EMAIL FROM SERVER WITH DIAGNOSTICS (SUPERADMIN ONLY)
+ * POST /api/subscription/test-email
+ */
+exports.testEmailDelivery = async (req, res) => {
+  try {
+    const summary = await sendEmail.getConfigSummary();
+    const to = (req.body?.to || summary.fromEmail || req.user?.email || '').trim();
+    if (!to) {
+      return res.status(400).json({ message: 'Test recipient email address is required' });
+    }
+
+    const result = await sendEmail.sendDetailed({
+      to,
+      subject: 'Employee Tracker PRO — Live Server Email Diagnostic Test',
+      html: `<div style="font-family:sans-serif;padding:20px;background:#0B0D11;color:#fff;border-radius:12px;">
+        <h2 style="color:#D2F801;margin:0 0 8px;">Email Delivery Operational ✅</h2>
+        <p style="margin:0;color:#d1d5db;">Sent from your live Employee Tracker backend server at ${new Date().toISOString()}.</p>
+      </div>`,
+    });
+
+    if (!result.ok) {
+      return res.status(502).json({
+        success: false,
+        message: result.error,
+        provider: result.provider,
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `Test email delivered successfully to ${to} via ${result.provider}!`,
+      provider: result.provider,
+      messageId: result.info?.messageId,
+    });
+  } catch (error) {
+    console.error('Test Email Error:', error);
+    res.status(500).json({ message: error.message || 'Email test failed' });
   }
 };

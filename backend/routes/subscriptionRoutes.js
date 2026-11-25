@@ -11,6 +11,9 @@ const {
   exportSubscriptionsExcel,
   getGatewayConfig,
   updateGatewayConfig,
+  getEmailConfig,
+  updateEmailConfig,
+  testEmailDelivery,
 } = require('../controllers/subscriptionController');
 const { protect } = require('../middleware/authMiddleware');
 const { authorizeRoles } = require('../middleware/roleMiddleware');
@@ -30,5 +33,8 @@ router.get('/revenue-stats', protect, authorizeRoles('SuperAdmin'), getRevenueSt
 router.get('/export-excel', protect, authorizeRoles('SuperAdmin'), exportSubscriptionsExcel);
 router.get('/gateway-config', protect, authorizeRoles('SuperAdmin'), getGatewayConfig);
 router.put('/gateway-config', protect, authorizeRoles('SuperAdmin'), updateGatewayConfig);
+router.get('/email-config', protect, authorizeRoles('SuperAdmin'), getEmailConfig);
+router.put('/email-config', protect, authorizeRoles('SuperAdmin'), updateEmailConfig);
+router.post('/test-email', protect, authorizeRoles('SuperAdmin'), testEmailDelivery);
 
 module.exports = router;
