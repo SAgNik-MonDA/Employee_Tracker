@@ -11,6 +11,9 @@ const {
   createFaq,
   updateFaq,
   deleteFaq,
+  createRule,
+  updateRule,
+  deleteRule,
   getInquiries,
   replyToInquiry,
 } = require('../controllers/landingController');
@@ -30,6 +33,9 @@ router.delete('/clients/:id', protect, authorizeRoles('SuperAdmin'), deleteClien
 router.post('/faqs', protect, authorizeRoles('SuperAdmin'), createFaq);
 router.put('/faqs/:id', protect, authorizeRoles('SuperAdmin'), updateFaq);
 router.delete('/faqs/:id', protect, authorizeRoles('SuperAdmin'), deleteFaq);
+router.post('/rules', protect, authorizeRoles('SuperAdmin'), createRule);
+router.put('/rules/:id', protect, authorizeRoles('SuperAdmin'), updateRule);
+router.delete('/rules/:id', protect, authorizeRoles('SuperAdmin'), deleteRule);
 router.get('/inquiries', protect, authorizeRoles('SuperAdmin'), getInquiries);
 router.post('/inquiries/:id/reply', protect, authorizeRoles('SuperAdmin'), replyToInquiry);
 

@@ -108,13 +108,13 @@ const Sidebar = ({ isOpen, onClose }) => {
         className={`fixed top-0 left-0 z-50 h-full w-72 backdrop-blur-xl border-r
                      transform transition-all duration-300 ease-in-out flex flex-col
                      ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:static lg:z-auto
-                     bg-surface-900/95 border-surface-700/50`}
+                     bg-white dark:bg-[#0E1015] border-neutral-200 dark:border-[#242934]`}
       >
         {/* Logo */}
-        <div className="flex items-center justify-between p-6 border-b border-surface-700/50">
+        <div className="flex items-center justify-between p-6 border-b border-neutral-200 dark:border-[#242934]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-700 via-teal-800 to-teal-950 flex items-center justify-center shadow-lg shadow-teal-900/30 border border-teal-500/30">
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-300 via-teal-100 to-amber-300 font-display font-extrabold text-lg">
+            <div className="w-10 h-10 rounded-full bg-[#0F1115] dark:bg-[#D2F801] flex items-center justify-center shadow-md">
+              <span className="text-[#D2F801] dark:text-[#0B0D11] font-display font-extrabold text-lg">
                 ET
               </span>
             </div>
@@ -122,14 +122,14 @@ const Sidebar = ({ isOpen, onClose }) => {
               <h1 className="font-display font-extrabold text-base text-surface-100 tracking-tight">
                 Employee Tracker
               </h1>
-              <p className="text-[11px] font-medium text-teal-400 -mt-0.5 tracking-wider uppercase">
+              <p className="text-[11px] font-semibold text-[#3F5C00] dark:text-[#D2F801] -mt-0.5 tracking-wider uppercase">
                 HR &amp; Finance Suite
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="lg:hidden p-2 rounded-lg transition-colors hover:bg-surface-700/50 text-surface-400"
+            className="lg:hidden p-2 rounded-lg transition-colors hover:bg-surface-800 text-surface-400"
           >
             <HiOutlineX className="w-5 h-5" />
           </button>
@@ -143,10 +143,10 @@ const Sidebar = ({ isOpen, onClose }) => {
               to={link.to}
               onClick={onClose}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 border focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40
+                `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 border focus:outline-none
                  ${isActive
-                   ? 'bg-gradient-to-r from-teal-500/20 to-emerald-500/10 text-teal-300 border-teal-400/50 shadow-sm shadow-teal-950/20 font-semibold'
-                   : 'text-surface-400 hover:text-surface-200 hover:bg-surface-800/50 border-transparent'
+                   ? 'bg-[#0F1115] dark:bg-[#D2F801] text-white dark:text-[#0B0D11] border-transparent shadow-md font-bold'
+                   : 'text-surface-400 hover:text-surface-100 hover:bg-surface-800/60 border-transparent'
                  }`
               }
             >
@@ -157,23 +157,23 @@ const Sidebar = ({ isOpen, onClose }) => {
         </nav>
 
         {/* Bottom user info — Clickable profile card */}
-        <div className="p-3 border-t shrink-0 border-surface-700/50 bg-surface-900/95">
+        <div className="p-3 border-t shrink-0 border-neutral-200 dark:border-[#242934] bg-white dark:bg-[#0E1015]">
           <Link
             to={profilePath}
             onClick={onClose}
-            className="flex items-center gap-3 p-2 rounded-xl transition-all duration-200 hover:bg-surface-800/80 group border border-transparent hover:border-teal-500/30"
+            className="flex items-center gap-3 p-2 rounded-xl transition-all duration-200 hover:bg-surface-800/80 group border border-transparent hover:border-[#D2F801]/50"
             title="Go to My Profile"
           >
-            <UserAvatar user={user} size="sm" className="group-hover:ring-2 group-hover:ring-teal-400/50 transition-all" />
+            <UserAvatar user={user} size="sm" className="group-hover:ring-2 group-hover:ring-[#D2F801]/70 transition-all" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate text-surface-200 group-hover:text-teal-300 transition-colors">
+              <p className="text-sm font-medium truncate text-surface-100 group-hover:text-teal-400 transition-colors">
                 {user?.name}
               </p>
-              <p className="text-xs text-surface-500 truncate group-hover:text-surface-400 transition-colors">
+              <p className="text-xs text-surface-400 truncate group-hover:text-surface-300 transition-colors">
                 {user?.designation || user?.role}
               </p>
             </div>
-            <HiOutlineChevronRight className="w-4 h-4 text-surface-500 group-hover:text-teal-300 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+            <HiOutlineChevronRight className="w-4 h-4 text-surface-500 group-hover:text-teal-400 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
           </Link>
         </div>
       </aside>

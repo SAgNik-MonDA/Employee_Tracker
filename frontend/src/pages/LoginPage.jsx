@@ -211,41 +211,34 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen relative overflow-x-hidden bg-surface-950 transition-colors duration-300 flex flex-col justify-between selection:bg-teal-500 selection:text-white">
+    <div className="min-h-screen relative overflow-x-hidden bg-surface-950 transition-colors duration-300 flex flex-col justify-between selection:bg-[#D2F801] selection:text-[#0B0D11]">
       {/* ── AMBIENT LIQUID MESH GRADIENT BLOBS ── */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute -top-32 -left-32 w-[600px] h-[600px] bg-teal-500/15 rounded-full blur-[140px] animate-pulse-slow" />
+        <div className="absolute -top-32 -left-32 w-[560px] h-[560px] bg-[#D2F801]/10 rounded-full blur-[140px] animate-pulse-slow" />
         <div
-          className="absolute top-1/3 -right-32 w-[550px] h-[550px] bg-amber-500/12 rounded-full blur-[130px] animate-pulse-slow"
+          className="absolute top-1/3 -right-32 w-[520px] h-[520px] bg-[#D2F801]/10 rounded-full blur-[130px] animate-pulse-slow"
           style={{ animationDelay: '2s' }}
         />
-        <div
-          className="absolute -bottom-32 left-1/4 w-[650px] h-[650px] bg-blue-600/12 rounded-full blur-[150px] animate-pulse-slow"
-          style={{ animationDelay: '4s' }}
-        />
-        {/* Subtle geometric dot matrix overlay */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(14,75,86,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(14,75,86,0.04)_1px,transparent_1px)] bg-[size:48px_48px] opacity-70" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(128,128,128,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(128,128,128,0.04)_1px,transparent_1px)] bg-[size:48px_48px] opacity-70" />
       </div>
 
       {/* ── TOP HEADER / NAV BAR ── */}
       <header className="relative z-30 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between">
         {/* Logo Mark */}
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-teal-600 via-teal-700 to-emerald-800 p-0.5 shadow-xl shadow-teal-900/30 border border-teal-400/40 flex items-center justify-center">
-            <div className="w-full h-full rounded-[14px] bg-teal-950 flex items-center justify-center">
-              <span className="font-display font-black text-xl text-transparent bg-clip-text bg-gradient-to-r from-teal-200 via-emerald-300 to-amber-300">
-                ET
-              </span>
-            </div>
+          <div className="w-11 h-11 rounded-full bg-[#0F1115] dark:bg-[#D2F801] shadow-lg flex items-center justify-center">
+            <span className="font-display font-black text-xl text-[#D2F801] dark:text-[#0B0D11]">
+              ET
+            </span>
           </div>
           <div>
             <span className="text-lg font-display font-extrabold tracking-tight text-surface-100 flex items-center gap-1.5">
               EMPLOYEE TRACKER
-              <span className="text-xs px-2 py-0.5 rounded-full bg-teal-500/15 dark:bg-teal-500/20 text-teal-800 dark:text-teal-300 font-bold border border-teal-500/30">
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-[#D2F801] text-[#0B0D11] font-bold">
                 PRO
               </span>
             </span>
-            <span className="text-[11px] font-bold text-teal-700 dark:text-teal-400 block -mt-1 tracking-wider uppercase">
+            <span className="text-[11px] font-bold text-teal-400 block -mt-1 tracking-wider uppercase">
               Smart Attendance &amp; Payroll Suite
             </span>
           </div>
@@ -297,7 +290,7 @@ const LoginPage = () => {
             <div className="space-y-3">
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-black text-surface-100 tracking-tight leading-[1.12]">
                 SMART ATTENDANCE <br className="hidden sm:inline" />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-700 via-emerald-600 to-amber-600 dark:from-teal-300 dark:via-emerald-400 dark:to-amber-300">
+                <span className="text-[#3F5C00] dark:text-[#D2F801]">
                   &amp; PAYROLL SUITE
                 </span>
               </h1>
@@ -317,9 +310,9 @@ const LoginPage = () => {
             {/* 3 Interactive Feature Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-2">
               {/* Feature 1: Smart Attendance */}
-              <div className="liquid-glass p-4 rounded-2xl border-[1.5px] border-teal-500/40 hover:border-teal-400 transition-all duration-300 group hover:-translate-y-1 shadow-lg shadow-teal-950/10">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-800 to-teal-950 border border-teal-400/30 flex items-center justify-center text-teal-300 shadow-md shadow-teal-900/30 mb-3 group-hover:scale-105 transition-transform">
-                  <HiOutlineQrcode className="w-5 h-5 text-teal-300" />
+              <div className="bento-card p-4 rounded-2xl transition-all duration-300 group hover:-translate-y-1 hover:border-[#D2F801]">
+                <div className="w-10 h-10 rounded-xl bg-[#D2F801] text-[#0B0D11] flex items-center justify-center shadow-md mb-3 group-hover:scale-105 transition-transform">
+                  <HiOutlineQrcode className="w-5 h-5" />
                 </div>
                 <h4 className="text-sm font-bold text-surface-100 mb-1">Smart Attendance</h4>
                 <p className="text-[11px] font-medium text-surface-400 leading-relaxed">
@@ -328,9 +321,9 @@ const LoginPage = () => {
               </div>
 
               {/* Feature 2: Automated PF & Mediclaim */}
-              <div className="liquid-glass p-4 rounded-2xl border-[1.5px] border-teal-500/40 hover:border-amber-400 transition-all duration-300 group hover:-translate-y-1 shadow-lg shadow-teal-950/10">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-600 to-orange-700 border border-amber-400/30 flex items-center justify-center text-white shadow-md shadow-amber-900/30 mb-3 group-hover:scale-105 transition-transform">
-                  <HiOutlineCash className="w-5 h-5 text-amber-100" />
+              <div className="bento-card p-4 rounded-2xl transition-all duration-300 group hover:-translate-y-1 hover:border-[#D2F801]">
+                <div className="w-10 h-10 rounded-xl bg-[#D2F801] text-[#0B0D11] flex items-center justify-center shadow-md mb-3 group-hover:scale-105 transition-transform">
+                  <HiOutlineCash className="w-5 h-5" />
                 </div>
                 <h4 className="text-sm font-bold text-surface-100 mb-1">Automated PF &amp; Mediclaim</h4>
                 <p className="text-[11px] font-medium text-surface-400 leading-relaxed">
@@ -339,9 +332,9 @@ const LoginPage = () => {
               </div>
 
               {/* Feature 3: Bank Payout Advice */}
-              <div className="liquid-glass p-4 rounded-2xl border-[1.5px] border-teal-500/40 hover:border-teal-300 transition-all duration-300 group hover:-translate-y-1 shadow-lg shadow-teal-950/10">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-700 to-emerald-900 border border-teal-400/30 flex items-center justify-center text-white shadow-md shadow-teal-900/30 mb-3 group-hover:scale-105 transition-transform">
-                  <HiOutlineDocumentReport className="w-5 h-5 text-teal-100" />
+              <div className="bento-card p-4 rounded-2xl transition-all duration-300 group hover:-translate-y-1 hover:border-[#D2F801]">
+                <div className="w-10 h-10 rounded-xl bg-[#D2F801] text-[#0B0D11] flex items-center justify-center shadow-md mb-3 group-hover:scale-105 transition-transform">
+                  <HiOutlineDocumentReport className="w-5 h-5" />
                 </div>
                 <h4 className="text-sm font-bold text-surface-100 mb-1">Bank Payout Advice</h4>
                 <p className="text-[11px] font-medium text-surface-400 leading-relaxed">
@@ -352,19 +345,17 @@ const LoginPage = () => {
           </div>
 
           {/* ══════════════════════════════════════════════════════════════════════
-              RIGHT COLUMN: PRODUCTION-GRADE LIQUID GLASS AUTH CARD
+              RIGHT COLUMN: PRODUCTION-GRADE AUTH CARD
              ══════════════════════════════════════════════════════════════════════ */}
           <div className="lg:col-span-5 w-full max-w-md mx-auto">
-            <div className="liquid-glass rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden border-[1.5px] border-teal-500/40 dark:border-teal-400/40">
+            <div className="liquid-glass rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden border border-surface-700">
               {/* Specular top rim shine */}
-              <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-teal-400/60 to-transparent" />
+              <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#D2F801]/70 to-transparent" />
 
               {/* Card Header */}
               <div className="text-center mb-6">
-                <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-700 via-teal-800 to-teal-950 p-0.5 shadow-xl shadow-teal-900/40 mb-3 border border-teal-500/30">
-                  <div className="w-full h-full rounded-[14px] bg-teal-950/80 dark:bg-surface-900/60 backdrop-blur-md flex items-center justify-center">
-                    <HiOutlineLockClosed className="w-6 h-6 text-teal-300" />
-                  </div>
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#0F1115] dark:bg-[#D2F801] text-[#D2F801] dark:text-[#0B0D11] shadow-xl mb-3">
+                  <HiOutlineLockClosed className="w-6 h-6" />
                 </div>
                 <h2 className="text-2xl font-display font-bold text-surface-100">Sign In to Portal</h2>
                 <p className="text-xs font-medium text-surface-400 mt-1">
@@ -373,13 +364,13 @@ const LoginPage = () => {
               </div>
 
               {/* Mode Switcher Tabs */}
-              <div className="flex rounded-xl bg-surface-900/80 dark:bg-surface-900/80 p-1 mb-6 border border-surface-700/60 shadow-inner">
+              <div className="flex rounded-full bg-surface-800/80 p-1 mb-6 border border-surface-700 shadow-inner">
                 <button
                   type="button"
                   onClick={() => setLoginMode('credentials')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all duration-300 ${
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-full text-xs font-bold transition-all duration-300 cursor-pointer ${
                     loginMode === 'credentials'
-                      ? 'bg-gradient-to-r from-teal-800 to-teal-700 text-white shadow-md shadow-teal-900/40 border border-teal-500/30'
+                      ? 'bg-[#0F1115] dark:bg-[#D2F801] text-white dark:text-[#0B0D11] shadow-md'
                       : 'text-surface-400 hover:text-surface-100'
                   }`}
                 >
@@ -389,9 +380,9 @@ const LoginPage = () => {
                 <button
                   type="button"
                   onClick={() => setLoginMode('qr')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all duration-300 ${
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-full text-xs font-bold transition-all duration-300 cursor-pointer ${
                     loginMode === 'qr'
-                      ? 'bg-gradient-to-r from-teal-800 to-teal-700 text-white shadow-md shadow-teal-900/40 border border-teal-500/30'
+                      ? 'bg-[#0F1115] dark:bg-[#D2F801] text-white dark:text-[#0B0D11] shadow-md'
                       : 'text-surface-400 hover:text-surface-100'
                   }`}
                 >

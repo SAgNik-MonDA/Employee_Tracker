@@ -36,10 +36,10 @@ const Topbar = ({ onMenuToggle }) => {
   };
 
   const roleBadgeColors = {
-    Admin: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
-    HR: 'bg-teal-500/15 text-teal-300 border-teal-500/30',
-    Employee: 'bg-teal-500/15 text-teal-300 border-teal-500/30',
-    SuperAdmin: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+    Admin: 'bg-[#D2F801] text-[#0B0D11] border-transparent font-bold',
+    HR: 'bg-lime-500/15 text-lime-800 dark:text-[#D2F801] border-lime-500/30',
+    Employee: 'bg-surface-800 text-surface-200 border-surface-700',
+    SuperAdmin: 'bg-amber-400 text-[#0B0D11] border-transparent font-bold',
   };
 
   const profilePath = ADMIN_ROLES.includes(user?.role)
@@ -56,13 +56,13 @@ const Topbar = ({ onMenuToggle }) => {
   const firstName = user?.name ? user.name.split(' ')[0] : 'User';
 
   return (
-    <header className="sticky top-0 z-30 bg-surface-900/85 dark:bg-surface-900/85 backdrop-blur-xl border-b border-surface-700/50 light:bg-white/90 light:border-surface-200/80 transition-colors">
+    <header className="sticky top-0 z-30 bg-white/90 dark:bg-[#0E1015]/90 backdrop-blur-xl border-b border-neutral-200 dark:border-[#242934] transition-colors">
       <div className="flex items-center justify-between px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3.5">
         {/* Left Section: Menu Toggle, Avatar & Welcome greeting */}
         <div className="flex items-center gap-2 sm:gap-3.5 min-w-0">
           <button
             onClick={onMenuToggle}
-            className="lg:hidden p-2 rounded-xl bg-surface-800/40 hover:bg-surface-800 border border-surface-700/40 text-surface-300 hover:text-surface-100 transition-all flex-shrink-0 active:scale-95"
+            className="lg:hidden p-2 rounded-xl bg-surface-800/70 hover:bg-surface-800 border border-surface-700 text-surface-200 hover:text-surface-100 transition-all flex-shrink-0 active:scale-95"
             aria-label="Open sidebar menu"
           >
             <HiOutlineMenuAlt2 className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -76,10 +76,10 @@ const Topbar = ({ onMenuToggle }) => {
             <UserAvatar
               user={user}
               size="sm"
-              className="flex-shrink-0 group-hover:ring-2 group-hover:ring-teal-400/50 transition-all shadow-sm"
+              className="flex-shrink-0 group-hover:ring-2 group-hover:ring-[#D2F801] transition-all shadow-sm"
             />
             <div className="min-w-0">
-              <h2 className="text-sm sm:text-base font-display font-bold text-surface-100 truncate group-hover:text-teal-300 transition-colors flex items-center gap-1">
+              <h2 className="text-sm sm:text-base font-display font-bold text-surface-100 truncate group-hover:text-teal-400 transition-colors flex items-center gap-1">
                 <span className="hidden sm:inline">Welcome back, </span>
                 <span className="truncate">{firstName}</span>
                 <span className="select-none flex-shrink-0">👋</span>
@@ -96,11 +96,11 @@ const Topbar = ({ onMenuToggle }) => {
           {/* Subscription Status Pill for Admin */}
           {subStatus && (
             <span
-              className={`hidden lg:inline-flex badge border text-xs font-semibold whitespace-nowrap cursor-default ${
+              className={`hidden lg:inline-flex badge border text-xs font-bold whitespace-nowrap cursor-default ${
                 subStatus.daysRemaining > 5
-                  ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                  ? 'bg-[#D2F801] text-[#0B0D11] border-transparent'
                   : subStatus.daysRemaining > 0
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 animate-pulse'
+                  ? 'bg-amber-400 text-[#0B0D11] border-transparent animate-pulse'
                   : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
               }`}
               title={`Subscription active until ${new Date(subStatus.endDate).toLocaleDateString()}`}
@@ -117,7 +117,7 @@ const Topbar = ({ onMenuToggle }) => {
           {user?.role && (
             <span
               className={`hidden md:inline-flex badge border text-xs whitespace-nowrap ${
-                roleBadgeColors[user?.role] || 'bg-surface-800/80 text-surface-300 border-surface-700/60'
+                roleBadgeColors[user?.role] || 'bg-surface-800/80 text-surface-200 border-surface-700'
               }`}
             >
               {user.role}
@@ -127,7 +127,7 @@ const Topbar = ({ onMenuToggle }) => {
           {/* Employee Code (Visible on sm and up) */}
           {user?.employeeCode && (
             <span
-              className="hidden sm:inline-flex badge border text-xs bg-teal-500/15 text-teal-300 border-teal-500/30 font-mono font-semibold whitespace-nowrap"
+              className="hidden sm:inline-flex badge border text-xs bg-surface-800 text-surface-100 border-surface-700 font-mono font-bold whitespace-nowrap"
               title="Employee Code"
             >
               {user.employeeCode}

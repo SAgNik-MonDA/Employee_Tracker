@@ -10,10 +10,13 @@ import {
   HiOutlineCheck,
   HiOutlineCreditCard,
   HiOutlineShieldCheck,
+  HiOutlineBookOpen,
+  HiOutlinePencil,
+  HiOutlineX,
 } from 'react-icons/hi';
 
 const SuperAdminCMS = () => {
-  const [activeTab, setActiveTab] = useState('pricing'); // 'pricing' | 'clients' | 'faqs' | 'gateway'
+  const [activeTab, setActiveTab] = useState('pricing'); // 'pricing' | 'rules' | 'clients' | 'faqs' | 'gateway'
 
   // Pricing Plans state
   const [pricing, setPricing] = useState({
@@ -22,6 +25,18 @@ const SuperAdminCMS = () => {
     three_year: { price: 24999, originalPrice: 44999, title: '3-Year Enterprise', description: '' },
   });
   const [savingPricing, setSavingPricing] = useState(false);
+
+  // Rules & Regulations state (Add, Edit, Delete)
+  const [rules, setRules] = useState([]);
+  const [ruleForm, setRuleForm] = useState({
+    category: 'Salary',
+    title: '',
+    badgeText: '',
+    summary: '',
+    order: 1,
+  });
+  const [editingRuleId, setEditingRuleId] = useState(null);
+  const [savingRule, setSavingRule] = useState(false);
 
   // Clients state
   const [clients, setClients] = useState([]);
@@ -92,6 +107,10 @@ const SuperAdminCMS = () => {
       if (data.pricingPlans) setPricing(data.pricingPlans);
       if (data.clients) setClients(data.clients);
       if (data.faqs) setFaqs(data.faqs);
+      if (Array.isArray(data.rulesAndRegulations)) {
+        setRules(data.rulesAndRegulations);
+        setRuleForm((prev) => ({ ...prev, order: data.rulesAndRegulations.length + 1 }));
+      }
     } catch (error) {
       console.error('Fetch CMS error:', error);
       toast.error('Failed to load CMS content');
@@ -109,6 +128,67 @@ const SuperAdminCMS = () => {
       toast.error(error.response?.data?.message || 'Failed to update pricing');
     } finally {
       setSavingPricing(false);
+    }
+  };
+
+  // ── Rules & Regulations Handlers ─────────────────────────────────────────────
+  const resetRuleForm = () => {
+    setEditingRuleId(null);
+    setRuleForm({
+      category: 'Salary',
+      title: '',
+      badgeText: '',
+      summary: '',
+      order: rules.length + 1,
+    });
+  };
+
+  const handleSaveRule = async (e) => {
+    e.preventDefault();
+    if (!ruleForm.title.trim() || !ruleForm.summary.trim()) {
+      toast.error('Rule title and details are required');
+      return;
+    }
+    setSavingRule(true);
+    try {
+      if (editingRuleId) {
+        const { data } = await API.put(`/landing/rules/${editingRuleId}`, ruleForm);
+        toast.success(data.message || 'Rule updated successfully! ✏️');
+        if (data.rulesAndRegulations) setRules(data.rulesAndRegulations);
+      } else {
+        const { data } = await API.post('/landing/rules', ruleForm);
+        toast.success(data.message || 'Rule published! 📜');
+        if (data.rulesAndRegulations) setRules(data.rulesAndRegulations);
+      }
+      resetRuleForm();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to save rule');
+    } finally {
+      setSavingRule(false);
+    }
+  };
+
+  const handleEditRule = (rule) => {
+    setEditingRuleId(rule._id);
+    setRuleForm({
+      category: rule.category || 'General',
+      title: rule.title || '',
+      badgeText: rule.badgeText || '',
+      summary: rule.summary || '',
+      order: rule.order || 1,
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDeleteRule = async (id) => {
+    if (!window.confirm('Delete this rule from the Landing Page Rules & Regulations section?')) return;
+    try {
+      const { data } = await API.delete(`/landing/rules/${id}`);
+      toast.success(data.message || 'Rule deleted! 🗑️');
+      if (data.rulesAndRegulations) setRules(data.rulesAndRegulations);
+      if (editingRuleId === id) resetRuleForm();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to delete rule');
     }
   };
 
@@ -182,63 +262,47 @@ const SuperAdminCMS = () => {
     }
   };
 
+  const tabBtnClass = (tab) =>
+    `flex items-center gap-2 px-4 sm:px-5 py-2.5 text-xs font-bold rounded-full transition-all whitespace-nowrap cursor-pointer ${
+      activeTab === tab
+        ? 'bg-[#0F1115] dark:bg-[#D2F801] text-white dark:text-[#0B0D11] shadow-md'
+        : 'text-surface-400 hover:text-surface-100'
+    }`;
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h2 className="text-2xl font-display font-black text-surface-100">
+        <h2 className="text-2xl font-display font-extrabold text-surface-100">
           Landing Page CMS Management
         </h2>
         <p className="text-xs sm:text-sm text-surface-400 mt-1">
-          Dynamically modify the 3 subscription prices, manage client logo marquee, and edit platform FAQs
+          Dynamically modify the 3 subscription prices, manage rules &amp; regulations, client logo marquee, and platform FAQs
         </p>
       </div>
 
       {/* Tabs */}
-      <div className="flex flex-wrap gap-1 rounded-2xl p-1 bg-surface-900 border border-surface-800 w-fit">
-        <button
-          onClick={() => setActiveTab('pricing')}
-          className={`flex items-center gap-2 px-5 py-2.5 text-xs font-bold rounded-xl transition-all ${
-            activeTab === 'pricing'
-              ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-md'
-              : 'text-surface-400 hover:text-surface-200'
-          }`}
-        >
+      <div className="flex flex-wrap gap-1.5 rounded-2xl p-1.5 bg-surface-900 border border-surface-700 w-fit max-w-full">
+        <button onClick={() => setActiveTab('pricing')} className={tabBtnClass('pricing')}>
           <HiOutlineTemplate className="w-4 h-4" />
           <span>Subscription Pricing Plans</span>
         </button>
 
-        <button
-          onClick={() => setActiveTab('clients')}
-          className={`flex items-center gap-2 px-5 py-2.5 text-xs font-bold rounded-xl transition-all ${
-            activeTab === 'clients'
-              ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-md'
-              : 'text-surface-400 hover:text-surface-200'
-          }`}
-        >
+        <button onClick={() => setActiveTab('rules')} className={tabBtnClass('rules')}>
+          <HiOutlineBookOpen className="w-4 h-4" />
+          <span>Rules &amp; Regulations</span>
+        </button>
+
+        <button onClick={() => setActiveTab('clients')} className={tabBtnClass('clients')}>
           <HiOutlineOfficeBuilding className="w-4 h-4" />
           <span>Client Logos Marquee</span>
         </button>
 
-        <button
-          onClick={() => setActiveTab('faqs')}
-          className={`flex items-center gap-2 px-5 py-2.5 text-xs font-bold rounded-xl transition-all ${
-            activeTab === 'faqs'
-              ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-md'
-              : 'text-surface-400 hover:text-surface-200'
-          }`}
-        >
+        <button onClick={() => setActiveTab('faqs')} className={tabBtnClass('faqs')}>
           <HiOutlineQuestionMarkCircle className="w-4 h-4" />
           <span>Questions &amp; Answers (FAQs)</span>
         </button>
 
-        <button
-          onClick={() => setActiveTab('gateway')}
-          className={`flex items-center gap-2 px-5 py-2.5 text-xs font-bold rounded-xl transition-all ${
-            activeTab === 'gateway'
-              ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-md'
-              : 'text-surface-400 hover:text-surface-200'
-          }`}
-        >
+        <button onClick={() => setActiveTab('gateway')} className={tabBtnClass('gateway')}>
           <HiOutlineCreditCard className="w-4 h-4" />
           <span>Razorpay Gateway</span>
         </button>
@@ -249,7 +313,7 @@ const SuperAdminCMS = () => {
         <form onSubmit={handleSavePricing} className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Monthly */}
-            <div className="liquid-glass rounded-3xl p-6 border border-teal-500/30 space-y-4">
+            <div className="liquid-glass rounded-3xl p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-bold text-sm text-teal-400">1. Monthly Plan</h3>
                 <span className="text-[10px] text-surface-400">Recurring 30 Days</span>
@@ -266,7 +330,7 @@ const SuperAdminCMS = () => {
                       monthly: { ...pricing.monthly, title: e.target.value },
                     })
                   }
-                  className="input-field text-xs h-10 bg-surface-900/60"
+                  className="input-field text-xs h-10"
                 />
               </div>
 
@@ -282,7 +346,7 @@ const SuperAdminCMS = () => {
                         monthly: { ...pricing.monthly, price: Number(e.target.value) },
                       })
                     }
-                    className="input-field text-xs h-10 font-bold text-emerald-400 bg-surface-900/60"
+                    className="input-field text-xs h-10 font-bold text-teal-400"
                   />
                 </div>
                 <div>
@@ -296,17 +360,17 @@ const SuperAdminCMS = () => {
                         monthly: { ...pricing.monthly, originalPrice: Number(e.target.value) },
                       })
                     }
-                    className="input-field text-xs h-10 text-surface-400 bg-surface-900/60"
+                    className="input-field text-xs h-10 text-surface-400"
                   />
                 </div>
               </div>
             </div>
 
             {/* Yearly */}
-            <div className="liquid-glass rounded-3xl p-6 border-2 border-emerald-500/50 space-y-4">
+            <div className="liquid-glass rounded-3xl p-6 border-2 border-[#D2F801] space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-bold text-sm text-emerald-400">2. Yearly Plan</h3>
-                <span className="text-[10px] font-bold text-emerald-300 px-2 py-0.5 rounded-full bg-emerald-950/60">
+                <h3 className="font-bold text-sm text-teal-400">2. Yearly Plan</h3>
+                <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-[#D2F801] text-[#0B0D11]">
                   Most Popular
                 </span>
               </div>
@@ -322,7 +386,7 @@ const SuperAdminCMS = () => {
                       yearly: { ...pricing.yearly, title: e.target.value },
                     })
                   }
-                  className="input-field text-xs h-10 bg-surface-900/60"
+                  className="input-field text-xs h-10"
                 />
               </div>
 
@@ -338,7 +402,7 @@ const SuperAdminCMS = () => {
                         yearly: { ...pricing.yearly, price: Number(e.target.value) },
                       })
                     }
-                    className="input-field text-xs h-10 font-bold text-emerald-400 bg-surface-900/60"
+                    className="input-field text-xs h-10 font-bold text-teal-400"
                   />
                 </div>
                 <div>
@@ -352,17 +416,17 @@ const SuperAdminCMS = () => {
                         yearly: { ...pricing.yearly, originalPrice: Number(e.target.value) },
                       })
                     }
-                    className="input-field text-xs h-10 text-surface-400 bg-surface-900/60"
+                    className="input-field text-xs h-10 text-surface-400"
                   />
                 </div>
               </div>
             </div>
 
             {/* 3-Year Enterprise */}
-            <div className="liquid-glass rounded-3xl p-6 border border-amber-500/40 space-y-4">
+            <div className="liquid-glass rounded-3xl p-6 border border-amber-400/50 space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-bold text-sm text-amber-300">3. 3-Year Enterprise Plan</h3>
-                <span className="text-[10px] font-bold text-amber-300 px-2 py-0.5 rounded-full bg-amber-950/60">
+                <h3 className="font-bold text-sm text-amber-500 dark:text-amber-300">3. 3-Year Enterprise Plan</h3>
+                <span className="text-[10px] font-extrabold text-[#0B0D11] px-2.5 py-0.5 rounded-full bg-amber-400">
                   Best Value
                 </span>
               </div>
@@ -378,7 +442,7 @@ const SuperAdminCMS = () => {
                       three_year: { ...pricing.three_year, title: e.target.value },
                     })
                   }
-                  className="input-field text-xs h-10 bg-surface-900/60"
+                  className="input-field text-xs h-10"
                 />
               </div>
 
@@ -394,7 +458,7 @@ const SuperAdminCMS = () => {
                         three_year: { ...pricing.three_year, price: Number(e.target.value) },
                       })
                     }
-                    className="input-field text-xs h-10 font-bold text-amber-300 bg-surface-900/60"
+                    className="input-field text-xs h-10 font-bold text-amber-500 dark:text-amber-300"
                   />
                 </div>
                 <div>
@@ -408,7 +472,7 @@ const SuperAdminCMS = () => {
                         three_year: { ...pricing.three_year, originalPrice: Number(e.target.value) },
                       })
                     }
-                    className="input-field text-xs h-10 text-surface-400 bg-surface-900/60"
+                    className="input-field text-xs h-10 text-surface-400"
                   />
                 </div>
               </div>
@@ -418,10 +482,10 @@ const SuperAdminCMS = () => {
           <button
             type="submit"
             disabled={savingPricing}
-            className="px-6 py-3 bg-gradient-to-r from-teal-600 via-teal-700 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-bold rounded-xl shadow-lg transition-all flex items-center gap-2 text-sm disabled:opacity-60 cursor-pointer"
+            className="btn-primary rounded-full px-7 py-3 flex items-center gap-2 text-sm"
           >
             {savingPricing ? (
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
             ) : (
               <HiOutlineCheck className="w-5 h-5" />
             )}
@@ -430,10 +494,166 @@ const SuperAdminCMS = () => {
         </form>
       )}
 
-      {/* ── TAB 2: CLIENT LOGOS ── */}
+      {/* ── TAB 2: RULES & REGULATIONS CRUD ── */}
+      {activeTab === 'rules' && (
+        <div className="space-y-6">
+          <form onSubmit={handleSaveRule} className="liquid-glass p-6 rounded-3xl space-y-4">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <h3 className="text-base font-bold text-surface-100 flex items-center gap-2">
+                {editingRuleId ? (
+                  <>
+                    <HiOutlinePencil className="w-5 h-5 text-teal-400" />
+                    <span>Edit Rule &amp; Regulation</span>
+                  </>
+                ) : (
+                  <>
+                    <HiOutlinePlus className="w-5 h-5 text-teal-400" />
+                    <span>Add New Rule &amp; Regulation</span>
+                  </>
+                )}
+              </h3>
+
+              {editingRuleId && (
+                <button
+                  type="button"
+                  onClick={resetRuleForm}
+                  className="text-xs font-bold px-3 py-1.5 rounded-full bg-surface-700 text-surface-200 hover:bg-surface-600 flex items-center gap-1 cursor-pointer"
+                >
+                  <HiOutlineX className="w-3.5 h-3.5" />
+                  <span>Cancel Edit</span>
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-surface-300 mb-1">Rule Category</label>
+                <select
+                  value={ruleForm.category}
+                  onChange={(e) => setRuleForm({ ...ruleForm, category: e.target.value })}
+                  className="select-field text-xs h-10 py-2"
+                >
+                  <option value="Salary">Salary Rule</option>
+                  <option value="Mediclaim">Mediclaim Rule</option>
+                  <option value="PF">PF (Provident Fund) Rule</option>
+                  <option value="Attendance">Attendance Rule</option>
+                  <option value="General">General Governance</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-surface-300 mb-1">Policy Badge Tag</label>
+                <input
+                  type="text"
+                  value={ruleForm.badgeText}
+                  onChange={(e) => setRuleForm({ ...ruleForm, badgeText: e.target.value })}
+                  placeholder="e.g. Mandatory Policy"
+                  className="input-field text-xs h-10"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-surface-300 mb-1">Display Order</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={ruleForm.order}
+                  onChange={(e) => setRuleForm({ ...ruleForm, order: Number(e.target.value) })}
+                  className="input-field text-xs h-10"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-surface-300 mb-1">Rule Title *</label>
+              <input
+                type="text"
+                value={ruleForm.title}
+                onChange={(e) => setRuleForm({ ...ruleForm, title: e.target.value })}
+                placeholder="e.g. Monthly Salary Payout & LOP Deduction Policy"
+                required
+                className="input-field text-xs h-10"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-surface-300 mb-1">Rule Details / Policy Explanation *</label>
+              <textarea
+                value={ruleForm.summary}
+                onChange={(e) => setRuleForm({ ...ruleForm, summary: e.target.value })}
+                placeholder="Describe clear Salary, Mediclaim, PF, or Attendance rules shown on the public landing page..."
+                required
+                rows={3}
+                className="input-field text-xs p-3 resize-none"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={savingRule}
+              className="btn-primary rounded-full px-6 py-2.5 text-xs flex items-center gap-2 cursor-pointer"
+            >
+              {savingRule ? (
+                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              ) : editingRuleId ? (
+                <HiOutlineCheck className="w-4 h-4" />
+              ) : (
+                <HiOutlinePlus className="w-4 h-4" />
+              )}
+              <span>{editingRuleId ? 'Update Rule' : 'Publish Rule'}</span>
+            </button>
+          </form>
+
+          {/* Existing Rules List */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {rules.map((r, i) => (
+              <div
+                key={r._id || i}
+                className={`liquid-glass p-5 rounded-3xl flex flex-col justify-between gap-4 ${
+                  editingRuleId === r._id ? 'ring-2 ring-[#D2F801]' : ''
+                }`}
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full bg-[#D2F801] text-[#0B0D11] text-[10px] font-extrabold uppercase tracking-wider">
+                      {r.category}
+                    </span>
+                    <span className="text-[11px] text-surface-400 font-semibold">
+                      #{r.order || i + 1} • {r.badgeText || 'Policy'}
+                    </span>
+                  </div>
+                  <h4 className="font-bold text-sm text-surface-100">{r.title}</h4>
+                  <p className="text-xs text-surface-400 leading-relaxed">{r.summary}</p>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-surface-700/60">
+                  <button
+                    type="button"
+                    onClick={() => handleEditRule(r)}
+                    className="px-3 py-1.5 rounded-full bg-surface-700 hover:bg-[#D2F801] hover:text-[#0B0D11] text-surface-100 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <HiOutlinePencil className="w-3.5 h-3.5" />
+                    <span>Edit</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteRule(r._id)}
+                    className="px-3 py-1.5 rounded-full bg-rose-500/15 hover:bg-rose-500 hover:text-white text-rose-400 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <HiOutlineTrash className="w-3.5 h-3.5" />
+                    <span>Delete</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB 3: CLIENT LOGOS ── */}
       {activeTab === 'clients' && (
         <div className="space-y-6">
-          <form onSubmit={handleAddClient} className="liquid-glass p-6 rounded-3xl border border-surface-800 space-y-4">
+          <form onSubmit={handleAddClient} className="liquid-glass p-6 rounded-3xl space-y-4">
             <h3 className="text-base font-bold text-surface-100 flex items-center gap-2">
               <HiOutlinePlus className="w-5 h-5 text-teal-400" />
               <span>Add New Enterprise Client</span>
@@ -448,7 +668,7 @@ const SuperAdminCMS = () => {
                   onChange={(e) => setNewClientName(e.target.value)}
                   placeholder="e.g. Reliance Corporate"
                   required
-                  className="input-field text-xs h-10 bg-surface-900/60"
+                  className="input-field text-xs h-10"
                 />
               </div>
 
@@ -460,7 +680,7 @@ const SuperAdminCMS = () => {
                   onChange={(e) => setNewClientLogo(e.target.value)}
                   placeholder="https://example.com/logo.png"
                   required
-                  className="input-field text-xs h-10 bg-surface-900/60"
+                  className="input-field text-xs h-10"
                 />
               </div>
             </div>
@@ -468,7 +688,7 @@ const SuperAdminCMS = () => {
             <button
               type="submit"
               disabled={addingClient}
-              className="px-5 py-2.5 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-xl text-xs flex items-center gap-2"
+              className="btn-primary rounded-full px-5 py-2.5 text-xs flex items-center gap-2 cursor-pointer"
             >
               <HiOutlinePlus className="w-4 h-4" />
               <span>Add to Client Marquee</span>
@@ -480,10 +700,10 @@ const SuperAdminCMS = () => {
             {clients.map((c) => (
               <div
                 key={c._id}
-                className="liquid-glass p-4 rounded-2xl border border-surface-800 flex items-center justify-between"
+                className="liquid-glass p-4 rounded-2xl flex items-center justify-between"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-surface-800 flex items-center justify-center font-bold text-teal-300">
+                  <div className="w-10 h-10 rounded-full bg-[#D2F801] text-[#0B0D11] flex items-center justify-center font-extrabold">
                     {c.name.charAt(0)}
                   </div>
                   <div>
@@ -494,7 +714,7 @@ const SuperAdminCMS = () => {
                 <button
                   type="button"
                   onClick={() => handleDeleteClient(c._id)}
-                  className="p-2 text-surface-400 hover:text-rose-400 rounded-lg hover:bg-rose-950/30 transition-colors"
+                  className="p-2 text-surface-400 hover:text-rose-400 rounded-lg hover:bg-rose-500/15 transition-colors cursor-pointer"
                 >
                   <HiOutlineTrash className="w-4 h-4" />
                 </button>
@@ -504,10 +724,10 @@ const SuperAdminCMS = () => {
         </div>
       )}
 
-      {/* ── TAB 3: FAQS MANAGEMENT ── */}
+      {/* ── TAB 4: FAQS MANAGEMENT ── */}
       {activeTab === 'faqs' && (
         <div className="space-y-6">
-          <form onSubmit={handleAddFaq} className="liquid-glass p-6 rounded-3xl border border-surface-800 space-y-4">
+          <form onSubmit={handleAddFaq} className="liquid-glass p-6 rounded-3xl space-y-4">
             <h3 className="text-base font-bold text-surface-100 flex items-center gap-2">
               <HiOutlinePlus className="w-5 h-5 text-teal-400" />
               <span>Add Platform FAQ</span>
@@ -521,7 +741,7 @@ const SuperAdminCMS = () => {
                 onChange={(e) => setNewQuestion(e.target.value)}
                 placeholder="e.g. Can we export payroll to Excel?"
                 required
-                className="input-field text-xs h-10 bg-surface-900/60"
+                className="input-field text-xs h-10"
               />
             </div>
 
@@ -533,14 +753,14 @@ const SuperAdminCMS = () => {
                 placeholder="Write the clear explanation..."
                 required
                 rows={3}
-                className="input-field text-xs p-3 bg-surface-900/60 resize-none"
+                className="input-field text-xs p-3 resize-none"
               />
             </div>
 
             <button
               type="submit"
               disabled={addingFaq}
-              className="px-5 py-2.5 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-xl text-xs flex items-center gap-2"
+              className="btn-primary rounded-full px-5 py-2.5 text-xs flex items-center gap-2 cursor-pointer"
             >
               <HiOutlinePlus className="w-4 h-4" />
               <span>Publish FAQ</span>
@@ -550,7 +770,7 @@ const SuperAdminCMS = () => {
           {/* Existing FAQs */}
           <div className="space-y-3">
             {faqs.map((f, i) => (
-              <div key={f._id || i} className="liquid-glass p-5 rounded-2xl border border-surface-800">
+              <div key={f._id || i} className="liquid-glass p-5 rounded-2xl">
                 <div className="flex items-start justify-between gap-4">
                   <div className="space-y-1 flex-1">
                     <h4 className="font-bold text-sm text-surface-100">
@@ -560,7 +780,7 @@ const SuperAdminCMS = () => {
                   </div>
                   <button
                     onClick={() => handleDeleteFaq(f._id)}
-                    className="p-2 text-surface-400 hover:text-rose-400 rounded-lg hover:bg-rose-950/30 transition-colors flex-shrink-0"
+                    className="p-2 text-surface-400 hover:text-rose-400 rounded-lg hover:bg-rose-500/15 transition-colors flex-shrink-0 cursor-pointer"
                   >
                     <HiOutlineTrash className="w-4 h-4" />
                   </button>
@@ -571,13 +791,13 @@ const SuperAdminCMS = () => {
         </div>
       )}
 
-      {/* ── TAB 4: RAZORPAY GATEWAY SETTINGS ── */}
+      {/* ── TAB 5: RAZORPAY GATEWAY SETTINGS ── */}
       {activeTab === 'gateway' && (
         <div className="space-y-6 max-w-2xl">
-          <div className="liquid-glass p-6 rounded-3xl border border-teal-500/30 space-y-5">
-            <div className="flex items-center justify-between">
+          <div className="liquid-glass p-6 rounded-3xl space-y-5">
+            <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-2xl bg-teal-500/15 border border-teal-500/30 flex items-center justify-center text-teal-400">
+                <div className="w-11 h-11 rounded-2xl bg-[#D2F801] text-[#0B0D11] flex items-center justify-center">
                   <HiOutlineCreditCard className="w-6 h-6" />
                 </div>
                 <div>
@@ -592,9 +812,9 @@ const SuperAdminCMS = () => {
                 className={`px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider border ${
                   gatewayStatus.configured
                     ? gatewayStatus.mode === 'live'
-                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                      : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                    : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                      ? 'bg-lime-500/20 text-lime-700 dark:text-[#D2F801] border-lime-500/40'
+                      : 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/40'
+                    : 'bg-rose-500/20 text-rose-700 dark:text-rose-300 border-rose-500/40'
                 }`}
               >
                 {gatewayStatus.configured
@@ -606,16 +826,16 @@ const SuperAdminCMS = () => {
             </div>
 
             {gatewayStatus.configured && (
-              <div className="p-4 rounded-2xl bg-surface-900/60 border border-surface-800 space-y-2 text-xs">
-                <div className="flex items-center justify-between">
+              <div className="p-4 rounded-2xl bg-surface-900/60 border border-surface-700 space-y-2 text-xs">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <span className="text-surface-400">Active Key ID:</span>
                   <span className="font-mono font-bold text-teal-400">{gatewayStatus.keyId}</span>
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <span className="text-surface-400">Secret Status:</span>
                   <span className="font-mono text-surface-300">{gatewayStatus.maskedSecret}</span>
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <span className="text-surface-400">Config Source:</span>
                   <span className="uppercase font-bold text-[10px] px-2 py-0.5 rounded bg-surface-800 text-surface-300">
                     {gatewayStatus.source}
@@ -636,7 +856,7 @@ const SuperAdminCMS = () => {
                   onChange={(e) => setRzpKeyId(e.target.value)}
                   placeholder="rzp_test_... or rzp_live_..."
                   required
-                  className="input-field text-xs h-10 bg-surface-900/60 font-mono"
+                  className="input-field text-xs h-10 font-mono"
                 />
               </div>
 
@@ -651,11 +871,11 @@ const SuperAdminCMS = () => {
                   onChange={(e) => setRzpKeySecret(e.target.value)}
                   placeholder="Enter Razorpay Key Secret to update"
                   required
-                  className="input-field text-xs h-10 bg-surface-900/60 font-mono"
+                  className="input-field text-xs h-10 font-mono"
                 />
               </div>
 
-              <div className="flex items-center gap-2.5 p-3 rounded-xl bg-teal-500/10 border border-teal-500/30 text-[11px] text-surface-300">
+              <div className="flex items-center gap-2.5 p-3 rounded-xl bg-surface-800/70 border border-surface-700 text-[11px] text-surface-300">
                 <HiOutlineShieldCheck className="w-5 h-5 text-teal-400 flex-shrink-0" />
                 <span>
                   Credentials are verified directly with Razorpay API servers before activation so checkout stays uninterrupted.
@@ -665,11 +885,11 @@ const SuperAdminCMS = () => {
               <button
                 type="submit"
                 disabled={savingGateway}
-                className="px-6 py-2.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-lg disabled:opacity-60 cursor-pointer"
+                className="btn-primary rounded-full px-6 py-2.5 text-xs flex items-center gap-2 cursor-pointer"
               >
                 {savingGateway ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                     <span>Verifying with Razorpay...</span>
                   </>
                 ) : (

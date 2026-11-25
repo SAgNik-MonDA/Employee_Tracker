@@ -5,6 +5,49 @@ const VisitorMetric = require('../models/VisitorMetric');
 const Subscription = require('../models/Subscription');
 const sendEmail = require('../utils/sendEmail');
 
+const DEFAULT_RULES_AND_REGULATIONS = [
+  {
+    category: 'Salary',
+    title: 'Monthly Salary Cycle, LOP & Bank Disbursement Rules',
+    summary:
+      'Salaries are processed automatically on the 2nd of each month at 00:05 AM IST via bulk or manual payroll generation. Unapproved absences or unregularized late check-ins incur prorated Loss of Pay (LOP) deductions, and verified payouts are exported with IFSC and bank account advice schedules.',
+    badgeText: 'Payroll Cycle',
+    order: 1,
+  },
+  {
+    category: 'Mediclaim',
+    title: 'Corporate Mediclaim Policy & Reimbursement Claims',
+    summary:
+      'Every active employee receives an encrypted corporate Mediclaim ID synced with monthly statutory payroll deductions. Reimbursement or emergency hospitalization claims require supporting medical invoices reviewed by Finance/HR, generating an auditable settlement payslip PDF.',
+    badgeText: 'Health Cover',
+    order: 2,
+  },
+  {
+    category: 'PF',
+    title: 'Statutory Provident Fund (PF) & Withdrawal Governance',
+    summary:
+      'A statutory 12% Provident Fund deduction is calculated per salary cycle and accumulated in each employee’s isolated PF fund ledger. Partial or emergency PF withdrawal requests undergo two-step Admin approval with automated fund deduction and email receipt advice.',
+    badgeText: '12% EPF Rule',
+    order: 3,
+  },
+  {
+    category: 'Attendance',
+    title: 'AI Biometric Face, QR Badge & Shift Punctuality Rules',
+    summary:
+      'Daily attendance requires 128D facial verification or dynamic QR scan within assigned shift windows (Morning, General, Evening, Night) with GPS check-in validation. Early check-outs prior to shift completion require mandatory reason submission and manager approval.',
+    badgeText: 'Biometric Policy',
+    order: 4,
+  },
+  {
+    category: 'General',
+    title: 'Leave Quotas, Paid Holidays & Multi-Tenant Privacy',
+    summary:
+      'Annual leave balances (Casual, Sick, Earned) follow organization-level designation quotas and declared holiday calendars. Each subscribed organization operates in a strictly isolated tenant scope—zero employee payroll or biometric records are ever visible across companies.',
+    badgeText: 'Zero-Trust SLA',
+    order: 5,
+  },
+];
+
 // Helper to ensure default CMS document exists
 const getOrCreateCMS = async () => {
   let cms = await LandingContent.findOne({ key: 'main_landing_cms' });
@@ -12,11 +55,11 @@ const getOrCreateCMS = async () => {
     cms = await LandingContent.create({
       key: 'main_landing_cms',
       clients: [
-        { name: 'TechFlow Global', logoUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=60' },
-        { name: 'Nexus Enterprise', logoUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=60' },
-        { name: 'Apex Solutions', logoUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=60' },
-        { name: 'Vanguard Systems', logoUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=60' },
-        { name: 'Starlight Financial', logoUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=60' },
+        { name: 'TechFlow Global', logoUrl: '' },
+        { name: 'Nexus Enterprise', logoUrl: '' },
+        { name: 'Apex Solutions', logoUrl: '' },
+        { name: 'Vanguard Systems', logoUrl: '' },
+        { name: 'Starlight Financial', logoUrl: '' },
       ],
       faqs: [
         {
@@ -45,7 +88,13 @@ const getOrCreateCMS = async () => {
           order: 5,
         },
       ],
+      rulesAndRegulations: DEFAULT_RULES_AND_REGULATIONS,
+      rulesSeeded: true,
     });
+  } else if (!cms.rulesSeeded && (!cms.rulesAndRegulations || cms.rulesAndRegulations.length === 0)) {
+    cms.rulesAndRegulations = DEFAULT_RULES_AND_REGULATIONS;
+    cms.rulesSeeded = true;
+    await cms.save();
   }
   return cms;
 };
@@ -108,6 +157,7 @@ exports.getPublicContent = async (req, res) => {
       pricingPlans: cms.pricingPlans,
       clients: cms.clients || [],
       faqs: cms.faqs || [],
+      rulesAndRegulations: [...(cms.rulesAndRegulations || [])].sort((a, b) => (a.order || 0) - (b.order || 0)),
       testimonials,
       stats: {
         totalVisitors: visitorMetric.count,
@@ -348,6 +398,87 @@ exports.deleteFaq = async (req, res) => {
   } catch (error) {
     console.error('Delete FAQ Error:', error);
     res.status(500).json({ message: 'Failed to delete FAQ' });
+  }
+};
+
+/**
+ * 7B. RULES & REGULATIONS MANAGEMENT (SUPERADMIN ONLY)
+ */
+exports.createRule = async (req, res) => {
+  try {
+    const { category, title, summary, badgeText, order } = req.body;
+    if (!title || !summary) {
+      return res.status(400).json({ message: 'Rule title and description are required' });
+    }
+
+    const cms = await getOrCreateCMS();
+    cms.rulesAndRegulations.push({
+      category: category || 'General',
+      title: title.trim(),
+      summary: summary.trim(),
+      badgeText: badgeText ? badgeText.trim() : `${category || 'General'} Policy`,
+      order: Number(order) || cms.rulesAndRegulations.length + 1,
+    });
+    cms.rulesSeeded = true;
+    await cms.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Rule added to Rules & Regulations! 📜',
+      rulesAndRegulations: [...cms.rulesAndRegulations].sort((a, b) => (a.order || 0) - (b.order || 0)),
+    });
+  } catch (error) {
+    console.error('Create Rule Error:', error);
+    res.status(500).json({ message: 'Failed to create rule' });
+  }
+};
+
+exports.updateRule = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { category, title, summary, badgeText, order } = req.body;
+
+    const cms = await getOrCreateCMS();
+    const rule = cms.rulesAndRegulations.id(id);
+    if (!rule) {
+      return res.status(404).json({ message: 'Rule not found' });
+    }
+
+    if (category) rule.category = category;
+    if (title) rule.title = title.trim();
+    if (summary) rule.summary = summary.trim();
+    if (badgeText !== undefined) rule.badgeText = badgeText.trim();
+    if (order !== undefined) rule.order = Number(order);
+
+    await cms.save();
+
+    res.json({
+      success: true,
+      message: 'Rule updated successfully! ✏️',
+      rulesAndRegulations: [...cms.rulesAndRegulations].sort((a, b) => (a.order || 0) - (b.order || 0)),
+    });
+  } catch (error) {
+    console.error('Update Rule Error:', error);
+    res.status(500).json({ message: 'Failed to update rule' });
+  }
+};
+
+exports.deleteRule = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const cms = await getOrCreateCMS();
+    cms.rulesAndRegulations = cms.rulesAndRegulations.filter((r) => String(r._id) !== String(id));
+    cms.rulesSeeded = true;
+    await cms.save();
+
+    res.json({
+      success: true,
+      message: 'Rule deleted! 🗑️',
+      rulesAndRegulations: [...cms.rulesAndRegulations].sort((a, b) => (a.order || 0) - (b.order || 0)),
+    });
+  } catch (error) {
+    console.error('Delete Rule Error:', error);
+    res.status(500).json({ message: 'Failed to delete rule' });
   }
 };
 

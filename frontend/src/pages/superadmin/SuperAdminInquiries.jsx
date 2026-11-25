@@ -154,7 +154,7 @@ const SuperAdminInquiries = () => {
                           setSelectedInquiry(inq);
                           setReplyText(inq.replyMessage || '');
                         }}
-                        className="px-3 py-1.5 bg-teal-600/20 hover:bg-teal-600/30 text-teal-300 border border-teal-500/30 font-bold rounded-xl transition-all flex items-center gap-1.5 text-xs whitespace-nowrap cursor-pointer"
+                        className="btn-primary rounded-full px-3.5 py-1.5 flex items-center gap-1.5 text-xs whitespace-nowrap cursor-pointer"
                       >
                         <HiOutlineReply className="w-3.5 h-3.5" />
                         <span>{inq.status === 'Replied' ? 'View/Resend' : 'Reply by Email'}</span>
@@ -225,10 +225,10 @@ const SuperAdminInquiries = () => {
                 <button
                   type="submit"
                   disabled={sendingReply}
-                  className="px-5 py-2.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-bold rounded-xl text-xs shadow-lg flex items-center gap-2 disabled:opacity-60 cursor-pointer"
+                  className="btn-primary rounded-full px-5 py-2.5 text-xs shadow-lg flex items-center gap-2 disabled:opacity-60 cursor-pointer"
                 >
                   {sendingReply ? (
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <>
                       <HiOutlineMail className="w-4 h-4" />

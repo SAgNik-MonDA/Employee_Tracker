@@ -68,7 +68,7 @@ const landingContentSchema = new mongoose.Schema(
     clients: [
       {
         name: { type: String, required: true },
-        logoUrl: { type: String, required: true },
+        logoUrl: { type: String, default: '' },
         website: { type: String, default: '' },
         createdAt: { type: Date, default: Date.now },
       },
@@ -81,6 +81,25 @@ const landingContentSchema = new mongoose.Schema(
         createdAt: { type: Date, default: Date.now },
       },
     ],
+    rulesAndRegulations: [
+      {
+        category: {
+          type: String,
+          enum: ['Salary', 'Mediclaim', 'PF', 'Attendance', 'General'],
+          default: 'General',
+          required: true,
+        },
+        title: { type: String, required: true, trim: true },
+        summary: { type: String, required: true, trim: true },
+        badgeText: { type: String, default: 'Policy', trim: true },
+        order: { type: Number, default: 0 },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
+    rulesSeeded: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

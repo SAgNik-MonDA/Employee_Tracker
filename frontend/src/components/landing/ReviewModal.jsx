@@ -42,7 +42,7 @@ const ReviewModal = ({ isOpen, onClose, onReviewSubmitted }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in">
-      <div className="relative w-full max-w-md liquid-glass rounded-3xl p-6 sm:p-8 shadow-2xl border-[1.5px] border-teal-500/40 overflow-hidden">
+      <div className="relative w-full max-w-md liquid-glass rounded-3xl p-6 sm:p-8 shadow-2xl border border-surface-700 overflow-hidden">
         <button
           onClick={onClose}
           className="absolute top-5 right-5 p-2 rounded-xl text-surface-400 hover:text-surface-100 transition-colors"
@@ -144,10 +144,10 @@ const ReviewModal = ({ isOpen, onClose, onReviewSubmitted }) => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full h-11 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-60 cursor-pointer"
+            className="w-full h-11 btn-primary rounded-full shadow-lg flex items-center justify-center gap-2 text-sm disabled:opacity-60 cursor-pointer"
           >
             {loading ? (
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
             ) : (
               'Submit Verified Review ⭐'
             )}

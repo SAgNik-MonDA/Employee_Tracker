@@ -220,14 +220,14 @@ const LoginModal = ({ isOpen, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in">
-      <div className="relative w-full max-w-md liquid-glass rounded-3xl p-6 sm:p-8 shadow-2xl border-[1.5px] border-teal-500/40 dark:border-teal-400/40 overflow-hidden">
+      <div className="relative w-full max-w-md liquid-glass rounded-3xl p-6 sm:p-8 shadow-2xl border border-surface-700 overflow-hidden">
         {/* Top Specular Rim */}
-        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-teal-400/60 to-transparent" />
+        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#D2F801]/60 to-transparent" />
 
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 p-2 rounded-xl text-surface-400 hover:text-surface-100 hover:bg-surface-800/50 transition-colors"
+          className="absolute top-5 right-5 p-2 rounded-xl text-surface-400 hover:text-surface-100 hover:bg-surface-800/50 transition-colors cursor-pointer"
           aria-label="Close"
         >
           <HiOutlineX className="w-5 h-5" />
@@ -237,10 +237,8 @@ const LoginModal = ({ isOpen, onClose }) => {
           <>
             {/* Header */}
             <div className="text-center mb-6">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-700 via-teal-800 to-teal-950 p-0.5 shadow-xl shadow-teal-900/40 mb-3 border border-teal-500/30">
-                <div className="w-full h-full rounded-[14px] bg-teal-950/80 dark:bg-surface-900/60 backdrop-blur-md flex items-center justify-center">
-                  <span className="text-xl">🚀</span>
-                </div>
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-[#0F1115] dark:bg-[#D2F801] text-[#D2F801] dark:text-[#0B0D11] shadow-xl mb-3">
+                <span className="text-xl">🚀</span>
               </div>
               <h3 className="text-xl font-display font-extrabold text-surface-100 tracking-tight">
                 Enterprise Portal Login
@@ -251,14 +249,14 @@ const LoginModal = ({ isOpen, onClose }) => {
             </div>
 
             {/* Mode Switcher Tabs */}
-            <div className="flex rounded-xl p-1 bg-surface-800/70 border border-teal-500/20 mb-5">
+            <div className="flex rounded-full p-1 bg-surface-800/80 border border-surface-700 mb-5">
               <button
                 type="button"
                 onClick={() => setLoginMode('credentials')}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition-all ${
+                className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-full transition-all cursor-pointer ${
                   loginMode === 'credentials'
-                    ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-md'
-                    : 'text-surface-400 hover:text-surface-200'
+                    ? 'bg-[#0F1115] dark:bg-[#D2F801] text-white dark:text-[#0B0D11] shadow-md'
+                    : 'text-surface-400 hover:text-surface-100'
                 }`}
               >
                 <HiOutlineIdentification className="w-4 h-4" />
@@ -267,10 +265,10 @@ const LoginModal = ({ isOpen, onClose }) => {
               <button
                 type="button"
                 onClick={() => setLoginMode('qr')}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition-all ${
+                className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-full transition-all cursor-pointer ${
                   loginMode === 'qr'
-                    ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-md'
-                    : 'text-surface-400 hover:text-surface-200'
+                    ? 'bg-[#0F1115] dark:bg-[#D2F801] text-white dark:text-[#0B0D11] shadow-md'
+                    : 'text-surface-400 hover:text-surface-100'
                 }`}
               >
                 <HiOutlineQrcode className="w-4 h-4" />
@@ -375,10 +373,10 @@ const LoginModal = ({ isOpen, onClose }) => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full h-11 mt-2 bg-gradient-to-r from-teal-600 via-teal-700 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-teal-900/30 transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-60 cursor-pointer"
+                  className="w-full h-11 mt-2 btn-primary rounded-full shadow-lg flex items-center justify-center gap-2 text-sm cursor-pointer"
                 >
                   {loading ? (
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <>
                       <span>Secure Sign In</span>

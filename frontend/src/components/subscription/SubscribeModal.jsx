@@ -143,7 +143,7 @@ const SubscribeModal = ({ isOpen, onClose, selectedPlan }) => {
           contact: phone || '',
         },
         theme: {
-          color: '#0d9488',
+          color: '#0F1115',
         },
         modal: {
           ondismiss: function () {
@@ -246,15 +246,15 @@ const SubscribeModal = ({ isOpen, onClose, selectedPlan }) => {
   }[step];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-surface-950/75 backdrop-blur-md animate-fade-in">
-      <div className="relative w-full max-w-lg max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden bg-surface-900/95 backdrop-blur-2xl rounded-2xl sm:rounded-3xl shadow-2xl border-[1.5px] border-teal-500/50 animate-slide-up">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-md animate-fade-in">
+      <div className="relative w-full max-w-lg max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden bg-surface-900 backdrop-blur-2xl rounded-2xl sm:rounded-3xl shadow-2xl border border-surface-700 animate-slide-up">
         {/* Top Specular Rim */}
-        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-teal-400/70 to-transparent pointer-events-none" />
+        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#D2F801]/70 to-transparent pointer-events-none" />
 
         {/* ── Pinned Header ── */}
-        <div className="flex-shrink-0 flex items-center justify-between gap-3 px-4 py-3.5 sm:px-6 sm:py-4 border-b border-surface-700/50 bg-gradient-to-r from-teal-500/10 via-emerald-500/5 to-transparent">
+        <div className="flex-shrink-0 flex items-center justify-between gap-3 px-4 py-3.5 sm:px-6 sm:py-4 border-b border-surface-700 bg-surface-800/40">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-teal-600 to-emerald-800 border border-teal-400/30 text-teal-100 flex items-center justify-center shadow-lg flex-shrink-0">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-[#D2F801] text-[#0B0D11] flex items-center justify-center shadow-lg flex-shrink-0">
               {step === 'success' ? (
                 <HiOutlineCheckCircle className="w-6 h-6" />
               ) : (
@@ -266,7 +266,7 @@ const SubscribeModal = ({ isOpen, onClose, selectedPlan }) => {
                 <h3 className="text-base sm:text-lg font-display font-extrabold text-surface-100 truncate">
                   {stepMeta.title}
                 </h3>
-                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-500/30 whitespace-nowrap">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#D2F801] text-[#0B0D11] whitespace-nowrap">
                   {stepMeta.badge}
                 </span>
               </div>
@@ -290,11 +290,11 @@ const SubscribeModal = ({ isOpen, onClose, selectedPlan }) => {
         <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 space-y-4">
           {step === 'pay' && (
             <>
-              {/* Plan Summary Card with Matching Green/Teal Border */}
-              <div className="bg-surface-800/50 border-[1.5px] border-teal-500/40 rounded-2xl p-4 sm:p-5 space-y-3.5 shadow-sm">
+              {/* Plan Summary Card */}
+              <div className="bg-surface-800/60 border border-surface-700 rounded-2xl p-4 sm:p-5 space-y-3.5 shadow-sm">
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div>
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-teal-600 dark:text-teal-400 block mb-0.5">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-teal-400 block mb-0.5">
                       Selected Plan
                     </span>
                     <h4 className="font-display font-bold text-surface-100 text-base sm:text-lg leading-tight">
@@ -303,7 +303,7 @@ const SubscribeModal = ({ isOpen, onClose, selectedPlan }) => {
                     <p className="text-xs text-surface-400 mt-0.5">{selectedPlan.billingCycle}</p>
                   </div>
                   <div className="text-right ml-auto">
-                    <div className="text-2xl sm:text-3xl font-display font-black text-emerald-600 dark:text-emerald-400 leading-none">
+                    <div className="text-2xl sm:text-3xl font-display font-black text-teal-400 leading-none">
                       ₹{selectedPlan.price?.toLocaleString()}
                     </div>
                     {selectedPlan.originalPrice && (
@@ -314,10 +314,10 @@ const SubscribeModal = ({ isOpen, onClose, selectedPlan }) => {
                   </div>
                 </div>
 
-                <div className="border-t border-surface-700/50 pt-3 grid grid-cols-1 gap-2">
+                <div className="border-t border-surface-700/70 pt-3 grid grid-cols-1 gap-2">
                   {selectedPlan.features?.slice(0, 4).map((f, i) => (
                     <div key={i} className="flex items-start gap-2.5 text-xs sm:text-[13px] text-surface-200">
-                      <HiOutlineCheckCircle className="w-4 h-4 text-teal-500 dark:text-teal-400 flex-shrink-0 mt-0.5" />
+                      <HiOutlineCheckCircle className="w-4 h-4 text-teal-400 flex-shrink-0 mt-0.5" />
                       <span className="leading-snug">{f}</span>
                     </div>
                   ))}
@@ -325,8 +325,8 @@ const SubscribeModal = ({ isOpen, onClose, selectedPlan }) => {
               </div>
 
               {/* Razorpay Secure Checkout Notice */}
-              <div className="flex items-center gap-3 p-3 sm:p-3.5 bg-teal-500/10 border border-teal-500/30 rounded-xl text-xs text-surface-200">
-                <HiOutlineShieldCheck className="w-5 h-5 sm:w-6 sm:h-6 text-teal-600 dark:text-teal-400 flex-shrink-0" />
+              <div className="flex items-center gap-3 p-3 sm:p-3.5 bg-surface-800/70 border border-surface-700 rounded-xl text-xs text-surface-200">
+                <HiOutlineShieldCheck className="w-5 h-5 sm:w-6 sm:h-6 text-teal-400 flex-shrink-0" />
                 <span className="leading-relaxed">
                   <strong>Encrypted Razorpay Checkout:</strong> Supports UPI, Cards, NetBanking &amp; Wallets. Instant workspace setup right after payment.
                 </span>
@@ -533,17 +533,17 @@ const SubscribeModal = ({ isOpen, onClose, selectedPlan }) => {
         </div>
 
         {/* ── Pinned Footer CTA ── */}
-        <div className="flex-shrink-0 px-4 py-3.5 sm:px-6 sm:py-4 border-t border-surface-700/50 bg-surface-900/60">
+        <div className="flex-shrink-0 px-4 py-3.5 sm:px-6 sm:py-4 border-t border-surface-700 bg-surface-900">
           {step === 'pay' && (
             <button
               type="button"
               onClick={handleInitiatePayment}
               disabled={initiatingPay || verifyingPay}
-              className="w-full h-11 sm:h-12 bg-gradient-to-r from-teal-600 via-teal-700 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-teal-950/30 transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-60 cursor-pointer active:scale-[0.99]"
+              className="w-full h-11 sm:h-12 btn-primary rounded-full shadow-lg flex items-center justify-center gap-2 text-sm cursor-pointer"
             >
               {initiatingPay || verifyingPay ? (
                 <>
-                  <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
                   <span>{verifyingPay ? 'Verifying Payment...' : 'Opening Razorpay...'}</span>
                 </>
               ) : (
@@ -560,10 +560,10 @@ const SubscribeModal = ({ isOpen, onClose, selectedPlan }) => {
               type="submit"
               form="sub-admin-register-form"
               disabled={submitting}
-              className="w-full h-11 sm:h-12 bg-gradient-to-r from-emerald-600 via-teal-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-60 cursor-pointer active:scale-[0.99]"
+              className="w-full h-11 sm:h-12 btn-primary rounded-full shadow-lg flex items-center justify-center gap-2 text-sm cursor-pointer"
             >
               {submitting ? (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
               ) : (
                 <>
                   <span>Complete Registration &amp; Launch Dashboard</span>
@@ -577,7 +577,7 @@ const SubscribeModal = ({ isOpen, onClose, selectedPlan }) => {
             <button
               type="button"
               onClick={handleLaunchDashboard}
-              className="w-full h-11 sm:h-12 bg-gradient-to-r from-emerald-600 via-teal-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm cursor-pointer active:scale-[0.99]"
+              className="w-full h-11 sm:h-12 btn-primary rounded-full shadow-lg flex items-center justify-center gap-2 text-sm cursor-pointer"
             >
               <span>Launch Enterprise Dashboard</span>
               <span>&rarr;</span>

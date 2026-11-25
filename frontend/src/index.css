@@ -9,77 +9,105 @@
   box-sizing: border-box;
 }
 
-/* ── Theme Variables ────────────────────────────────────────────────────── */
+/* ── Theme Variables: Obsidian, Pure Pearl & Volt Lime (#D2F801) ────────── */
 @layer base {
   :root, .dark {
-    /* Surface / Slate (Dark Mode) */
-    --surface-50: 248 250 252;
-    --surface-100: 241 245 249;
-    --surface-200: 226 232 240;
-    --surface-300: 203 213 225;
-    --surface-400: 148 163 184;
-    --surface-500: 100 116 139;
-    --surface-600: 71 85 105;
-    --surface-700: 51 65 85;
-    --surface-800: 30 41 59;
-    --surface-900: 15 23 42;
-    --surface-950: 2 6 23;
+    /* Surface / Obsidian Neutrals (Dark Mode) */
+    --surface-50: 255 255 255;
+    --surface-100: 255 255 255;
+    --surface-200: 235 238 244;
+    --surface-300: 205 210 220;
+    --surface-400: 158 166 180;
+    --surface-500: 112 120 135;
+    --surface-600: 66 72 86;
+    --surface-700: 38 42 54;
+    --surface-800: 23 26 33;
+    --surface-900: 16 18 23;
+    --surface-950: 9 10 13;
 
-    /* Semantic (Dark Mode Defaults) - Emerald / Teal Brand Theme */
-    --primary-50: 236 253 245; --primary-100: 209 250 229; --primary-200: 167 243 208; --primary-300: 110 231 183; --primary-400: 52 211 153; --primary-500: 16 185 129; --primary-600: 5 150 105; --primary-700: 4 120 87; --primary-800: 6 95 70; --primary-900: 6 78 59; --primary-950: 2 44 34;
+    /* Accent Tokens (Dark Mode - Volt Lime + Olive Moss + Emerald) */
+    --teal-50: 250 255 224;
+    --teal-100: 242 255 178;
+    --teal-200: 232 255 112;
+    --teal-300: 210 248 1;
+    --teal-400: 210 248 1;
+    --teal-500: 184 224 0;
+    --teal-600: 60 82 0;
+    --teal-700: 44 60 0;
+    --teal-800: 28 36 8;
+    --teal-900: 20 26 8;
+    --teal-950: 13 17 7;
+
+    --primary-50: 250 255 224; --primary-100: 242 255 178; --primary-200: 232 255 112; --primary-300: 210 248 1; --primary-400: 210 248 1; --primary-500: 184 224 0; --primary-600: 60 82 0; --primary-700: 44 60 0; --primary-800: 28 36 8; --primary-900: 20 26 8; --primary-950: 13 17 7;
     --amber-50: 255 251 235; --amber-100: 254 243 199; --amber-200: 253 230 138; --amber-300: 252 211 77; --amber-400: 251 191 36; --amber-500: 245 158 11; --amber-600: 217 119 6; --amber-700: 180 83 9; --amber-800: 146 64 14; --amber-900: 120 53 15; --amber-950: 69 26 3;
-    --emerald-50: 236 253 245; --emerald-100: 209 250 229; --emerald-200: 167 243 208; --emerald-300: 110 231 183; --emerald-400: 52 211 153; --emerald-500: 16 185 129; --emerald-600: 5 150 105; --emerald-700: 4 120 87; --emerald-800: 6 95 70; --emerald-900: 6 78 59; --emerald-950: 2 44 34;
+    --emerald-50: 236 253 245; --emerald-100: 209 250 229; --emerald-200: 167 243 208; --emerald-300: 196 245 66; --emerald-400: 210 248 1; --emerald-500: 132 204 22; --emerald-600: 77 124 15; --emerald-700: 63 98 18; --emerald-800: 32 46 11; --emerald-900: 22 32 9; --emerald-950: 12 18 6;
     --rose-50: 255 241 242; --rose-100: 255 228 230; --rose-200: 254 205 211; --rose-300: 253 164 175; --rose-400: 251 113 133; --rose-500: 244 63 94; --rose-600: 225 29 72; --rose-700: 190 18 60; --rose-800: 159 18 57; --rose-900: 136 19 55; --rose-950: 76 5 25;
     --violet-50: 245 243 255; --violet-100: 237 233 254; --violet-200: 221 214 254; --violet-300: 196 181 253; --violet-400: 167 139 250; --violet-500: 139 92 246; --violet-600: 124 58 237; --violet-700: 109 40 217; --violet-800: 91 33 182; --violet-900: 76 29 149; --violet-950: 46 16 101;
     --blue-50: 239 246 255; --blue-100: 219 234 254; --blue-200: 191 219 254; --blue-300: 147 197 253; --blue-400: 96 165 250; --blue-500: 59 130 246; --blue-600: 37 99 235; --blue-700: 29 78 216; --blue-800: 30 64 175; --blue-900: 30 58 138; --blue-950: 23 37 84;
-    --slate-50: 248 250 252; --slate-100: 241 245 249; --slate-200: 226 232 240; --slate-300: 203 213 225; --slate-400: 148 163 184; --slate-500: 100 116 139; --slate-600: 71 85 105; --slate-700: 51 65 85; --slate-800: 30 41 59; --slate-900: 15 23 42; --slate-950: 2 6 23;
+    --slate-50: 255 255 255; --slate-100: 244 245 247; --slate-200: 229 231 235; --slate-300: 203 208 216; --slate-400: 148 156 170; --slate-500: 100 108 122; --slate-600: 66 72 86; --slate-700: 38 42 54; --slate-800: 23 26 33; --slate-900: 16 18 23; --slate-950: 9 10 13;
 
-    --bg-body: #0f172a;
-    --text-body: #e2e8f0;
-    --scrollbar-track: #0f172a;
-    --scrollbar-thumb: #0d9488;
-    --scrollbar-thumb-hover: #10b981;
+    --bg-body: #090A0D;
+    --text-body: #F3F4F6;
+    --scrollbar-track: #090A0D;
+    --scrollbar-thumb: #A8CA00;
+    --scrollbar-thumb-hover: #D2F801;
   }
 
   .light {
-    /* Surface / Slate (Light Mode High Contrast Inverted) */
-    --surface-50: 2 6 23;
-    --surface-100: 15 23 42;
-    --surface-200: 30 41 59;
-    --surface-300: 51 65 85;
-    --surface-400: 51 65 85;     /* Deeper text contrast */
-    --surface-500: 71 85 105;    /* Deeper text contrast */
-    --surface-600: 100 116 139;
-    --surface-700: 226 232 240;  /* Clean borders */
-    --surface-800: 255 255 255;  /* Clean white cards */
-    --surface-900: 255 255 255;  /* Clean white raised elements */
-    --surface-950: 248 250 252;  /* Slate-50 base background */
+    /* Surface / Pure White, Soft Pearl & Obsidian Ink (Light Mode matching Screenshot) */
+    --surface-50: 9 10 13;
+    --surface-100: 15 17 21;
+    --surface-200: 28 32 40;
+    --surface-300: 48 54 66;
+    --surface-400: 82 88 102;
+    --surface-500: 107 114 128;
+    --surface-600: 156 163 175;
+    --surface-700: 226 230 236;
+    --surface-800: 244 245 247;
+    --surface-900: 255 255 255;
+    --surface-950: 255 255 255;
 
-    /* Semantic (Light Mode Inverted - Emerald / Teal Brand Theme) */
-    --primary-50: 2 44 34; --primary-100: 6 78 59; --primary-200: 6 95 70; --primary-300: 4 120 87; --primary-400: 4 120 87; --primary-500: 5 150 105; --primary-600: 16 185 129; --primary-700: 110 231 183; --primary-800: 167 243 208; --primary-900: 209 250 229; --primary-950: 236 253 245;
-    --amber-50: 69 26 3; --amber-100: 120 53 15; --amber-200: 146 64 14; --amber-300: 180 83 9; --amber-400: 180 83 9; --amber-500: 217 119 6; --amber-600: 251 191 36; --amber-700: 252 211 77; --amber-800: 253 230 138; --amber-900: 254 243 199; --amber-950: 255 251 235;
-    --emerald-50: 2 44 34; --emerald-100: 6 78 59; --emerald-200: 6 95 70; --emerald-300: 4 120 87; --emerald-400: 4 120 87; --emerald-500: 5 150 105; --emerald-600: 52 211 153; --emerald-700: 110 231 183; --emerald-800: 167 243 208; --emerald-900: 209 250 229; --emerald-950: 236 253 245;
+    /* Accent Tokens (Light Mode - Obsidian Ink + Deep Olive + Volt Lime Borders) */
+    --teal-50: 247 254 231;
+    --teal-100: 236 252 203;
+    --teal-200: 217 249 157;
+    --teal-300: 63 92 0;
+    --teal-400: 54 83 0;
+    --teal-500: 132 184 0;
+    --teal-600: 17 20 26;
+    --teal-700: 31 36 45;
+    --teal-800: 23 27 34;
+    --teal-900: 17 20 26;
+    --teal-950: 11 13 17;
+
+    --primary-50: 11 13 17; --primary-100: 17 20 26; --primary-200: 44 60 0; --primary-300: 63 92 0; --primary-400: 63 92 0; --primary-500: 132 184 0; --primary-600: 17 20 26; --primary-700: 31 36 45; --primary-800: 236 252 203; --primary-900: 247 254 231; --primary-950: 255 255 255;
+    --amber-50: 69 26 3; --amber-100: 120 53 15; --amber-200: 146 64 14; --amber-300: 180 83 9; --amber-400: 180 83 9; --amber-500: 217 119 6; --amber-600: 245 158 11; --amber-700: 252 211 77; --amber-800: 253 230 138; --amber-900: 254 243 199; --amber-950: 255 251 235;
+    --emerald-50: 14 26 0; --emerald-100: 32 54 0; --emerald-200: 54 83 0; --emerald-300: 63 98 18; --emerald-400: 77 124 15; --emerald-500: 101 163 13; --emerald-600: 132 204 22; --emerald-700: 190 242 100; --emerald-800: 217 249 157; --emerald-900: 236 252 203; --emerald-950: 247 254 231;
     --rose-50: 76 5 25; --rose-100: 136 19 55; --rose-200: 159 18 57; --rose-300: 190 18 60; --rose-400: 190 18 60; --rose-500: 225 29 72; --rose-600: 251 113 133; --rose-700: 253 164 175; --rose-800: 254 205 211; --rose-900: 255 228 230; --rose-950: 255 241 242;
     --violet-50: 46 16 101; --violet-100: 76 29 149; --violet-200: 91 33 182; --violet-300: 109 40 217; --violet-400: 109 40 217; --violet-500: 124 58 237; --violet-600: 167 139 250; --violet-700: 196 181 253; --violet-800: 221 214 254; --violet-900: 237 233 254; --violet-950: 245 243 255;
     --blue-50: 23 37 84; --blue-100: 30 58 138; --blue-200: 30 64 175; --blue-300: 29 78 216; --blue-400: 29 78 216; --blue-500: 37 99 235; --blue-600: 96 165 250; --blue-700: 147 197 253; --blue-800: 191 219 254; --blue-900: 219 234 254; --blue-950: 239 246 255;
-    --slate-50: 2 6 23; --slate-100: 15 23 42; --slate-200: 30 41 59; --slate-300: 51 65 85; --slate-400: 71 85 105; --slate-500: 100 116 139; --slate-600: 148 163 184; --slate-700: 203 213 225; --slate-800: 226 232 240; --slate-900: 241 245 249; --slate-950: 248 250 252;
+    --slate-50: 9 10 13; --slate-100: 15 17 21; --slate-200: 28 32 40; --slate-300: 48 54 66; --slate-400: 82 88 102; --slate-500: 107 114 128; --slate-600: 156 163 175; --slate-700: 209 213 219; --slate-800: 229 231 235; --slate-900: 243 244 246; --slate-950: 249 250 251;
 
-    --bg-body: #f8fafc;
-    --text-body: #0f172a;
-    --scrollbar-track: #f1f5f9;
-    --scrollbar-thumb: #14b8a6;
-    --scrollbar-thumb-hover: #0d9488;
+    --bg-body: #FFFFFF;
+    --text-body: #0F1115;
+    --scrollbar-track: #F3F4F6;
+    --scrollbar-thumb: #11141A;
+    --scrollbar-thumb-hover: #3F5C00;
   }
 }
 
-body {
-  font-family: 'Inter', system-ui, sans-serif;
+html, body {
+  font-family: 'Poppins', system-ui, sans-serif;
   background-color: var(--bg-body);
   color: var(--text-body);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Poppins', system-ui, sans-serif;
 }
 
 /* ===== Scrollbar ===== */
@@ -108,9 +136,9 @@ input:-webkit-autofill:focus,
 input:-webkit-autofill:active,
 textarea:-webkit-autofill,
 select:-webkit-autofill {
-  -webkit-box-shadow: 0 0 0 1000px #0f172a inset !important;
-  -webkit-text-fill-color: #f1f5f9 !important;
-  caret-color: #14b8a6 !important;
+  -webkit-box-shadow: 0 0 0 1000px #111318 inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #D2F801 !important;
   border-radius: inherit !important;
   transition: background-color 5000s ease-in-out 0s;
 }
@@ -122,72 +150,110 @@ select:-webkit-autofill {
 .light textarea:-webkit-autofill,
 .light select:-webkit-autofill {
   -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
-  -webkit-text-fill-color: #0f172a !important;
-  caret-color: #0d9488 !important;
+  -webkit-text-fill-color: #0F1115 !important;
+  caret-color: #11141A !important;
 }
 
-/* ===== Glass Card ===== */
+/* ===== Component Cards & Signature Screenshot Styles ===== */
 @layer components {
-  /* ── Liquid Glass & Modern Glassmorphism ─────────────────────────── */
   .liquid-glass {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
-    backdrop-filter: blur(24px) saturate(180%);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+    background: linear-gradient(145deg, rgba(23, 26, 33, 0.94) 0%, rgba(15, 17, 22, 0.96) 100%);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    box-shadow: 0 20px 50px -15px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.06);
   }
   .light .liquid-glass {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.75) 100%);
-    backdrop-filter: blur(24px) saturate(180%);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
-    border: 1px solid rgba(203, 213, 225, 0.8);
-    box-shadow: 0 25px 60px -15px rgba(14, 75, 86, 0.15), inset 0 1px 2px rgba(255, 255, 255, 0.95);
+    background: #FFFFFF;
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid #E5E7EB;
+    box-shadow: 0 14px 36px -14px rgba(15, 17, 21, 0.08), inset 0 1px 0 rgba(255, 255, 255, 1);
+  }
+
+  .bento-card {
+    background: #14171E;
+    border: 1px solid #252935;
+    box-shadow: 0 16px 36px -14px rgba(0, 0, 0, 0.45);
+  }
+  .light .bento-card {
+    background: #F6F7F9;
+    border: 1px solid #E8EAEE;
+    box-shadow: 0 10px 30px -14px rgba(15, 17, 21, 0.06);
+  }
+
+  .volt-hero-surface {
+    background: linear-gradient(135deg, #D8FB1C 0%, #CFF60B 55%, #C1EB00 100%);
+    color: #0B0D11;
+    box-shadow: 0 25px 60px -18px rgba(210, 248, 1, 0.28);
+  }
+
+  .obsidian-banner-surface {
+    background: linear-gradient(135deg, #0D0F14 0%, #161A23 100%);
+    color: #FFFFFF;
+    border: 1px solid #262A36;
+    box-shadow: 0 25px 60px -18px rgba(0, 0, 0, 0.55);
+  }
+
+  .btn-volt {
+    @apply bg-[#D2F801] hover:bg-[#DCFF26] text-[#0B0D11] font-bold px-6 py-3 rounded-full
+           shadow-lg shadow-[#D2F801]/20 transition-all duration-200 hover:-translate-y-0.5
+           active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-obsidian {
+    @apply bg-[#0F1115] hover:bg-[#232732] text-white font-bold px-6 py-3 rounded-full
+           shadow-lg shadow-black/20 transition-all duration-200 hover:-translate-y-0.5
+           active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .liquid-glass-teal {
-    background: linear-gradient(135deg, rgba(8, 37, 43, 0.94) 0%, rgba(14, 75, 86, 0.88) 100%);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(45, 212, 191, 0.35);
-    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35), 0 0 20px rgba(20, 184, 166, 0.15), inset 0 1px 1px rgba(94, 234, 212, 0.25);
+    background: linear-gradient(135deg, rgba(20, 24, 30, 0.96) 0%, rgba(12, 15, 20, 0.98) 100%);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid rgba(210, 248, 1, 0.35);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
   }
   .light .liquid-glass-teal {
-    background: linear-gradient(135deg, rgba(240, 253, 250, 0.95) 0%, rgba(204, 251, 241, 0.85) 100%);
-    border: 1px solid rgba(45, 212, 191, 0.5);
-    box-shadow: 0 16px 36px rgba(13, 72, 85, 0.12), inset 0 1px 2px rgba(255, 255, 255, 0.9);
+    background: #F4FBE0;
+    border: 1px solid rgba(175, 214, 0, 0.55);
+    box-shadow: 0 12px 28px rgba(15, 17, 21, 0.08);
   }
 
   .liquid-glass-amber {
-    background: linear-gradient(135deg, rgba(17, 24, 39, 0.94) 0%, rgba(28, 25, 23, 0.92) 100%);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(245, 158, 11, 0.45);
-    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4), 0 0 20px rgba(245, 158, 11, 0.15), inset 0 1px 1px rgba(253, 230, 138, 0.25);
+    background: linear-gradient(135deg, rgba(22, 24, 29, 0.96) 0%, rgba(30, 26, 18, 0.94) 100%);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
   }
   .light .liquid-glass-amber {
-    background: linear-gradient(135deg, rgba(255, 251, 235, 0.95) 0%, rgba(254, 243, 199, 0.85) 100%);
-    border: 1px solid rgba(251, 191, 36, 0.5);
-    box-shadow: 0 16px 36px rgba(245, 158, 11, 0.1), inset 0 1px 2px rgba(255, 255, 255, 0.9);
+    background: #FFFBEB;
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    box-shadow: 0 12px 28px rgba(245, 158, 11, 0.08);
   }
 
   .liquid-glass-blue {
-    background: linear-gradient(135deg, rgba(15, 23, 42, 0.92) 0%, rgba(30, 58, 138, 0.85) 100%);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    background: linear-gradient(135deg, rgba(16, 20, 29, 0.94) 0%, rgba(24, 32, 54, 0.9) 100%);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
     border: 1px solid rgba(96, 165, 250, 0.35);
-    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(191, 219, 254, 0.25);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
   }
   .light .liquid-glass-blue {
-    background: linear-gradient(135deg, rgba(239, 246, 255, 0.95) 0%, rgba(219, 234, 254, 0.85) 100%);
+    background: #EFF6FF;
     border: 1px solid rgba(96, 165, 250, 0.5);
-    box-shadow: 0 16px 36px rgba(37, 99, 235, 0.1), inset 0 1px 2px rgba(255, 255, 255, 0.9);
+    box-shadow: 0 12px 28px rgba(37, 99, 235, 0.08);
   }
 
   .btn-brand-teal {
-    @apply bg-gradient-to-r from-teal-900 via-teal-800 to-teal-700 text-white font-semibold px-6 py-2.5 rounded-xl
-           hover:from-teal-800 hover:via-teal-700 hover:to-teal-600 transition-all duration-300
-           shadow-lg shadow-teal-900/30 hover:shadow-teal-800/40 hover:-translate-y-0.5
+    @apply bg-[#D2F801] text-[#0B0D11] font-bold px-6 py-2.5 rounded-xl
+           hover:bg-[#DCFF26] transition-all duration-200
+           shadow-lg shadow-[#D2F801]/20 hover:-translate-y-0.5
            active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .light .btn-brand-teal {
+    @apply bg-[#0F1115] text-white hover:bg-[#232732] shadow-lg shadow-black/15;
   }
 
   .btn-brand-amber {
@@ -197,33 +263,38 @@ select:-webkit-autofill {
            active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
-  /* ── Components with Screenshot 3 Glowing Teal Card Borders ──────────────── */
+  /* ── Portal Cards ── */
   .glass-card {
-    @apply bg-surface-800/60 backdrop-blur-xl border-[1.5px] border-teal-500/50 rounded-2xl shadow-xl shadow-teal-950/20;
+    @apply bg-surface-800/80 backdrop-blur-xl border border-surface-700 rounded-2xl shadow-xl shadow-black/25;
   }
   .light .glass-card {
-    @apply bg-white/95 border-[1.5px] border-teal-600/40 shadow-xl shadow-teal-900/10;
+    @apply bg-white border border-surface-700 shadow-lg shadow-black/[0.04];
   }
   .glass-card-hover {
-    @apply bg-surface-800/60 backdrop-blur-xl border-[1.5px] border-teal-500/50 rounded-2xl shadow-xl shadow-teal-950/20
-           transition-all duration-300 hover:border-teal-400 hover:shadow-teal-500/25 hover:shadow-2xl hover:-translate-y-0.5;
+    @apply bg-surface-800/80 backdrop-blur-xl border border-surface-700 rounded-2xl shadow-xl shadow-black/25
+           transition-all duration-300 hover:border-[#D2F801]/50 hover:shadow-2xl hover:-translate-y-0.5;
   }
   .light .glass-card-hover {
-    @apply bg-white/95 border-[1.5px] border-teal-600/40 shadow-xl shadow-teal-900/10
-           transition-all duration-300 hover:border-teal-500 hover:shadow-teal-600/20 hover:shadow-2xl hover:-translate-y-0.5;
+    @apply bg-white border border-surface-700 shadow-lg shadow-black/[0.04]
+           transition-all duration-300 hover:border-[#0F1115]/40 hover:shadow-xl hover:-translate-y-0.5;
   }
 
   .btn-primary {
-    @apply bg-gradient-to-r from-primary-600 to-primary-500 text-white font-semibold px-6 py-2.5 rounded-xl
-           hover:from-primary-500 hover:to-primary-400 transition-all duration-300 
-           shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40
-           active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply bg-[#D2F801] text-[#0B0D11] font-bold px-6 py-2.5 rounded-xl
+           hover:bg-[#DCFF26] transition-all duration-200
+           shadow-md shadow-[#D2F801]/15 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .light .btn-primary {
+    @apply bg-[#0F1115] text-white hover:bg-[#222631] shadow-md shadow-black/15;
   }
 
   .btn-secondary {
-    @apply bg-surface-700/50 text-surface-200 font-medium px-6 py-2.5 rounded-xl border border-surface-600/50
-           hover:bg-surface-600/50 hover:border-surface-500/50 transition-all duration-300
+    @apply bg-surface-700/60 text-surface-200 font-medium px-6 py-2.5 rounded-xl border border-surface-600/50
+           hover:bg-surface-700 hover:border-surface-500/60 transition-all duration-200
            active:scale-[0.98];
+  }
+  .light .btn-secondary {
+    @apply bg-surface-800 text-surface-100 border-surface-700 hover:bg-surface-700/70;
   }
 
   .btn-danger {
@@ -241,15 +312,21 @@ select:-webkit-autofill {
   }
 
   .input-field {
-    @apply w-full bg-surface-800/80 border border-surface-600/50 rounded-xl px-4 py-3 text-surface-100
-           placeholder:text-surface-500 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20
+    @apply w-full bg-surface-800/80 border border-surface-700 rounded-xl px-4 py-3 text-surface-100
+           placeholder:text-surface-500 focus:outline-none focus:border-[#D2F801] focus:ring-2 focus:ring-[#D2F801]/20
            transition-all duration-300;
+  }
+  .light .input-field {
+    @apply bg-white border-surface-700 text-surface-100 focus:border-[#0F1115] focus:ring-[#0F1115]/10;
   }
 
   .select-field {
-    @apply w-full bg-surface-800/80 border border-surface-600/50 rounded-xl px-4 py-3 text-surface-100
-           focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20
+    @apply w-full bg-surface-800/80 border border-surface-700 rounded-xl px-4 py-3 text-surface-100
+           focus:outline-none focus:border-[#D2F801] focus:ring-2 focus:ring-[#D2F801]/20
            transition-all duration-300 appearance-none cursor-pointer;
+  }
+  .light .select-field {
+    @apply bg-white border-surface-700 text-surface-100 focus:border-[#0F1115] focus:ring-[#0F1115]/10;
   }
 
   .badge {
@@ -305,21 +382,21 @@ select:-webkit-autofill {
   }
 
   .data-table td {
-    @apply px-6 py-4 border-b border-surface-700/50;
+    @apply px-6 py-4 border-b border-surface-700/60;
   }
 
   .data-table tbody tr {
     @apply hover:bg-surface-700/30 transition-colors duration-200;
   }
 
-  /* ── Light mode badge overrides for better contrast ─────────────── */
-  .light .badge-present { @apply bg-emerald-100 text-emerald-700 border-emerald-300; }
-  .light .badge-late    { @apply bg-amber-100 text-amber-700 border-amber-300; }
+  /* ── Light mode badge overrides for crisp contrast ─────────────── */
+  .light .badge-present { @apply bg-lime-100 text-lime-900 border-lime-400; }
+  .light .badge-late    { @apply bg-amber-100 text-amber-800 border-amber-300; }
   .light .badge-absent  { @apply bg-rose-100 text-rose-700 border-rose-300; }
-  .light .badge-pending { @apply bg-amber-100 text-amber-700 border-amber-300; }
-  .light .badge-approved{ @apply bg-emerald-100 text-emerald-700 border-emerald-300; }
+  .light .badge-pending { @apply bg-amber-100 text-amber-800 border-amber-300; }
+  .light .badge-approved{ @apply bg-lime-100 text-lime-900 border-lime-400; }
   .light .badge-rejected{ @apply bg-rose-100 text-rose-700 border-rose-300; }
-  .light .badge-paid    { @apply bg-emerald-100 text-emerald-700 border-emerald-300; }
+  .light .badge-paid    { @apply bg-lime-100 text-lime-900 border-lime-400; }
   .light .badge-unpaid  { @apply bg-rose-100 text-rose-700 border-rose-300; }
 }
 

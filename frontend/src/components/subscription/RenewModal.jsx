@@ -85,7 +85,7 @@ const RenewModal = ({ isOpen, onClose, currentSub, onRenewed }) => {
           contact: user?.phone || '',
         },
         theme: {
-          color: '#0d9488',
+          color: '#0F1115',
         },
         modal: {
           ondismiss: function () {
@@ -109,14 +109,14 @@ const RenewModal = ({ isOpen, onClose, currentSub, onRenewed }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-surface-950/75 backdrop-blur-md animate-fade-in">
-      <div className="relative w-full max-w-md max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden bg-surface-900/95 backdrop-blur-2xl rounded-2xl sm:rounded-3xl shadow-2xl border-[1.5px] border-teal-500/50 animate-slide-up">
-        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-teal-400/70 to-transparent pointer-events-none" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-md animate-fade-in">
+      <div className="relative w-full max-w-md max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden bg-surface-900 backdrop-blur-2xl rounded-2xl sm:rounded-3xl shadow-2xl border border-surface-700 animate-slide-up">
+        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#D2F801]/70 to-transparent pointer-events-none" />
 
         {/* Pinned Header */}
-        <div className="flex-shrink-0 flex items-center justify-between gap-3 px-4 py-3.5 sm:px-6 sm:py-4 border-b border-surface-700/50 bg-gradient-to-r from-teal-500/10 via-emerald-500/5 to-transparent">
+        <div className="flex-shrink-0 flex items-center justify-between gap-3 px-4 py-3.5 sm:px-6 sm:py-4 border-b border-surface-700 bg-surface-800/40">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-600 to-emerald-800 border border-teal-400/30 text-teal-100 flex items-center justify-center shadow-lg flex-shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-[#D2F801] text-[#0B0D11] flex items-center justify-center shadow-lg flex-shrink-0">
               <HiOutlineRefresh className="w-5 h-5 animate-spin" style={{ animationDuration: '8s' }} />
             </div>
             <div className="min-w-0">
@@ -150,28 +150,28 @@ const RenewModal = ({ isOpen, onClose, currentSub, onRenewed }) => {
                   onClick={() => setSelectedPlanId(pId)}
                   className={`p-3.5 sm:p-4 rounded-2xl border-[1.5px] transition-all cursor-pointer flex items-center justify-between gap-3 ${
                     isSelected
-                      ? 'border-emerald-500 bg-emerald-500/15 shadow-md shadow-emerald-950/20'
-                      : 'border-surface-700/60 bg-surface-800/40 hover:border-teal-500/40'
+                      ? 'border-[#D2F801] bg-[#D2F801]/10 shadow-md'
+                      : 'border-surface-700 bg-surface-800/40 hover:border-surface-500'
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div
                       className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                        isSelected ? 'border-emerald-500' : 'border-surface-500'
+                        isSelected ? 'border-[#3F5C00] dark:border-[#D2F801]' : 'border-surface-500'
                       }`}
                     >
-                      {isSelected && <div className="w-2 h-2 rounded-full bg-emerald-500" />}
+                      {isSelected && <div className="w-2 h-2 rounded-full bg-[#3F5C00] dark:bg-[#D2F801]" />}
                     </div>
                     <div className="min-w-0">
                       <h4 className="text-xs sm:text-sm font-bold text-surface-100 truncate">{plan.title}</h4>
-                      <span className="text-[11px] text-teal-600 dark:text-teal-400 font-semibold block">
+                      <span className="text-[11px] text-teal-400 font-semibold block">
                         {plan.billingCycle}
                       </span>
                     </div>
                   </div>
 
                   <div className="text-right flex-shrink-0">
-                    <span className="text-base sm:text-lg font-display font-black text-emerald-600 dark:text-emerald-400">
+                    <span className="text-base sm:text-lg font-display font-black text-teal-400">
                       ₹{plan.price?.toLocaleString()}
                     </span>
                   </div>
@@ -180,23 +180,23 @@ const RenewModal = ({ isOpen, onClose, currentSub, onRenewed }) => {
             })}
           </div>
 
-          <div className="flex items-center gap-2.5 p-3 bg-teal-500/10 border border-teal-500/30 rounded-xl text-xs text-surface-200">
-            <HiOutlineShieldCheck className="w-5 h-5 text-teal-600 dark:text-teal-400 flex-shrink-0" />
+          <div className="flex items-center gap-2.5 p-3 bg-surface-800/70 border border-surface-700 rounded-xl text-xs text-surface-200">
+            <HiOutlineShieldCheck className="w-5 h-5 text-teal-400 flex-shrink-0" />
             <span>Encrypted Razorpay checkout. Immediate extension upon payment.</span>
           </div>
         </div>
 
         {/* Pinned Footer */}
-        <div className="flex-shrink-0 px-4 py-3.5 sm:px-6 sm:py-4 border-t border-surface-700/50 bg-surface-900/60">
+        <div className="flex-shrink-0 px-4 py-3.5 sm:px-6 sm:py-4 border-t border-surface-700 bg-surface-900">
           <button
             type="button"
             onClick={handleRenewPayment}
             disabled={loading}
-            className="w-full h-11 sm:h-12 bg-gradient-to-r from-emerald-600 via-teal-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-60 cursor-pointer active:scale-[0.99]"
+            className="w-full h-11 sm:h-12 btn-primary rounded-full shadow-lg flex items-center justify-center gap-2 text-sm cursor-pointer"
           >
             {loading ? (
               <>
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                 <span>Opening Razorpay...</span>
               </>
             ) : (
