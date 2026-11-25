@@ -28,6 +28,20 @@ const Topbar = ({ onMenuToggle }) => {
         .catch(() => {});
     }
   }, [user]);
+
+  const handleLogout = () => {
+    logout();
+    toast.success('Logged out successfully');
+    navigate('/login');
+  };
+
+  const roleBadgeColors = {
+    Admin: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+    HR: 'bg-teal-500/15 text-teal-300 border-teal-500/30',
+    Employee: 'bg-teal-500/15 text-teal-300 border-teal-500/30',
+    SuperAdmin: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+  };
+
   const profilePath = ADMIN_ROLES.includes(user?.role)
     ? '/admin/profile'
     : '/employee/profile';
