@@ -8,10 +8,12 @@ import {
   HiOutlineTrash,
   HiOutlinePlus,
   HiOutlineCheck,
+  HiOutlineCreditCard,
+  HiOutlineShieldCheck,
 } from 'react-icons/hi';
 
 const SuperAdminCMS = () => {
-  const [activeTab, setActiveTab] = useState('pricing'); // 'pricing' | 'clients' | 'faqs'
+  const [activeTab, setActiveTab] = useState('pricing'); // 'pricing' | 'clients' | 'faqs' | 'gateway'
 
   // Pricing Plans state
   const [pricing, setPricing] = useState({
@@ -33,9 +35,56 @@ const SuperAdminCMS = () => {
   const [newAnswer, setNewAnswer] = useState('');
   const [addingFaq, setAddingFaq] = useState(false);
 
+  // Razorpay Gateway Config state
+  const [gatewayStatus, setGatewayStatus] = useState({
+    configured: false,
+    keyId: '',
+    maskedSecret: '',
+    mode: 'unconfigured',
+    source: 'none',
+  });
+  const [rzpKeyId, setRzpKeyId] = useState('');
+  const [rzpKeySecret, setRzpKeySecret] = useState('');
+  const [savingGateway, setSavingGateway] = useState(false);
+
   useEffect(() => {
     fetchCMSData();
+    fetchGatewayConfig();
   }, []);
+
+  const fetchGatewayConfig = async () => {
+    try {
+      const { data } = await API.get('/subscription/gateway-config');
+      if (data.success) {
+        setGatewayStatus(data);
+        if (data.keyId) setRzpKeyId(data.keyId);
+      }
+    } catch {
+      // ignore initial load error
+    }
+  };
+
+  const handleSaveGateway = async (e) => {
+    e.preventDefault();
+    if (!rzpKeyId.trim() || !rzpKeySecret.trim()) {
+      toast.error('Both Razorpay Key ID and Key Secret are required');
+      return;
+    }
+    setSavingGateway(true);
+    try {
+      const { data } = await API.put('/subscription/gateway-config', {
+        keyId: rzpKeyId.trim(),
+        keySecret: rzpKeySecret.trim(),
+      });
+      toast.success(data.message || 'Razorpay credentials verified and activated! 💳');
+      setRzpKeySecret('');
+      fetchGatewayConfig();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to save Razorpay credentials');
+    } finally {
+      setSavingGateway(false);
+    }
+  };
 
   const fetchCMSData = async () => {
     try {
@@ -145,7 +194,7 @@ const SuperAdminCMS = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex rounded-2xl p-1 bg-surface-900 border border-surface-800 w-fit">
+      <div className="flex flex-wrap gap-1 rounded-2xl p-1 bg-surface-900 border border-surface-800 w-fit">
         <button
           onClick={() => setActiveTab('pricing')}
           className={`flex items-center gap-2 px-5 py-2.5 text-xs font-bold rounded-xl transition-all ${
@@ -180,6 +229,18 @@ const SuperAdminCMS = () => {
         >
           <HiOutlineQuestionMarkCircle className="w-4 h-4" />
           <span>Questions &amp; Answers (FAQs)</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('gateway')}
+          className={`flex items-center gap-2 px-5 py-2.5 text-xs font-bold rounded-xl transition-all ${
+            activeTab === 'gateway'
+              ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-md'
+              : 'text-surface-400 hover:text-surface-200'
+          }`}
+        >
+          <HiOutlineCreditCard className="w-4 h-4" />
+          <span>Razorpay Gateway</span>
         </button>
       </div>
 
@@ -506,6 +567,119 @@ const SuperAdminCMS = () => {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB 4: RAZORPAY GATEWAY SETTINGS ── */}
+      {activeTab === 'gateway' && (
+        <div className="space-y-6 max-w-2xl">
+          <div className="liquid-glass p-6 rounded-3xl border border-teal-500/30 space-y-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-teal-500/15 border border-teal-500/30 flex items-center justify-center text-teal-400">
+                  <HiOutlineCreditCard className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-surface-100">Razorpay Checkout Configuration</h3>
+                  <p className="text-xs text-surface-400">
+                    Manage your live or test Razorpay API Key ID and Secret safely
+                  </p>
+                </div>
+              </div>
+
+              <span
+                className={`px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider border ${
+                  gatewayStatus.configured
+                    ? gatewayStatus.mode === 'live'
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                      : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                    : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                }`}
+              >
+                {gatewayStatus.configured
+                  ? gatewayStatus.mode === 'live'
+                    ? '🟢 Live Mode'
+                    : '🧪 Test Mode'
+                  : '⚠️ Not Configured'}
+              </span>
+            </div>
+
+            {gatewayStatus.configured && (
+              <div className="p-4 rounded-2xl bg-surface-900/60 border border-surface-800 space-y-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-surface-400">Active Key ID:</span>
+                  <span className="font-mono font-bold text-teal-400">{gatewayStatus.keyId}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-surface-400">Secret Status:</span>
+                  <span className="font-mono text-surface-300">{gatewayStatus.maskedSecret}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-surface-400">Config Source:</span>
+                  <span className="uppercase font-bold text-[10px] px-2 py-0.5 rounded bg-surface-800 text-surface-300">
+                    {gatewayStatus.source}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveGateway} autoComplete="off" className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-surface-300 mb-1.5">
+                  Razorpay Key ID
+                </label>
+                <input
+                  type="text"
+                  autoComplete="off"
+                  value={rzpKeyId}
+                  onChange={(e) => setRzpKeyId(e.target.value)}
+                  placeholder="rzp_test_... or rzp_live_..."
+                  required
+                  className="input-field text-xs h-10 bg-surface-900/60 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-surface-300 mb-1.5">
+                  Razorpay Key Secret
+                </label>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={rzpKeySecret}
+                  onChange={(e) => setRzpKeySecret(e.target.value)}
+                  placeholder="Enter Razorpay Key Secret to update"
+                  required
+                  className="input-field text-xs h-10 bg-surface-900/60 font-mono"
+                />
+              </div>
+
+              <div className="flex items-center gap-2.5 p-3 rounded-xl bg-teal-500/10 border border-teal-500/30 text-[11px] text-surface-300">
+                <HiOutlineShieldCheck className="w-5 h-5 text-teal-400 flex-shrink-0" />
+                <span>
+                  Credentials are verified directly with Razorpay API servers before activation so checkout stays uninterrupted.
+                </span>
+              </div>
+
+              <button
+                type="submit"
+                disabled={savingGateway}
+                className="px-6 py-2.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-lg disabled:opacity-60 cursor-pointer"
+              >
+                {savingGateway ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Verifying with Razorpay...</span>
+                  </>
+                ) : (
+                  <>
+                    <HiOutlineCheck className="w-4 h-4" />
+                    <span>Verify &amp; Save Razorpay Keys</span>
+                  </>
+                )}
+              </button>
+            </form>
           </div>
         </div>
       )}

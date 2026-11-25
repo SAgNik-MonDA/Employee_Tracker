@@ -36,17 +36,26 @@ const DashboardLayout = () => {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Topbar onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
 
-        {/* 5-Day Expiration / Grace Period Urgent Banner */}
-        {subStatus && (subStatus.isExpiringSoon || subStatus.isGracePeriod) && (
+        {/* 5-Day Expiration / Grace Period / Expired Urgent Banner */}
+        {subStatus && (subStatus.isExpiringSoon || subStatus.isGracePeriod || subStatus.isExpired) && (
           <div className="bg-gradient-to-r from-amber-950/90 via-red-950/80 to-amber-950/90 border-b border-amber-500/40 px-4 py-2.5 flex items-center justify-between text-xs text-amber-200 shadow-md">
             <div className="flex items-center gap-2.5">
               <span className="text-base animate-bounce">⚠️</span>
               <span>
-                <strong>Subscription Alert:</strong> Your plan expires in{' '}
-                <strong className="text-white font-mono">
-                  {subStatus.daysRemaining > 0 ? `${subStatus.daysRemaining} days` : '0 days (Grace Period Active)'}
-                </strong>
-                . Renew today to keep your workspace and team running with zero interruption.
+                <strong>Subscription Alert:</strong>{' '}
+                {subStatus.isExpired ? (
+                  <>
+                    Your corporate subscription has <strong className="text-rose-300">expired</strong>. Team access is paused until you renew. All data remains safe.
+                  </>
+                ) : (
+                  <>
+                    Your plan expires in{' '}
+                    <strong className="text-white font-mono">
+                      {subStatus.daysRemaining > 0 ? `${subStatus.daysRemaining} days` : '0 days (Grace Period Active)'}
+                    </strong>
+                    . Renew today to keep your workspace and team running with zero interruption.
+                  </>
+                )}
               </span>
             </div>
             <button
@@ -70,7 +79,7 @@ const DashboardLayout = () => {
         isOpen={showRenewModal}
         onClose={() => setShowRenewModal(false)}
         currentSub={subStatus}
-        onRenewed={(updated) => setSubStatus((prev) => ({ ...prev, ...updated, isExpiringSoon: false, isGracePeriod: false }))}
+        onRenewed={(updated) => setSubStatus((prev) => ({ ...prev, ...updated, isExpiringSoon: false, isGracePeriod: false, isExpired: false }))}
       />
     </div>
   );

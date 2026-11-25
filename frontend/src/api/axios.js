@@ -13,7 +13,7 @@ API.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle 401 responses (auto-logout)
+// Handle 401 & expired-subscription 403 responses
 API.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -21,6 +21,17 @@ API.interceptors.response.use(
       sessionStorage.removeItem('user');
       sessionStorage.removeItem('token');
       window.location.href = '/login';
+    } else if (error.response && error.response.status === 403 && error.response.data?.subscriptionExpired) {
+      try {
+        const storedUser = JSON.parse(sessionStorage.getItem('user') || '{}');
+        if (storedUser?.role && storedUser.role !== 'Admin' && storedUser.role !== 'SuperAdmin') {
+          sessionStorage.removeItem('user');
+          sessionStorage.removeItem('token');
+          window.location.href = '/login';
+        }
+      } catch {
+        // ignore storage parse failure
+      }
     }
     return Promise.reject(error);
   }

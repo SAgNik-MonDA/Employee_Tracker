@@ -3,18 +3,81 @@ const crypto = require('crypto');
 const Subscription = require('../models/Subscription');
 const User = require('../models/User');
 const LandingContent = require('../models/LandingContent');
+const SystemSettings = require('../models/SystemSettings');
+const sendEmail = require('../utils/sendEmail');
 const ExcelJS = require('exceljs');
 const jwt = require('jsonwebtoken');
 
-// Helper to get Razorpay instance
-const getRazorpayInstance = () => {
-  const key_id = process.env.RAZORPAY_KEY_ID;
-  const key_secret = process.env.RAZORPAY_KEY_SECRET;
+// Helper to resolve Razorpay credentials from env or SuperAdmin DB config
+const getRazorpayCredentials = async () => {
+  const setting = await SystemSettings.findOne({ key: 'razorpay_credentials' });
+  const dbKey = setting?.value?.keyId?.trim();
+  const dbSecret = setting?.value?.keySecret?.trim();
 
-  if (key_id && key_secret && key_id !== 'rzp_test_placeholder_id') {
-    return new Razorpay({ key_id, key_secret });
+  // If explicitly updated via SuperAdmin CMS, prefer DB config so live key switching works without restart
+  if (setting?.value?.updatedViaCMS && dbKey && dbSecret) {
+    return { key_id: dbKey, key_secret: dbSecret, source: 'cms' };
   }
+
+  const envKey = process.env.RAZORPAY_KEY_ID?.trim();
+  const envSecret = process.env.RAZORPAY_KEY_SECRET?.trim();
+
+  if (envKey && envSecret && envKey !== 'rzp_test_placeholder_id' && envKey !== 'rzp_test_mock') {
+    return { key_id: envKey, key_secret: envSecret, source: 'environment' };
+  }
+
+  if (dbKey && dbSecret) {
+    return { key_id: dbKey, key_secret: dbSecret, source: 'database' };
+  }
+
   return null;
+};
+
+// Helper to get active Razorpay SDK client
+const getRazorpayClient = async () => {
+  const creds = await getRazorpayCredentials();
+  if (!creds) return null;
+  return {
+    instance: new Razorpay({ key_id: creds.key_id, key_secret: creds.key_secret }),
+    creds,
+  };
+};
+
+// Timing-safe Razorpay HMAC-SHA256 signature verification
+const verifyRazorpaySignature = (orderId, paymentId, signature, secret) => {
+  if (!orderId || !paymentId || !signature || !secret) return false;
+  const expected = crypto
+    .createHmac('sha256', secret)
+    .update(`${orderId}|${paymentId}`)
+    .digest('hex');
+  const expectedBuf = Buffer.from(expected, 'utf8');
+  const sigBuf = Buffer.from(String(signature), 'utf8');
+  if (expectedBuf.length !== sigBuf.length) return false;
+  return crypto.timingSafeEqual(expectedBuf, sigBuf);
+};
+
+// Generate collision-free sequential Admin Employee Code (ADM-001, ADM-002, ...)
+const generateUniqueAdminCode = async () => {
+  let nextAdmNum = 1;
+  const existingAdmins = await User.find({ employeeCode: /^ADM-\d+$/i }, 'employeeCode');
+  if (existingAdmins.length > 0) {
+    let maxAdm = 0;
+    existingAdmins.forEach((a) => {
+      const m = a.employeeCode.match(/^ADM-(\d+)$/i);
+      if (m) {
+        const n = parseInt(m[1], 10);
+        if (n > maxAdm) maxAdm = n;
+      }
+    });
+    nextAdmNum = maxAdm + 1;
+  }
+
+  while (true) {
+    const candidate = `ADM-${String(nextAdmNum).padStart(3, '0')}`;
+    const exists = await User.findOne({ employeeCode: candidate });
+    if (!exists) return candidate;
+    nextAdmNum++;
+  }
 };
 
 // Helper to get active pricing plans from DB (or fallback defaults)
@@ -56,48 +119,89 @@ exports.createOrder = async (req, res) => {
     }
 
     const planInfo = await getPlanPricing(planId);
-    const amountInPaise = Math.round(planInfo.price * 100);
+    const amountInPaise = Math.round(Number(planInfo.price) * 100);
+    if (!amountInPaise || amountInPaise <= 0) {
+      return res.status(400).json({ message: 'Invalid plan price configured' });
+    }
 
-    const rzp = getRazorpayInstance();
-    const keyId = process.env.RAZORPAY_KEY_ID || 'rzp_test_mock';
-
-    if (rzp) {
-      // Real Razorpay Order Creation
-      const options = {
-        amount: amountInPaise,
-        currency: 'INR',
-        receipt: `rcpt_${planId}_${Date.now()}`,
-        payment_capture: 1,
-      };
-      const order = await rzp.orders.create(options);
-      return res.json({
-        success: true,
-        orderId: order.id,
-        amount: order.amount,
-        currency: order.currency,
-        key: process.env.RAZORPAY_KEY_ID,
-        planTitle: planInfo.title,
-        price: planInfo.price,
-        isMock: false,
+    const client = await getRazorpayClient();
+    if (!client) {
+      return res.status(503).json({
+        success: false,
+        message: 'Razorpay payment gateway credentials are not configured yet.',
       });
     }
 
-    // Seamless Sandbox / Test fallback when credentials are not yet entered
-    const mockOrderId = `order_mock_${Date.now()}`;
-    return res.json({
-      success: true,
-      orderId: mockOrderId,
+    const options = {
       amount: amountInPaise,
       currency: 'INR',
-      key: keyId,
+      receipt: `rcpt_${planId}_${Date.now()}`,
+      payment_capture: 1,
+      notes: {
+        planId,
+        planTitle: planInfo.title,
+      },
+    };
+
+    const order = await client.instance.orders.create(options);
+
+    return res.json({
+      success: true,
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      key: client.creds.key_id,
       planTitle: planInfo.title,
       price: planInfo.price,
-      isMock: true,
-      notice: 'Running in sandbox mode. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in .env for live gateway.',
+      isMock: false,
     });
   } catch (error) {
     console.error('Create Razorpay Order Error:', error);
-    res.status(500).json({ message: error.message || 'Failed to create order' });
+    const msg = error?.error?.description || error.message || 'Failed to create Razorpay order';
+    res.status(500).json({ success: false, message: msg });
+  }
+};
+
+/**
+ * 1B. VERIFY RAZORPAY PAYMENT SIGNATURE (PUBLIC)
+ * POST /api/subscription/verify-payment
+ */
+exports.verifyPayment = async (req, res) => {
+  try {
+    const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
+    if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
+      return res.status(400).json({ success: false, message: 'Incomplete payment verification details' });
+    }
+
+    const creds = await getRazorpayCredentials();
+    if (!creds) {
+      return res.status(503).json({ success: false, message: 'Payment gateway not configured' });
+    }
+
+    const isValidSig = verifyRazorpaySignature(
+      razorpayOrderId,
+      razorpayPaymentId,
+      razorpaySignature,
+      creds.key_secret
+    );
+    if (!isValidSig) {
+      return res.status(400).json({ success: false, message: 'Payment signature mismatch' });
+    }
+
+    const existingSub = await Subscription.findOne({
+      $or: [{ razorpayPaymentId }, { 'history.razorpayPaymentId': razorpayPaymentId }],
+    });
+    if (existingSub) {
+      return res.status(409).json({
+        success: false,
+        message: 'This payment reference has already been used for a workspace.',
+      });
+    }
+
+    return res.json({ success: true, verified: true, razorpayPaymentId, razorpayOrderId });
+  } catch (error) {
+    console.error('Verify Payment Error:', error);
+    res.status(500).json({ success: false, message: 'Payment verification check failed' });
   }
 };
 
@@ -123,17 +227,36 @@ exports.verifyAndRegister = async (req, res) => {
       return res.status(400).json({ message: 'All registration fields are required' });
     }
 
-    // Verify Signature if live Razorpay keys are active and not mock
-    const secret = process.env.RAZORPAY_KEY_SECRET;
-    if (secret && razorpaySignature && !razorpayOrderId.startsWith('order_mock_')) {
-      const generated_signature = crypto
-        .createHmac('sha256', secret)
-        .update(`${razorpayOrderId}|${razorpayPaymentId}`)
-        .digest('hex');
+    if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
+      return res.status(400).json({
+        message: 'Razorpay payment verification data is required before creating an Admin account.',
+      });
+    }
 
-      if (generated_signature !== razorpaySignature) {
-        return res.status(400).json({ message: 'Payment verification failed: invalid signature' });
-      }
+    const creds = await getRazorpayCredentials();
+    if (!creds) {
+      return res.status(503).json({ message: 'Razorpay payment gateway is not configured' });
+    }
+
+    // Strict HMAC-SHA256 verification (no mock bypass allowed)
+    const isValidSig = verifyRazorpaySignature(
+      razorpayOrderId,
+      razorpayPaymentId,
+      razorpaySignature,
+      creds.key_secret
+    );
+    if (!isValidSig) {
+      return res.status(400).json({ message: 'Payment verification failed: invalid Razorpay signature' });
+    }
+
+    // Prevent replay attack using an already redeemed Razorpay payment ID
+    const alreadyUsed = await Subscription.findOne({
+      $or: [{ razorpayPaymentId }, { 'history.razorpayPaymentId': razorpayPaymentId }],
+    });
+    if (alreadyUsed) {
+      return res.status(409).json({
+        message: 'This Razorpay payment has already been redeemed for another company account.',
+      });
     }
 
     // Check if user already exists
@@ -141,15 +264,14 @@ exports.verifyAndRegister = async (req, res) => {
     const existingUser = await User.findOne({ email: cleanEmail });
     if (existingUser) {
       return res.status(400).json({
-        message: 'An account with this email already exists. Please sign in or use another email.',
+        message: 'An account with this email already exists. Please use a different work email for this company.',
       });
     }
 
     const planInfo = await getPlanPricing(planId);
 
-    // Calculate sequential employee code for Admin
-    const adminCount = await User.countDocuments({ role: 'Admin' });
-    const employeeCode = `ADM-${String(adminCount + 1).padStart(3, '0')}`;
+    // Generate collision-free Admin Employee Code (ADM-001, ADM-002, ...)
+    const employeeCode = await generateUniqueAdminCode();
 
     // Create the Company Admin User
     const adminUser = await User.create({
@@ -162,6 +284,7 @@ exports.verifyAndRegister = async (req, res) => {
       department: 'Executive Board',
       phone: phone ? phone.trim() : '',
       companyName: companyName.trim(),
+      isFirstLogin: false,
     });
 
     // Link companyId to their own ID
@@ -172,7 +295,6 @@ exports.verifyAndRegister = async (req, res) => {
     const startDate = new Date();
     const endDate = new Date(startDate.getTime() + planInfo.durationDays * 24 * 60 * 60 * 1000);
 
-    const paymentRef = razorpayPaymentId || `pay_mock_${Date.now()}`;
     const subscription = await Subscription.create({
       companyId: adminUser._id,
       companyName: adminUser.companyName,
@@ -186,9 +308,9 @@ exports.verifyAndRegister = async (req, res) => {
       status: 'active',
       startDate,
       endDate,
-      razorpayOrderId: razorpayOrderId || '',
-      razorpayPaymentId: paymentRef,
-      razorpaySignature: razorpaySignature || '',
+      razorpayOrderId,
+      razorpayPaymentId,
+      razorpaySignature,
       history: [
         {
           planId,
@@ -197,10 +319,39 @@ exports.verifyAndRegister = async (req, res) => {
           paymentDate: startDate,
           startDate,
           endDate,
-          razorpayPaymentId: paymentRef,
+          razorpayPaymentId,
         },
       ],
     });
+
+    // Dispatch onboarding & invoice confirmation email with Employee Code
+    const expiryStr = endDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    sendEmail({
+      to: adminUser.email,
+      subject: `🎉 Welcome to Employee Tracker Enterprise — ${adminUser.companyName} Workspace Activated`,
+      html: `
+        <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:0 auto;background:#08252b;color:#f1f5f9;border-radius:16px;overflow:hidden;border:1px solid #14b8a6;">
+          <div style="background:linear-gradient(135deg,#0d9488,#042f2e);padding:32px;text-align:center;">
+            <h1 style="margin:0;color:#ffffff;font-size:22px;">ENTERPRISE WORKSPACE ACTIVATED</h1>
+            <p style="margin:6px 0 0;color:#99f6e4;font-size:13px;font-weight:600;">Subscription Confirmed via Razorpay</p>
+          </div>
+          <div style="padding:30px;">
+            <p style="font-size:15px;color:#e2e8f0;margin-top:0;">Dear <strong>${adminUser.name}</strong>,</p>
+            <p style="font-size:14px;color:#94a3b8;line-height:1.6;">
+              Your corporate subscription for <strong>${adminUser.companyName}</strong> is now live. Save your Admin credentials below to sign in anytime:
+            </p>
+            <div style="background:#0f172a;border:1px solid #14b8a6;border-radius:12px;padding:18px;margin:20px 0;">
+              <p style="margin:4px 0;font-size:13px;color:#94a3b8;">Admin Employee Code: <strong style="color:#2dd4bf;font-size:16px;">${adminUser.employeeCode}</strong></p>
+              <p style="margin:4px 0;font-size:13px;color:#94a3b8;">Work Email: <strong style="color:#f8fafc;">${adminUser.email}</strong></p>
+              <p style="margin:4px 0;font-size:13px;color:#94a3b8;">Active Plan: <strong style="color:#34d399;">${planInfo.title} (₹${planInfo.price})</strong></p>
+              <p style="margin:4px 0;font-size:13px;color:#94a3b8;">Valid Until: <strong style="color:#f8fafc;">${expiryStr}</strong></p>
+              <p style="margin:4px 0;font-size:12px;color:#64748b;">Razorpay Payment ID: ${razorpayPaymentId}</p>
+            </div>
+            <p style="font-size:13px;color:#94a3b8;">You can now add employees, configure shifts, and automate statutory payroll from your Admin Dashboard.</p>
+          </div>
+        </div>
+      `,
+    }).catch(() => {});
 
     // Generate JWT token for auto login
     const token = jwt.sign(
@@ -228,6 +379,7 @@ exports.verifyAndRegister = async (req, res) => {
         startDate: subscription.startDate,
         endDate: subscription.endDate,
         daysRemaining: subscription.daysRemaining,
+        razorpayPaymentId,
       },
     });
   } catch (error) {
@@ -303,22 +455,37 @@ exports.renewSubscription = async (req, res) => {
     const { planId, razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
     const companyId = req.user.companyId || req.user._id;
 
+    if (!planId || !razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
+      return res.status(400).json({ message: 'Plan ID and verified Razorpay payment details are required' });
+    }
+
     const subscription = await Subscription.findOne({ companyId });
     if (!subscription) {
       return res.status(404).json({ message: 'No existing subscription record found' });
     }
 
-    // Verify Signature if live Razorpay keys are active and not mock
-    const secret = process.env.RAZORPAY_KEY_SECRET;
-    if (secret && razorpaySignature && razorpayOrderId && !razorpayOrderId.startsWith('order_mock_')) {
-      const generated_signature = crypto
-        .createHmac('sha256', secret)
-        .update(`${razorpayOrderId}|${razorpayPaymentId}`)
-        .digest('hex');
+    const creds = await getRazorpayCredentials();
+    if (!creds) {
+      return res.status(503).json({ message: 'Razorpay payment gateway is not configured' });
+    }
 
-      if (generated_signature !== razorpaySignature) {
-        return res.status(400).json({ message: 'Renewal payment verification failed: invalid signature' });
-      }
+    // Strict HMAC-SHA256 signature verification (no mock bypass allowed)
+    const isValidSig = verifyRazorpaySignature(
+      razorpayOrderId,
+      razorpayPaymentId,
+      razorpaySignature,
+      creds.key_secret
+    );
+    if (!isValidSig) {
+      return res.status(400).json({ message: 'Renewal payment verification failed: invalid signature' });
+    }
+
+    // Prevent payment replay
+    const alreadyRedeemed = await Subscription.findOne({
+      $or: [{ razorpayPaymentId }, { 'history.razorpayPaymentId': razorpayPaymentId }],
+    });
+    if (alreadyRedeemed) {
+      return res.status(409).json({ message: 'This payment reference has already been redeemed' });
     }
 
     const planInfo = await getPlanPricing(planId);
@@ -329,8 +496,6 @@ exports.renewSubscription = async (req, res) => {
     const newStart = currentEnd > now ? currentEnd : now;
     const newEnd = new Date(newStart.getTime() + planInfo.durationDays * 24 * 60 * 60 * 1000);
 
-    const paymentRef = razorpayPaymentId || `pay_renew_${Date.now()}`;
-
     // Update subscription
     subscription.planId = planId;
     subscription.planName = planInfo.title;
@@ -338,9 +503,9 @@ exports.renewSubscription = async (req, res) => {
     subscription.startDate = newStart;
     subscription.endDate = newEnd;
     subscription.status = 'active';
-    subscription.razorpayOrderId = razorpayOrderId || '';
-    subscription.razorpayPaymentId = paymentRef;
-    subscription.razorpaySignature = razorpaySignature || '';
+    subscription.razorpayOrderId = razorpayOrderId;
+    subscription.razorpayPaymentId = razorpayPaymentId;
+    subscription.razorpaySignature = razorpaySignature;
 
     // Append to renewal history
     subscription.history.push({
@@ -350,10 +515,31 @@ exports.renewSubscription = async (req, res) => {
       paymentDate: now,
       startDate: newStart,
       endDate: newEnd,
-      razorpayPaymentId: paymentRef,
+      razorpayPaymentId,
     });
 
     await subscription.save();
+
+    // Send renewal receipt email
+    sendEmail({
+      to: subscription.adminEmail,
+      subject: `✅ Subscription Renewed — ${subscription.companyName} (${planInfo.title})`,
+      html: `
+        <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:580px;margin:0 auto;background:#08252b;color:#f1f5f9;border-radius:16px;overflow:hidden;border:1px solid #14b8a6;">
+          <div style="background:linear-gradient(135deg,#0d9488,#042f2e);padding:28px;text-align:center;">
+            <h1 style="margin:0;color:#ffffff;font-size:20px;">SUBSCRIPTION RENEWED SUCCESSFULLY</h1>
+          </div>
+          <div style="padding:26px;">
+            <p style="font-size:15px;color:#e2e8f0;margin-top:0;">Dear <strong>${subscription.adminName}</strong>,</p>
+            <p style="font-size:14px;color:#94a3b8;">Your corporate plan <strong>${planInfo.title}</strong> (₹${planInfo.price}) has been renewed seamlessly via Razorpay.</p>
+            <div style="background:#0f172a;border:1px solid #14b8a6;border-radius:10px;padding:14px;margin:16px 0;">
+              <p style="margin:4px 0;font-size:13px;color:#94a3b8;">New Expiry Date: <strong style="color:#34d399;">${newEnd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</strong></p>
+              <p style="margin:4px 0;font-size:12px;color:#64748b;">Payment Reference: ${razorpayPaymentId}</p>
+            </div>
+          </div>
+        </div>
+      `,
+    }).catch(() => {});
 
     res.json({
       success: true,
@@ -619,5 +805,93 @@ exports.exportSubscriptionsExcel = async (req, res) => {
   } catch (error) {
     console.error('Export Subscriptions Excel Error:', error);
     res.status(500).json({ message: 'Failed to export subscriptions' });
+  }
+};
+
+/**
+ * 8. GET RAZORPAY GATEWAY CONFIG (SUPERADMIN ONLY)
+ * GET /api/subscription/gateway-config
+ */
+exports.getGatewayConfig = async (req, res) => {
+  try {
+    const creds = await getRazorpayCredentials();
+    if (!creds) {
+      return res.json({
+        success: true,
+        configured: false,
+        keyId: '',
+        maskedSecret: '',
+        mode: 'unconfigured',
+        source: 'none',
+      });
+    }
+
+    const mask = (str) =>
+      str && str.length > 8 ? `${str.slice(0, 4)}${'•'.repeat(Math.max(4, str.length - 8))}${str.slice(-4)}` : '••••••••';
+
+    res.json({
+      success: true,
+      configured: true,
+      keyId: creds.key_id,
+      maskedSecret: mask(creds.key_secret),
+      mode: creds.key_id.startsWith('rzp_live_') ? 'live' : 'test',
+      source: creds.source,
+    });
+  } catch (error) {
+    console.error('Get Gateway Config Error:', error);
+    res.status(500).json({ message: 'Failed to load payment gateway settings' });
+  }
+};
+
+/**
+ * 9. UPDATE RAZORPAY GATEWAY CREDENTIALS (SUPERADMIN ONLY)
+ * PUT /api/subscription/gateway-config
+ */
+exports.updateGatewayConfig = async (req, res) => {
+  try {
+    const { keyId, keySecret } = req.body;
+    const cleanKey = keyId ? keyId.trim() : '';
+    const cleanSecret = keySecret ? keySecret.trim() : '';
+
+    if (!cleanKey || !cleanSecret) {
+      return res.status(400).json({ message: 'Both Razorpay Key ID and Key Secret are required' });
+    }
+    if (!cleanKey.startsWith('rzp_test_') && !cleanKey.startsWith('rzp_live_')) {
+      return res.status(400).json({ message: 'Invalid Razorpay Key ID format (must start with rzp_test_ or rzp_live_)' });
+    }
+
+    // Verify credentials against Razorpay API before persisting
+    const testClient = new Razorpay({ key_id: cleanKey, key_secret: cleanSecret });
+    try {
+      await testClient.orders.all({ count: 1 });
+    } catch (rzpErr) {
+      const desc = rzpErr?.error?.description || rzpErr.message || 'Authentication with Razorpay failed';
+      return res.status(400).json({ message: `Invalid Razorpay credentials: ${desc}` });
+    }
+
+    await SystemSettings.findOneAndUpdate(
+      { key: 'razorpay_credentials' },
+      {
+        key: 'razorpay_credentials',
+        value: {
+          keyId: cleanKey,
+          keySecret: cleanSecret,
+          mode: cleanKey.startsWith('rzp_live_') ? 'live' : 'test',
+          updatedViaCMS: true,
+          updatedAt: new Date(),
+        },
+      },
+      { upsert: true, new: true }
+    );
+
+    res.json({
+      success: true,
+      message: `Razorpay ${cleanKey.startsWith('rzp_live_') ? 'LIVE' : 'TEST'} credentials verified & activated! 💳`,
+      mode: cleanKey.startsWith('rzp_live_') ? 'live' : 'test',
+      keyId: cleanKey,
+    });
+  } catch (error) {
+    console.error('Update Gateway Config Error:', error);
+    res.status(500).json({ message: 'Failed to save payment gateway credentials' });
   }
 };

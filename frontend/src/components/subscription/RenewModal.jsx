@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import API from '../../api/axios';
 import toast from 'react-hot-toast';
+import { loadRazorpayScript } from '../../utils/loadRazorpay';
 import {
   HiOutlineX,
-  HiOutlineCheckCircle,
   HiOutlineShieldCheck,
   HiOutlineCreditCard,
-  HiOutlineSparkles,
   HiOutlineRefresh,
 } from 'react-icons/hi';
 
 const RenewModal = ({ isOpen, onClose, currentSub, onRenewed }) => {
+  const { user } = useAuth();
   const [plans, setPlans] = useState({
     monthly: { price: 999, title: 'Monthly Flex', billingCycle: '1 Month' },
     yearly: { price: 9999, title: 'Annual Growth', billingCycle: '1 Year (Save 38%)', isPopular: true },
@@ -22,50 +23,44 @@ const RenewModal = ({ isOpen, onClose, currentSub, onRenewed }) => {
 
   useEffect(() => {
     if (isOpen) {
+      if (currentSub?.planId) setSelectedPlanId(currentSub.planId);
       API.get('/landing/public-content')
         .then(({ data }) => {
           if (data.pricingPlans) setPlans(data.pricingPlans);
         })
         .catch(() => {});
     }
-  }, [isOpen]);
+  }, [isOpen, currentSub?.planId]);
 
   if (!isOpen) return null;
 
   const handleRenewPayment = async () => {
     setLoading(true);
     try {
+      const sdkLoaded = await loadRazorpayScript();
+      if (!sdkLoaded || !window.Razorpay) {
+        toast.error('Unable to load Razorpay Checkout. Please check your internet connection or disable ad-blockers.');
+        setLoading(false);
+        return;
+      }
+
       const selected = plans[selectedPlanId];
       const { data } = await API.post('/subscription/create-order', {
         planId: selectedPlanId,
       });
 
-      if (!data.success) {
-        toast.error('Unable to create checkout order');
+      if (!data.success || !data.orderId || !data.key || data.isMock) {
+        toast.error(data.message || 'Payment gateway is currently unavailable.');
+        setLoading(false);
         return;
       }
 
-      // If mock/sandbox (Razorpay keys not yet configured)
-      if (data.isMock || !window.Razorpay) {
-        const renewRes = await API.post('/subscription/renew', {
-          planId: selectedPlanId,
-          razorpayOrderId: data.orderId,
-          razorpayPaymentId: `pay_mock_${Date.now()}`,
-          razorpaySignature: 'mock_sig',
-        });
-        toast.success(renewRes.data.message || 'Subscription renewed successfully! 🎉');
-        if (onRenewed) onRenewed(renewRes.data.subscription);
-        onClose();
-        return;
-      }
-
-      // Live Razorpay Gateway
       const options = {
         key: data.key,
         amount: data.amount,
-        currency: data.currency,
+        currency: data.currency || 'INR',
         name: 'Employee Tracker Enterprise',
-        description: `Renew Subscription: ${selected.title}`,
+        description: `Renew Subscription: ${selected?.title || data.planTitle}`,
         order_id: data.orderId,
         handler: async function (response) {
           try {
@@ -79,23 +74,36 @@ const RenewModal = ({ isOpen, onClose, currentSub, onRenewed }) => {
             if (onRenewed) onRenewed(renewRes.data.subscription);
             onClose();
           } catch (err) {
-            toast.error(err.response?.data?.message || 'Failed to update subscription');
+            toast.error(err.response?.data?.message || 'Failed to verify and update subscription');
+          } finally {
+            setLoading(false);
           }
+        },
+        prefill: {
+          name: user?.name || '',
+          email: user?.email || '',
+          contact: user?.phone || '',
         },
         theme: {
           color: '#0d9488',
+        },
+        modal: {
+          ondismiss: function () {
+            setLoading(false);
+            toast('Renewal checkout cancelled', { icon: 'ℹ️' });
+          },
         },
       };
 
       const rzp = new window.Razorpay(options);
       rzp.on('payment.failed', function (resp) {
-        toast.error(resp.error.description || 'Payment was declined');
+        setLoading(false);
+        toast.error(resp.error?.description || 'Payment was declined');
       });
       rzp.open();
     } catch (error) {
       console.error('Renew error:', error);
       toast.error(error.response?.data?.message || 'Payment initiation failed');
-    } finally {
       setLoading(false);
     }
   };
@@ -133,26 +141,28 @@ const RenewModal = ({ isOpen, onClose, currentSub, onRenewed }) => {
                 onClick={() => setSelectedPlanId(pId)}
                 className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
                   isSelected
-                    ? 'border-emerald-400 bg-emerald-950/40 shadow-lg shadow-emerald-950/20'
+                    ? 'border-emerald-500 bg-emerald-500/15 shadow-lg shadow-emerald-950/20'
                     : 'border-surface-700/60 bg-surface-900/50 hover:border-teal-500/40'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <div
                     className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                      isSelected ? 'border-emerald-400' : 'border-surface-600'
+                      isSelected ? 'border-emerald-500' : 'border-surface-600'
                     }`}
                   >
-                    {isSelected && <div className="w-2 h-2 rounded-full bg-emerald-400" />}
+                    {isSelected && <div className="w-2 h-2 rounded-full bg-emerald-500" />}
                   </div>
                   <div>
                     <h4 className="text-xs font-bold text-surface-100">{plan.title}</h4>
-                    <span className="text-[10px] text-teal-400 font-semibold">{plan.billingCycle}</span>
+                    <span className="text-[10px] text-teal-500 dark:text-teal-400 font-semibold">
+                      {plan.billingCycle}
+                    </span>
                   </div>
                 </div>
 
                 <div className="text-right">
-                  <span className="text-base font-display font-black text-emerald-400">
+                  <span className="text-base font-display font-black text-emerald-500 dark:text-emerald-400">
                     ₹{plan.price?.toLocaleString()}
                   </span>
                 </div>
@@ -162,8 +172,8 @@ const RenewModal = ({ isOpen, onClose, currentSub, onRenewed }) => {
         </div>
 
         {/* Security Notice */}
-        <div className="flex items-center gap-2 p-2.5 bg-teal-950/30 border border-teal-500/30 rounded-xl text-[11px] text-teal-200 mb-5">
-          <HiOutlineShieldCheck className="w-4 h-4 text-teal-400 flex-shrink-0" />
+        <div className="flex items-center gap-2 p-2.5 bg-teal-500/10 border border-teal-500/30 rounded-xl text-[11px] text-surface-200 mb-5">
+          <HiOutlineShieldCheck className="w-4 h-4 text-teal-500 dark:text-teal-400 flex-shrink-0" />
           <span>Encrypted Razorpay checkout. Immediate extension upon payment.</span>
         </div>
 
@@ -173,7 +183,10 @@ const RenewModal = ({ isOpen, onClose, currentSub, onRenewed }) => {
           className="w-full h-11 bg-gradient-to-r from-emerald-600 via-teal-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold rounded-xl shadow-xl transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-60 cursor-pointer"
         >
           {loading ? (
-            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            <>
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <span>Opening Razorpay...</span>
+            </>
           ) : (
             <>
               <HiOutlineCreditCard className="w-4 h-4" />
