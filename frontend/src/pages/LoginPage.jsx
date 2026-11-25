@@ -58,11 +58,20 @@ const LoginPage = () => {
     setEmployeeCode('');
     setEmail('');
     setPassword('');
-    const clearTimer = setTimeout(() => {
+    const t1 = setTimeout(() => {
       setEmployeeCode('');
+      setEmail('');
       setPassword('');
-    }, 150);
-    return () => clearTimeout(clearTimer);
+    }, 50);
+    const t2 = setTimeout(() => {
+      setEmployeeCode('');
+      setEmail('');
+      setPassword('');
+    }, 250);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, []);
 
   // ── Sign In ──────────────────────────────────────────────────────────────
@@ -394,9 +403,11 @@ const LoginPage = () => {
               {/* ── MODE A: CREDENTIALS SIGN IN ────────────────────────────── */}
               {loginMode === 'credentials' && (
                 <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
-                  {/* Hidden inputs to divert aggressive browser password autofill */}
-                  <input type="text" name="fake_username_remember" className="hidden" tabIndex="-1" autoComplete="off" />
-                  <input type="password" name="fake_password_remember" className="hidden" tabIndex="-1" autoComplete="new-password" />
+                  {/* Offscreen decoy inputs to neutralize aggressive browser password manager auto-injection */}
+                  <div className="sr-only opacity-0 absolute -top-[9999px] -left-[9999px] pointer-events-none" aria-hidden="true">
+                    <input type="text" name="fake_username_remember" tabIndex="-1" autoComplete="off" />
+                    <input type="password" name="fake_password_remember" tabIndex="-1" autoComplete="new-password" />
+                  </div>
 
                   {/* Employee Code */}
                   <div>

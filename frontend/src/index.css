@@ -101,6 +101,31 @@ body {
   background: var(--scrollbar-thumb-hover);
 }
 
+/* ===== Autofill Custom Dark/Light Styling ===== */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px #0f172a inset !important;
+  -webkit-text-fill-color: #f1f5f9 !important;
+  caret-color: #14b8a6 !important;
+  border-radius: inherit !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+.light input:-webkit-autofill,
+.light input:-webkit-autofill:hover, 
+.light input:-webkit-autofill:focus, 
+.light input:-webkit-autofill:active,
+.light textarea:-webkit-autofill,
+.light select:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+  -webkit-text-fill-color: #0f172a !important;
+  caret-color: #0d9488 !important;
+}
+
 /* ===== Glass Card ===== */
 @layer components {
   /* ── Liquid Glass & Modern Glassmorphism ─────────────────────────── */

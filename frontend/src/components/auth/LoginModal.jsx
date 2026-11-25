@@ -57,6 +57,23 @@ const LoginModal = ({ isOpen, onClose }) => {
       setPassword('');
       setShowForgotModal(false);
       setForgotSent(false);
+
+      const t1 = setTimeout(() => {
+        setEmployeeCode('');
+        setEmail('');
+        setPassword('');
+      }, 50);
+
+      const t2 = setTimeout(() => {
+        setEmployeeCode('');
+        setEmail('');
+        setPassword('');
+      }, 250);
+
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+      };
     }
   }, [isOpen]);
 
@@ -262,7 +279,13 @@ const LoginModal = ({ isOpen, onClose }) => {
             </div>
 
             {loginMode === 'credentials' ? (
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
+                {/* Offscreen decoy inputs to neutralize aggressive browser password manager auto-injection */}
+                <div className="sr-only opacity-0 absolute -top-[9999px] -left-[9999px] pointer-events-none" aria-hidden="true">
+                  <input type="text" name="fake_username_remember" tabIndex="-1" autoComplete="off" />
+                  <input type="password" name="fake_password_remember" tabIndex="-1" autoComplete="new-password" />
+                </div>
+
                 {/* Employee Code */}
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-surface-300 mb-1.5">
@@ -273,7 +296,10 @@ const LoginModal = ({ isOpen, onClose }) => {
                       <HiOutlineIdentification className="w-4 h-4" />
                     </div>
                     <input
+                      id="modal_employee_code"
+                      name="emp_code_field_no_autofill"
                       type="text"
+                      autoComplete="off"
                       value={employeeCode}
                       onChange={(e) => setEmployeeCode(e.target.value)}
                       placeholder="e.g. EMP-001 or SUPERADMIN"
@@ -293,7 +319,10 @@ const LoginModal = ({ isOpen, onClose }) => {
                       <HiOutlineMail className="w-4 h-4" />
                     </div>
                     <input
+                      id="modal_work_email"
+                      name="work_email_field_no_autofill"
                       type="email"
+                      autoComplete="off"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="you@company.com"
@@ -322,7 +351,10 @@ const LoginModal = ({ isOpen, onClose }) => {
                       <HiOutlineLockClosed className="w-4 h-4" />
                     </div>
                     <input
+                      id="modal_work_password"
+                      name="work_pass_field_no_autofill"
                       type={showPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
