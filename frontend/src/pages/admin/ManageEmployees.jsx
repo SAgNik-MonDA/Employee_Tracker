@@ -6,6 +6,7 @@ import UserAvatar from '../../components/common/UserAvatar';
 import BankDetailsForm from '../../components/common/BankDetailsForm';
 import MeetingStatsCard from '../../components/common/MeetingStatsCard';
 import ConfirmModal from '../../components/common/ConfirmModal';
+import AdminSelfDeleteModal from '../../components/common/AdminSelfDeleteModal';
 import toast from 'react-hot-toast';
 
 import {
@@ -213,6 +214,7 @@ const ManageEmployees = () => {
   const [submitting, setSubmitting]       = useState(false);
   const [empToDelete, setEmpToDelete]     = useState(null);
   const [deletingEmp, setDeletingEmp]     = useState(false);
+  const [showSelfDeleteModal, setShowSelfDeleteModal] = useState(false);
   const [teams, setTeams]                 = useState([]);
 
   // ── Bonus generation modal state ───────────────────────────────────────────
@@ -619,19 +621,33 @@ const ManageEmployees = () => {
                                 <HiOutlinePencil className="w-4 h-4" />
                               </button>
                             )}
+                            {/* Regular employee delete (moves to 30-day Recycle Bin) */}
                             {canDelete && emp.role !== 'Admin' && (
-                              <button onClick={() => handleDelete(emp._id, emp.name)} className="p-1.5 rounded-lg hover:bg-rose-500/20 text-rose-400 transition-colors" title="Move to Recycle Bin">
+                              <button
+                                onClick={() => handleDelete(emp._id, emp.name)}
+                                className="p-1.5 rounded-lg hover:bg-rose-500/20 text-rose-400 transition-colors"
+                                title="Move to Recycle Bin (30-day recovery)"
+                              >
                                 <HiOutlineTrash className="w-4 h-4" />
                               </button>
                             )}
-                            {emp.role === 'Admin' && (
+
+                            {/* Admin Self-Delete: Only the Admin themselves can delete their own Admin account */}
+                            {emp.role === 'Admin' && emp._id === user?._id && (
+                              <button
+                                onClick={() => setShowSelfDeleteModal(true)}
+                                className="p-1.5 rounded-lg hover:bg-rose-500/20 text-rose-400 transition-colors"
+                                title="Delete My Admin Account (Self-Delete)"
+                              >
+                                <HiOutlineTrash className="w-4 h-4" />
+                              </button>
+                            )}
+
+                            {/* Another Admin: Protected from deletion by anyone else */}
+                            {emp.role === 'Admin' && emp._id !== user?._id && (
                               <span
                                 className="p-1.5 rounded-lg text-[#3F5C00] dark:text-[#D2F801] bg-[#D2F801]/15 border border-[#84B800]/30 dark:border-[#D2F801]/30 inline-flex items-center"
-                                title={
-                                  emp._id === user?._id
-                                    ? 'Protected: Only you can delete your Admin account from My Profile'
-                                    : 'Protected: Admin accounts can only be deleted by themselves'
-                                }
+                                title="Protected: Only this Admin can delete their own account (nobody else can delete an Admin)"
                               >
                                 <HiOutlineShieldCheck className="w-4 h-4" />
                               </span>
@@ -1185,6 +1201,12 @@ const ManageEmployees = () => {
         itemName={empToDelete?.name}
         confirmText="Move to Recycle Bin"
         loading={deletingEmp}
+      />
+
+      {/* Admin Self-Delete Account Modal (Only Admin can self-delete their own account) */}
+      <AdminSelfDeleteModal
+        isOpen={showSelfDeleteModal}
+        onClose={() => setShowSelfDeleteModal(false)}
       />
     </div>
   );
