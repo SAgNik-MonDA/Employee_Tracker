@@ -83,7 +83,6 @@ const SubscribeModal = ({ isOpen, onClose, selectedPlan }) => {
   const handleInitiatePayment = async () => {
     setInitiatingPay(true);
     try {
-      // 1. Ensure Razorpay SDK is loaded
       const sdkLoaded = await loadRazorpayScript();
       if (!sdkLoaded || !window.Razorpay) {
         toast.error('Unable to load Razorpay Checkout. Please check your internet connection or disable ad-blockers.');
@@ -91,7 +90,6 @@ const SubscribeModal = ({ isOpen, onClose, selectedPlan }) => {
         return;
       }
 
-      // 2. Create real Razorpay Order on backend
       const { data } = await API.post('/subscription/create-order', {
         planId: selectedPlan.id,
       });
@@ -102,7 +100,6 @@ const SubscribeModal = ({ isOpen, onClose, selectedPlan }) => {
         return;
       }
 
-      // 3. Configure and launch official Razorpay Checkout modal
       const options = {
         key: data.key,
         amount: data.amount,
@@ -198,7 +195,6 @@ const SubscribeModal = ({ isOpen, onClose, selectedPlan }) => {
 
       const { data } = await API.post('/subscription/verify-and-register', payload);
 
-      // Persist session identically to AuthContext (sessionStorage)
       if (data.token && data.user) {
         sessionStorage.setItem('token', data.token);
         sessionStorage.setItem('user', JSON.stringify(data.user));
@@ -231,293 +227,278 @@ const SubscribeModal = ({ isOpen, onClose, selectedPlan }) => {
     navigate('/admin/dashboard');
   };
 
+  const stepMeta = {
+    pay: {
+      badge: 'Step 1 of 2',
+      title: `Subscribe to ${selectedPlan.title}`,
+      subtitle: 'Biometric attendance, payroll engine & direct finance exports',
+    },
+    register: {
+      badge: 'Step 2 of 2',
+      title: 'Set Up Enterprise Admin',
+      subtitle: 'Create your organization credentials to launch workspace',
+    },
+    success: {
+      badge: 'Activated',
+      title: 'Workspace Activated!',
+      subtitle: 'Save your Admin Employee Code below for future logins',
+    },
+  }[step];
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-      <div className="relative w-full max-w-lg liquid-glass rounded-3xl p-6 sm:p-8 shadow-2xl border-[1.5px] border-teal-500/40 overflow-y-auto max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-surface-950/75 backdrop-blur-md animate-fade-in">
+      <div className="relative w-full max-w-lg max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden bg-surface-900/95 backdrop-blur-2xl rounded-2xl sm:rounded-3xl shadow-2xl border-[1.5px] border-teal-500/50 animate-slide-up">
         {/* Top Specular Rim */}
-        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-teal-400/60 to-transparent" />
+        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-teal-400/70 to-transparent pointer-events-none" />
 
-        {/* Close Button */}
-        <button
-          onClick={step === 'success' ? handleLaunchDashboard : onClose}
-          className="absolute top-5 right-5 p-2 rounded-xl text-surface-400 hover:text-surface-100 hover:bg-surface-800/50 transition-colors"
-          aria-label="Close"
-        >
-          <HiOutlineX className="w-5 h-5" />
-        </button>
-
-        {step === 'pay' && (
-          /* Step 1: Confirm Plan & Launch Razorpay */
-          <div className="space-y-6">
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-700 to-emerald-900 border border-teal-400/30 text-teal-300 shadow-xl shadow-teal-950/40 mb-3">
-                <HiOutlineSparkles className="w-7 h-7" />
-              </div>
-              <h3 className="text-2xl font-display font-extrabold text-surface-100">
-                Subscribe to {selectedPlan.title}
-              </h3>
-              <p className="text-xs text-surface-400 mt-1">
-                Unlock automated attendance, biometric face checks, and monthly statutory payroll
-              </p>
-            </div>
-
-            {/* Plan Summary Card */}
-            <div className="bg-surface-900/60 border border-teal-500/30 rounded-2xl p-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-bold text-surface-100 text-sm">{selectedPlan.title}</h4>
-                  <p className="text-xs text-surface-400">{selectedPlan.billingCycle}</p>
-                </div>
-                <div className="text-right">
-                  <div className="text-2xl font-display font-black text-emerald-500 dark:text-emerald-400">
-                    ₹{selectedPlan.price?.toLocaleString()}
-                  </div>
-                  {selectedPlan.originalPrice && (
-                    <span className="text-xs text-surface-500 line-through">
-                      ₹{selectedPlan.originalPrice?.toLocaleString()}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="border-t border-surface-700/50 pt-3 space-y-2">
-                {selectedPlan.features?.slice(0, 4).map((f, i) => (
-                  <div key={i} className="flex items-center gap-2 text-xs text-surface-300">
-                    <HiOutlineCheckCircle className="w-4 h-4 text-teal-500 dark:text-teal-400 flex-shrink-0" />
-                    <span>{f}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Razorpay Secure Checkout Notice */}
-            <div className="flex items-center gap-3 p-3.5 bg-teal-500/10 border border-teal-500/30 rounded-xl text-xs text-surface-200">
-              <HiOutlineShieldCheck className="w-6 h-6 text-teal-500 dark:text-teal-400 flex-shrink-0" />
-              <span>
-                Encrypted Razorpay Payment Gateway. After payment verification, you will immediately set up your Company Admin account.
-              </span>
-            </div>
-
-            {/* Pay Button */}
-            <button
-              onClick={handleInitiatePayment}
-              disabled={initiatingPay || verifyingPay}
-              className="w-full h-12 bg-gradient-to-r from-teal-600 via-teal-700 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-bold rounded-xl shadow-xl shadow-teal-950/40 transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-60 cursor-pointer"
-            >
-              {initiatingPay || verifyingPay ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>{verifyingPay ? 'Verifying Payment...' : 'Opening Razorpay...'}</span>
-                </>
+        {/* ── Pinned Header ── */}
+        <div className="flex-shrink-0 flex items-center justify-between gap-3 px-4 py-3.5 sm:px-6 sm:py-4 border-b border-surface-700/50 bg-gradient-to-r from-teal-500/10 via-emerald-500/5 to-transparent">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-teal-600 to-emerald-800 border border-teal-400/30 text-teal-100 flex items-center justify-center shadow-lg flex-shrink-0">
+              {step === 'success' ? (
+                <HiOutlineCheckCircle className="w-6 h-6" />
               ) : (
-                <>
-                  <HiOutlineCreditCard className="w-5 h-5" />
-                  <span>Proceed to Pay ₹{selectedPlan.price?.toLocaleString()}</span>
-                </>
+                <HiOutlineSparkles className="w-5 h-5 sm:w-6 sm:h-6" />
               )}
-            </button>
-          </div>
-        )}
-
-        {step === 'register' && (
-          /* Step 2: Set Up Company Admin Account */
-          <div>
-            <div className="text-center mb-5">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30 text-xs font-bold mb-2">
-                <HiOutlineCheckCircle className="w-4 h-4" />
-                <span>Payment Confirmed — ₹{selectedPlan.price?.toLocaleString()}</span>
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-base sm:text-lg font-display font-extrabold text-surface-100 truncate">
+                  {stepMeta.title}
+                </h3>
+                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-500/30 whitespace-nowrap">
+                  {stepMeta.badge}
+                </span>
               </div>
-              <h3 className="text-xl font-display font-extrabold text-surface-100">
-                Set Up Your Enterprise Admin Account
-              </h3>
-              <p className="text-xs text-surface-400 mt-1">
-                You will use these credentials to log in, add employees, and manage payroll
+              <p className="text-[11px] sm:text-xs text-surface-400 truncate mt-0.5">
+                {stepMeta.subtitle}
               </p>
             </div>
-
-            <form onSubmit={handleRegisterAdmin} autoComplete="off" className="space-y-3.5">
-              {/* Offscreen decoy inputs to prevent browser auto-injection */}
-              <div className="sr-only opacity-0 absolute -top-[9999px] -left-[9999px] pointer-events-none" aria-hidden="true">
-                <input type="text" name="fake_sub_username" tabIndex="-1" autoComplete="off" />
-                <input type="password" name="fake_sub_password" tabIndex="-1" autoComplete="new-password" />
-              </div>
-
-              {/* Company Name */}
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-surface-300 mb-1">
-                  Company / Organization Name <span className="text-teal-500 dark:text-teal-400">*</span>
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-surface-400">
-                    <HiOutlineOfficeBuilding className="w-4 h-4" />
-                  </div>
-                  <input
-                    name="sub_company_name_field"
-                    type="text"
-                    autoComplete="off"
-                    value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
-                    placeholder="e.g. Acme Technologies Pvt Ltd"
-                    required
-                    className="input-field pl-10 text-sm h-10 bg-surface-900/50"
-                  />
-                </div>
-              </div>
-
-              {/* Admin Full Name */}
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-surface-300 mb-1">
-                  Managing Director / Admin Name <span className="text-teal-500 dark:text-teal-400">*</span>
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-surface-400">
-                    <HiOutlineUser className="w-4 h-4" />
-                  </div>
-                  <input
-                    name="sub_admin_name_field"
-                    type="text"
-                    autoComplete="off"
-                    value={adminName}
-                    onChange={(e) => setAdminName(e.target.value)}
-                    placeholder="e.g. Sagnik Mondal"
-                    required
-                    className="input-field pl-10 text-sm h-10 bg-surface-900/50"
-                  />
-                </div>
-              </div>
-
-              {/* Admin Work Email */}
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-surface-300 mb-1">
-                  Admin Work Email <span className="text-teal-500 dark:text-teal-400">*</span>
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-surface-400">
-                    <HiOutlineMail className="w-4 h-4" />
-                  </div>
-                  <input
-                    id="sub_admin_email_no_autofill"
-                    name="sub_admin_email_field"
-                    type="email"
-                    autoComplete="off"
-                    value={adminEmail}
-                    onChange={(e) => setAdminEmail(e.target.value)}
-                    placeholder="admin@yourcompany.com"
-                    required
-                    className="input-field pl-10 text-sm h-10 bg-surface-900/50"
-                  />
-                </div>
-              </div>
-
-              {/* Admin Password */}
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-surface-300 mb-1">
-                  Master Password <span className="text-teal-500 dark:text-teal-400">*</span>
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-surface-400">
-                    <HiOutlineLockClosed className="w-4 h-4" />
-                  </div>
-                  <input
-                    id="sub_admin_password_no_autofill"
-                    name="sub_admin_password_field"
-                    type={showPassword ? 'text' : 'password'}
-                    autoComplete="new-password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Minimum 6 characters"
-                    required
-                    minLength={6}
-                    className="input-field pl-10 pr-10 text-sm h-10 bg-surface-900/50"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-surface-400 hover:text-surface-200"
-                    tabIndex={-1}
-                  >
-                    {showPassword ? <HiOutlineEyeOff className="w-4 h-4" /> : <HiOutlineEye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Phone */}
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-surface-300 mb-1">
-                  Contact Phone Number
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-surface-400">
-                    <HiOutlinePhone className="w-4 h-4" />
-                  </div>
-                  <input
-                    name="sub_admin_phone_field"
-                    type="tel"
-                    autoComplete="off"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+91 98765 43210"
-                    className="input-field pl-10 text-sm h-10 bg-surface-900/50"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full h-11 mt-3 bg-gradient-to-r from-emerald-600 via-teal-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-60 cursor-pointer"
-              >
-                {submitting ? (
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <>
-                    <span>Complete Registration &amp; Launch Dashboard</span>
-                    <span>&rarr;</span>
-                  </>
-                )}
-              </button>
-            </form>
           </div>
-        )}
 
-        {step === 'success' && createdAccount && (
-          /* Step 3: Workspace Activated & Show Admin Employee Code */
-          <div className="space-y-5 text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-500 dark:text-emerald-400 shadow-xl">
-              <HiOutlineCheckCircle className="w-9 h-9" />
-            </div>
+          <button
+            type="button"
+            onClick={step === 'success' ? handleLaunchDashboard : onClose}
+            className="p-2 rounded-xl text-surface-400 hover:text-surface-100 hover:bg-surface-800/60 transition-colors flex-shrink-0 cursor-pointer"
+            aria-label="Close"
+          >
+            <HiOutlineX className="w-5 h-5" />
+          </button>
+        </div>
 
-            <div>
-              <h3 className="text-2xl font-display font-extrabold text-surface-100">
-                Workspace Activated! 🎉
-              </h3>
-              <p className="text-xs text-surface-400 mt-1">
-                Save your Admin Employee Code below — you will need it alongside your email &amp; password to sign in.
-              </p>
-            </div>
+        {/* ── Scrollable Body ── */}
+        <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 space-y-4">
+          {step === 'pay' && (
+            <>
+              {/* Plan Summary Card with Matching Green/Teal Border */}
+              <div className="bg-surface-800/50 border-[1.5px] border-teal-500/40 rounded-2xl p-4 sm:p-5 space-y-3.5 shadow-sm">
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div>
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-teal-600 dark:text-teal-400 block mb-0.5">
+                      Selected Plan
+                    </span>
+                    <h4 className="font-display font-bold text-surface-100 text-base sm:text-lg leading-tight">
+                      {selectedPlan.title}
+                    </h4>
+                    <p className="text-xs text-surface-400 mt-0.5">{selectedPlan.billingCycle}</p>
+                  </div>
+                  <div className="text-right ml-auto">
+                    <div className="text-2xl sm:text-3xl font-display font-black text-emerald-600 dark:text-emerald-400 leading-none">
+                      ₹{selectedPlan.price?.toLocaleString()}
+                    </div>
+                    {selectedPlan.originalPrice && (
+                      <span className="text-xs text-surface-500 line-through block mt-1">
+                        ₹{selectedPlan.originalPrice?.toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                </div>
 
-            {/* Credentials Summary Box */}
-            <div className="bg-surface-900/70 border border-teal-500/40 rounded-2xl p-5 text-left space-y-3">
-              <div className="flex items-center justify-between border-b border-surface-700/50 pb-3">
+                <div className="border-t border-surface-700/50 pt-3 grid grid-cols-1 gap-2">
+                  {selectedPlan.features?.slice(0, 4).map((f, i) => (
+                    <div key={i} className="flex items-start gap-2.5 text-xs sm:text-[13px] text-surface-200">
+                      <HiOutlineCheckCircle className="w-4 h-4 text-teal-500 dark:text-teal-400 flex-shrink-0 mt-0.5" />
+                      <span className="leading-snug">{f}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Razorpay Secure Checkout Notice */}
+              <div className="flex items-center gap-3 p-3 sm:p-3.5 bg-teal-500/10 border border-teal-500/30 rounded-xl text-xs text-surface-200">
+                <HiOutlineShieldCheck className="w-5 h-5 sm:w-6 sm:h-6 text-teal-600 dark:text-teal-400 flex-shrink-0" />
+                <span className="leading-relaxed">
+                  <strong>Encrypted Razorpay Checkout:</strong> Supports UPI, Cards, NetBanking &amp; Wallets. Instant workspace setup right after payment.
+                </span>
+              </div>
+            </>
+          )}
+
+          {step === 'register' && (
+            <>
+              {/* Confirmed Payment Chip */}
+              <div className="flex items-center justify-between gap-2 px-3.5 py-2 rounded-xl bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-xs font-bold">
+                <div className="flex items-center gap-2">
+                  <HiOutlineCheckCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>Payment Confirmed via Razorpay</span>
+                </div>
+                <span className="font-mono">₹{selectedPlan.price?.toLocaleString()}</span>
+              </div>
+
+              <form id="sub-admin-register-form" onSubmit={handleRegisterAdmin} autoComplete="off" className="space-y-3">
+                {/* Offscreen decoy inputs to prevent browser auto-injection */}
+                <div className="sr-only opacity-0 absolute -top-[9999px] -left-[9999px] pointer-events-none" aria-hidden="true">
+                  <input type="text" name="fake_sub_username" tabIndex="-1" autoComplete="off" />
+                  <input type="password" name="fake_sub_password" tabIndex="-1" autoComplete="new-password" />
+                </div>
+
+                {/* Company Name & Admin Name responsive 2-col on sm+ */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-surface-300 mb-1">
+                      Company Name <span className="text-teal-500 dark:text-teal-400">*</span>
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-surface-400">
+                        <HiOutlineOfficeBuilding className="w-4 h-4" />
+                      </div>
+                      <input
+                        name="sub_company_name_field"
+                        type="text"
+                        autoComplete="off"
+                        value={companyName}
+                        onChange={(e) => setCompanyName(e.target.value)}
+                        placeholder="Acme Tech Pvt Ltd"
+                        required
+                        className="input-field pl-9 py-2.5 text-sm h-10 bg-surface-800/60"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-surface-300 mb-1">
+                      Admin Full Name <span className="text-teal-500 dark:text-teal-400">*</span>
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-surface-400">
+                        <HiOutlineUser className="w-4 h-4" />
+                      </div>
+                      <input
+                        name="sub_admin_name_field"
+                        type="text"
+                        autoComplete="off"
+                        value={adminName}
+                        onChange={(e) => setAdminName(e.target.value)}
+                        placeholder="Sagnik Mondal"
+                        required
+                        className="input-field pl-9 py-2.5 text-sm h-10 bg-surface-800/60"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Admin Email & Phone responsive 2-col on sm+ */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-surface-300 mb-1">
+                      Admin Work Email <span className="text-teal-500 dark:text-teal-400">*</span>
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-surface-400">
+                        <HiOutlineMail className="w-4 h-4" />
+                      </div>
+                      <input
+                        id="sub_admin_email_no_autofill"
+                        name="sub_admin_email_field"
+                        type="email"
+                        autoComplete="off"
+                        value={adminEmail}
+                        onChange={(e) => setAdminEmail(e.target.value)}
+                        placeholder="admin@company.com"
+                        required
+                        className="input-field pl-9 py-2.5 text-sm h-10 bg-surface-800/60"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-surface-300 mb-1">
+                      Phone Number
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-surface-400">
+                        <HiOutlinePhone className="w-4 h-4" />
+                      </div>
+                      <input
+                        name="sub_admin_phone_field"
+                        type="tel"
+                        autoComplete="off"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="+91 98765 43210"
+                        className="input-field pl-9 py-2.5 text-sm h-10 bg-surface-800/60"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Master Password */}
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-surface-300 mb-1">
+                    Master Password <span className="text-teal-500 dark:text-teal-400">*</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-surface-400">
+                      <HiOutlineLockClosed className="w-4 h-4" />
+                    </div>
+                    <input
+                      id="sub_admin_password_no_autofill"
+                      name="sub_admin_password_field"
+                      type={showPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Minimum 6 characters"
+                      required
+                      minLength={6}
+                      className="input-field pl-9 pr-10 py-2.5 text-sm h-10 bg-surface-800/60"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-surface-400 hover:text-surface-200 cursor-pointer"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <HiOutlineEyeOff className="w-4 h-4" /> : <HiOutlineEye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </>
+          )}
+
+          {step === 'success' && createdAccount && (
+            <div className="bg-surface-800/50 border-[1.5px] border-teal-500/40 rounded-2xl p-4 sm:p-5 space-y-3.5">
+              <div className="flex items-center justify-between gap-2 border-b border-surface-700/50 pb-3 flex-wrap">
                 <div>
                   <span className="text-[10px] uppercase tracking-wider font-bold text-surface-400 block">
                     Your Admin Employee Code
                   </span>
-                  <span className="text-2xl font-mono font-black text-teal-500 dark:text-teal-300">
+                  <span className="text-2xl font-mono font-black text-teal-600 dark:text-teal-300">
                     {createdAccount.user?.employeeCode}
                   </span>
                 </div>
                 <button
                   type="button"
                   onClick={handleCopyCode}
-                  className="px-3 py-1.5 rounded-lg bg-teal-500/15 hover:bg-teal-500/25 border border-teal-500/30 text-teal-600 dark:text-teal-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg bg-teal-500/15 hover:bg-teal-500/25 border border-teal-500/30 text-teal-700 dark:text-teal-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
                 >
                   <HiOutlineClipboardCopy className="w-4 h-4" />
                   <span>Copy Code</span>
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div>
                   <span className="text-surface-400 block">Organization</span>
                   <strong className="text-surface-100">{createdAccount.user?.companyName}</strong>
@@ -528,7 +509,7 @@ const SubscribeModal = ({ isOpen, onClose, selectedPlan }) => {
                 </div>
                 <div>
                   <span className="text-surface-400 block">Active Plan</span>
-                  <strong className="text-emerald-500 dark:text-emerald-400">{createdAccount.subscription?.planName}</strong>
+                  <strong className="text-emerald-600 dark:text-emerald-400">{createdAccount.subscription?.planName}</strong>
                 </div>
                 <div>
                   <span className="text-surface-400 block">Valid Until</span>
@@ -543,21 +524,66 @@ const SubscribeModal = ({ isOpen, onClose, selectedPlan }) => {
               </div>
 
               {createdAccount.subscription?.razorpayPaymentId && (
-                <div className="pt-2 border-t border-surface-700/50 text-[11px] text-surface-400 font-mono">
+                <div className="pt-2 border-t border-surface-700/50 text-[11px] text-surface-400 font-mono truncate">
                   Razorpay Ref: {createdAccount.subscription.razorpayPaymentId}
                 </div>
               )}
             </div>
+          )}
+        </div>
 
+        {/* ── Pinned Footer CTA ── */}
+        <div className="flex-shrink-0 px-4 py-3.5 sm:px-6 sm:py-4 border-t border-surface-700/50 bg-surface-900/60">
+          {step === 'pay' && (
             <button
+              type="button"
+              onClick={handleInitiatePayment}
+              disabled={initiatingPay || verifyingPay}
+              className="w-full h-11 sm:h-12 bg-gradient-to-r from-teal-600 via-teal-700 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-teal-950/30 transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-60 cursor-pointer active:scale-[0.99]"
+            >
+              {initiatingPay || verifyingPay ? (
+                <>
+                  <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>{verifyingPay ? 'Verifying Payment...' : 'Opening Razorpay...'}</span>
+                </>
+              ) : (
+                <>
+                  <HiOutlineCreditCard className="w-5 h-5" />
+                  <span>Proceed to Pay ₹{selectedPlan.price?.toLocaleString()}</span>
+                </>
+              )}
+            </button>
+          )}
+
+          {step === 'register' && (
+            <button
+              type="submit"
+              form="sub-admin-register-form"
+              disabled={submitting}
+              className="w-full h-11 sm:h-12 bg-gradient-to-r from-emerald-600 via-teal-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-60 cursor-pointer active:scale-[0.99]"
+            >
+              {submitting ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>
+                  <span>Complete Registration &amp; Launch Dashboard</span>
+                  <span>&rarr;</span>
+                </>
+              )}
+            </button>
+          )}
+
+          {step === 'success' && (
+            <button
+              type="button"
               onClick={handleLaunchDashboard}
-              className="w-full h-12 bg-gradient-to-r from-emerald-600 via-teal-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold rounded-xl shadow-xl transition-all flex items-center justify-center gap-2 text-sm cursor-pointer"
+              className="w-full h-11 sm:h-12 bg-gradient-to-r from-emerald-600 via-teal-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm cursor-pointer active:scale-[0.99]"
             >
               <span>Launch Enterprise Dashboard</span>
               <span>&rarr;</span>
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

@@ -109,91 +109,104 @@ const RenewModal = ({ isOpen, onClose, currentSub, onRenewed }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-      <div className="relative w-full max-w-md liquid-glass rounded-3xl p-6 sm:p-8 shadow-2xl border-[1.5px] border-teal-500/40 overflow-hidden">
-        <button
-          onClick={onClose}
-          className="absolute top-5 right-5 p-2 rounded-xl text-surface-400 hover:text-surface-100 transition-colors"
-        >
-          <HiOutlineX className="w-5 h-5" />
-        </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-surface-950/75 backdrop-blur-md animate-fade-in">
+      <div className="relative w-full max-w-md max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden bg-surface-900/95 backdrop-blur-2xl rounded-2xl sm:rounded-3xl shadow-2xl border-[1.5px] border-teal-500/50 animate-slide-up">
+        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-teal-400/70 to-transparent pointer-events-none" />
 
-        <div className="text-center mb-5">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-700 to-emerald-900 border border-teal-400/30 text-teal-300 shadow-xl mb-2">
-            <HiOutlineRefresh className="w-6 h-6 animate-spin" style={{ animationDuration: '8s' }} />
+        {/* Pinned Header */}
+        <div className="flex-shrink-0 flex items-center justify-between gap-3 px-4 py-3.5 sm:px-6 sm:py-4 border-b border-surface-700/50 bg-gradient-to-r from-teal-500/10 via-emerald-500/5 to-transparent">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-600 to-emerald-800 border border-teal-400/30 text-teal-100 flex items-center justify-center shadow-lg flex-shrink-0">
+              <HiOutlineRefresh className="w-5 h-5 animate-spin" style={{ animationDuration: '8s' }} />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-base sm:text-lg font-display font-extrabold text-surface-100 truncate">
+                Renew Corporate Plan
+              </h3>
+              <p className="text-[11px] sm:text-xs text-surface-400 truncate mt-0.5">
+                Extend access seamlessly with zero data loss
+              </p>
+            </div>
           </div>
-          <h3 className="text-xl font-display font-extrabold text-surface-100">
-            Renew Corporate Subscription
-          </h3>
-          <p className="text-xs text-surface-400 mt-1">
-            Choose your plan duration. Time will be added seamlessly with zero data loss.
-          </p>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 rounded-xl text-surface-400 hover:text-surface-100 hover:bg-surface-800/60 transition-colors flex-shrink-0 cursor-pointer"
+          >
+            <HiOutlineX className="w-5 h-5" />
+          </button>
         </div>
 
-        {/* Plan Selector Options */}
-        <div className="space-y-3 mb-6">
-          {Object.keys(plans).map((pId) => {
-            const plan = plans[pId];
-            const isSelected = selectedPlanId === pId;
-            return (
-              <div
-                key={pId}
-                onClick={() => setSelectedPlanId(pId)}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
-                  isSelected
-                    ? 'border-emerald-500 bg-emerald-500/15 shadow-lg shadow-emerald-950/20'
-                    : 'border-surface-700/60 bg-surface-900/50 hover:border-teal-500/40'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                      isSelected ? 'border-emerald-500' : 'border-surface-600'
-                    }`}
-                  >
-                    {isSelected && <div className="w-2 h-2 rounded-full bg-emerald-500" />}
+        {/* Scrollable Body */}
+        <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 space-y-4">
+          <div className="space-y-2.5">
+            {Object.keys(plans).map((pId) => {
+              const plan = plans[pId];
+              const isSelected = selectedPlanId === pId;
+              return (
+                <div
+                  key={pId}
+                  onClick={() => setSelectedPlanId(pId)}
+                  className={`p-3.5 sm:p-4 rounded-2xl border-[1.5px] transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                    isSelected
+                      ? 'border-emerald-500 bg-emerald-500/15 shadow-md shadow-emerald-950/20'
+                      : 'border-surface-700/60 bg-surface-800/40 hover:border-teal-500/40'
+                  }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                        isSelected ? 'border-emerald-500' : 'border-surface-500'
+                      }`}
+                    >
+                      {isSelected && <div className="w-2 h-2 rounded-full bg-emerald-500" />}
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-xs sm:text-sm font-bold text-surface-100 truncate">{plan.title}</h4>
+                      <span className="text-[11px] text-teal-600 dark:text-teal-400 font-semibold block">
+                        {plan.billingCycle}
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-surface-100">{plan.title}</h4>
-                    <span className="text-[10px] text-teal-500 dark:text-teal-400 font-semibold">
-                      {plan.billingCycle}
+
+                  <div className="text-right flex-shrink-0">
+                    <span className="text-base sm:text-lg font-display font-black text-emerald-600 dark:text-emerald-400">
+                      ₹{plan.price?.toLocaleString()}
                     </span>
                   </div>
                 </div>
+              );
+            })}
+          </div>
 
-                <div className="text-right">
-                  <span className="text-base font-display font-black text-emerald-500 dark:text-emerald-400">
-                    ₹{plan.price?.toLocaleString()}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
+          <div className="flex items-center gap-2.5 p-3 bg-teal-500/10 border border-teal-500/30 rounded-xl text-xs text-surface-200">
+            <HiOutlineShieldCheck className="w-5 h-5 text-teal-600 dark:text-teal-400 flex-shrink-0" />
+            <span>Encrypted Razorpay checkout. Immediate extension upon payment.</span>
+          </div>
         </div>
 
-        {/* Security Notice */}
-        <div className="flex items-center gap-2 p-2.5 bg-teal-500/10 border border-teal-500/30 rounded-xl text-[11px] text-surface-200 mb-5">
-          <HiOutlineShieldCheck className="w-4 h-4 text-teal-500 dark:text-teal-400 flex-shrink-0" />
-          <span>Encrypted Razorpay checkout. Immediate extension upon payment.</span>
+        {/* Pinned Footer */}
+        <div className="flex-shrink-0 px-4 py-3.5 sm:px-6 sm:py-4 border-t border-surface-700/50 bg-surface-900/60">
+          <button
+            type="button"
+            onClick={handleRenewPayment}
+            disabled={loading}
+            className="w-full h-11 sm:h-12 bg-gradient-to-r from-emerald-600 via-teal-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-60 cursor-pointer active:scale-[0.99]"
+          >
+            {loading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>Opening Razorpay...</span>
+              </>
+            ) : (
+              <>
+                <HiOutlineCreditCard className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span>Renew Now (₹{plans[selectedPlanId]?.price?.toLocaleString()})</span>
+              </>
+            )}
+          </button>
         </div>
-
-        <button
-          onClick={handleRenewPayment}
-          disabled={loading}
-          className="w-full h-11 bg-gradient-to-r from-emerald-600 via-teal-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold rounded-xl shadow-xl transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-60 cursor-pointer"
-        >
-          {loading ? (
-            <>
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              <span>Opening Razorpay...</span>
-            </>
-          ) : (
-            <>
-              <HiOutlineCreditCard className="w-4 h-4" />
-              <span>Renew Now (₹{plans[selectedPlanId]?.price?.toLocaleString()})</span>
-            </>
-          )}
-        </button>
       </div>
     </div>
   );
