@@ -5,12 +5,14 @@ const Payroll = require('../models/Payroll');
 const Notification = require('../models/Notification');
 const sendEmail = require('../utils/sendEmail');
 const { generateMediclaimPayslip } = require('../utils/generateMediclaimPayslip');
+const { getTenantId, belongsToTenant, getTenantAdmins } = require('../utils/tenantHelper');
 
-// @desc    Submit a withdrawal request (Mediclaim or PF)
+// @desc    Submit a withdrawal request (Mediclaim or PF — tenant-isolated)
 // @route   POST /api/withdrawals
 // @access  Private
 const submitRequest = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const { type, amount, reason, diseaseName, purpose, attachment, prescription } = req.body;
 
     if (!type || !amount) {
@@ -56,6 +58,7 @@ const submitRequest = async (req, res) => {
     const prescriptionAttachment = prescription || attachment || '';
 
     const newRequest = await WithdrawalRequest.create({
+      companyId: tenantId,
       employeeId: req.user._id,
       type,
       amount: numericAmount,
@@ -69,18 +72,20 @@ const submitRequest = async (req, res) => {
       status: 'Pending',
     });
 
-    // Notify Admins, HR & Finance team
-    const financeAdmins = await User.find(
+    // Notify Admins, HR & Finance team ONLY within this company tenant
+    const financeAdmins = await getTenantAdmins(
+      tenantId,
       {
         $or: [
           { role: { $in: ['Admin', 'HR', 'Finance', 'Payroll Manager', 'Accounts Payable (AP) Specialist', 'Chief Financial Officer (CFO)'] } },
-          { department: { $regex: /finance|accounts/i } }
-        ]
+          { department: { $regex: /finance|accounts/i } },
+        ],
       },
       '_id'
     );
 
     const notifDocs = financeAdmins.map((admin) => ({
+      companyId: tenantId,
       userId: admin._id,
       type: 'withdrawal_request_submitted',
       title: `🏥 New ${type} Request [${type === 'Mediclaim' ? user.mediclaimId : user.pfId}]`,
@@ -92,7 +97,7 @@ const submitRequest = async (req, res) => {
       await Notification.insertMany(notifDocs);
     }
 
-    // Emit socket event to finance and admin users
+    // Emit socket event to this company's finance and admin users
     const io = global.io || req.app.get('io');
     if (io) {
       financeAdmins.forEach((admin) => {
@@ -128,12 +133,13 @@ const getMyRequests = async (req, res) => {
   }
 };
 
-// @desc    Get all withdrawal / mediclaim requests (for Admin, HR, Finance)
+// @desc    Get all withdrawal / mediclaim requests (for Admin, HR, Finance — tenant-isolated)
 // @route   GET /api/withdrawals/all
 // @access  Private (Admin, HR, Finance)
 const getAllRequests = async (req, res) => {
   try {
-    const requests = await WithdrawalRequest.find({})
+    const tenantId = req.tenantId || getTenantId(req.user);
+    const requests = await WithdrawalRequest.find({ companyId: tenantId })
       .populate('employeeId', 'name email profilePicture designation department employeeCode role pfId mediclaimId totalPfAccumulated totalMediclaimAccumulated bankDetails phone')
       .populate('reviewedBy', 'name role designation employeeCode')
       .sort({ createdAt: -1 });
@@ -143,11 +149,12 @@ const getAllRequests = async (req, res) => {
   }
 };
 
-// @desc    Review request (Approve / Reject) with auto fund deduction & Settlement Payslip PDF email
+// @desc    Review request (Approve / Reject — tenant-isolated)
 // @route   PUT /api/withdrawals/:id/review
 // @access  Private (Admin, HR, Finance)
 const reviewRequest = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const { status, reviewNotes } = req.body;
 
     if (!['Approved', 'Rejected'].includes(status)) {
@@ -155,8 +162,8 @@ const reviewRequest = async (req, res) => {
     }
 
     const request = await WithdrawalRequest.findById(req.params.id).populate('employeeId');
-    if (!request) {
-      return res.status(404).json({ message: 'Request record not found.' });
+    if (!request || !belongsToTenant(request, tenantId)) {
+      return res.status(404).json({ message: 'Request record not found in your organization.' });
     }
 
     if (request.status === 'Approved' || request.status === 'Paid') {
@@ -215,6 +222,7 @@ const reviewRequest = async (req, res) => {
       const monthYear = `${date.getMonth() + 1}-${date.getFullYear()}-WD-${request.type}-${Date.now()}`;
       try {
         const payroll = await Payroll.create({
+          companyId: tenantId,
           employeeId: employee._id,
           monthYear,
           type: 'Withdrawal',
@@ -300,6 +308,7 @@ const reviewRequest = async (req, res) => {
 
       // 5. In-app Notification for Employee
       await Notification.create({
+        companyId: tenantId,
         userId: employee._id,
         type: 'withdrawal_status_update',
         title: `✅ ${request.type} Approved & Settled`,
@@ -332,6 +341,7 @@ const reviewRequest = async (req, res) => {
 
     // In-app Notification for Employee
     await Notification.create({
+      companyId: tenantId,
       userId: employee._id,
       type: 'withdrawal_status_update',
       title: `❌ ${request.type} Request Rejected`,
@@ -379,11 +389,12 @@ const reviewRequest = async (req, res) => {
 // @access  Private
 const downloadSettlementPayslip = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const request = await WithdrawalRequest.findById(req.params.id)
       .populate('employeeId')
       .populate('reviewedBy', 'name role designation');
 
-    if (!request) {
+    if (!request || !belongsToTenant(request, tenantId)) {
       return res.status(404).json({ message: 'Withdrawal / Mediclaim request not found.' });
     }
 

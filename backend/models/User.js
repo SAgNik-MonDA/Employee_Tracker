@@ -239,4 +239,7 @@ userSchema.methods.getResetPasswordToken = function () {
   return resetToken; // send the raw token in the email link
 };
 
+userSchema.index({ companyId: 1 });
+userSchema.index({ companyId: 1, employeeCode: 1 });
+
 module.exports = mongoose.model('User', userSchema);

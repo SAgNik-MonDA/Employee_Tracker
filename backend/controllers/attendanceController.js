@@ -3,6 +3,7 @@ const Leave      = require('../models/Leave');
 const Team       = require('../models/Team');
 const User       = require('../models/User');
 const Notification = require('../models/Notification');
+const { getTenantId, belongsToTenant, getTenantAdmins } = require('../utils/tenantHelper');
 const euclideanDistance = (desc1, desc2) => {
   if (!desc1 || !desc2 || desc1.length !== desc2.length) return Infinity;
   let sum = 0;
@@ -124,7 +125,9 @@ const checkIn = async (req, res) => {
 
     const status = isLate ? 'Late' : 'Present';
 
+    const tenantId = req.tenantId || getTenantId(req.user);
     const attendance = await Attendance.create({
+      companyId: tenantId,
       employeeId: req.user._id,
       date: today,
       checkIn: now,
@@ -339,8 +342,11 @@ const getMyAttendanceEnriched = async (req, res) => {
 // @access  Private (Admin, HR)
 const getEmployeeAttendanceStats = async (req, res) => {
   try {
-    // Aggregate attendance counts per employee
+    const tenantId = req.tenantId || getTenantId(req.user);
+
+    // Aggregate attendance counts per employee strictly within current company tenant
     const attStats = await Attendance.aggregate([
+      { $match: { companyId: tenantId } },
       {
         $group: {
           _id:           '$employeeId',
@@ -351,9 +357,9 @@ const getEmployeeAttendanceStats = async (req, res) => {
       },
     ]);
 
-    // Aggregate approved leave counts per employee
+    // Aggregate approved leave counts per employee strictly within current company tenant
     const leaveStats = await Leave.aggregate([
-      { $match: { status: 'Approved' } },
+      { $match: { companyId: tenantId, status: 'Approved' } },
       { $group: { _id: '$employeeId', totalLeaves: { $sum: 1 } } },
     ]);
 
@@ -385,8 +391,9 @@ const getEmployeeAttendanceStats = async (req, res) => {
 // @access  Private (Admin, HR)
 const getAllAttendance = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const { date, month, year } = req.query;
-    const filter = {};
+    const filter = { companyId: tenantId };
 
     if (date) {
       filter.date = date;
@@ -405,14 +412,15 @@ const getAllAttendance = async (req, res) => {
   }
 };
 
-// @desc    Get all employees' attendance — enriched with team + leave info (Admin/HR)
+// @desc    Get all employees' attendance — enriched with team + leave info (Admin/HR — tenant-isolated)
 // @route   GET /api/attendance/all-enriched
 // @access  Private (Admin, HR)
 const getAllAttendanceEnriched = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const { date, month, year } = req.query;
     const today  = new Date().toISOString().split('T')[0];
-    const filter = {};
+    const filter = { companyId: tenantId };
 
     if (date) {
       filter.date = date;
@@ -430,8 +438,8 @@ const getAllAttendanceEnriched = async (req, res) => {
     const empIds = [...new Set(rawRecords.map((r) => r.employeeId?._id?.toString()).filter(Boolean))];
 
     const [allLeaves, allActiveTeams, empUsers] = await Promise.all([
-      Leave.find({ employeeId: { $in: empIds }, status: 'Approved' }).lean(),
-      Team.find({ status: 'Active', members: { $in: empIds } }).select('teamId projectName members').lean(),
+      Leave.find({ companyId: tenantId, employeeId: { $in: empIds }, status: 'Approved' }).lean(),
+      Team.find({ companyId: tenantId, status: 'Active', members: { $in: empIds } }).select('teamId projectName members').lean(),
       User.find({ _id: { $in: empIds } }).select('weeklyHolidays').lean(),
     ]);
 
@@ -582,6 +590,7 @@ const getTodayStatus = async (req, res) => {
 // @access  Private
 const requestEarlyCheckout = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const { reason } = req.body;
     if (!reason) return res.status(400).json({ message: 'Reason is required for early check-out.' });
 
@@ -591,16 +600,17 @@ const requestEarlyCheckout = async (req, res) => {
     if (!attendance) return res.status(404).json({ message: 'No check-in found for today.' });
     if (attendance.checkOut) return res.status(400).json({ message: 'Already checked out.' });
 
-    const Team = require('../models/Team');
-    const team = await Team.findOne({ members: req.user._id, status: 'Active' });
+    const team = await Team.findOne({ companyId: tenantId, members: req.user._id, status: 'Active' });
 
     attendance.earlyCheckoutStatus = team ? 'Pending_TL' : 'Pending_PM';
     attendance.earlyCheckoutReason = reason;
+    if (!attendance.companyId) attendance.companyId = tenantId;
     await attendance.save();
 
-    // Notify Admin and HR about the early checkout request
-    const admins = await User.find({ role: { $in: ['Admin', 'HR'] } }, '_id');
+    // Notify Admin and HR ONLY within this company tenant
+    const admins = await getTenantAdmins(tenantId);
     const notifDocs = admins.map((admin) => ({
+      companyId: tenantId,
       userId: admin._id,
       type: 'early_checkout_requested',
       title: 'Early Checkout Request',
@@ -616,23 +626,26 @@ const requestEarlyCheckout = async (req, res) => {
 };
 
 
-// @desc    Approve/Reject early check-out
+// @desc    Approve/Reject early check-out (tenant-isolated)
 // @route   PUT /api/attendance/early-checkout/:id
 // @access  Private (TL, PM, Admin, HR)
 const reviewEarlyCheckout = async (req, res) => {
   try {
-    const { status } = req.body; 
+    const tenantId = req.tenantId || getTenantId(req.user);
+    const { status } = req.body;
     const attendance = await Attendance.findById(req.params.id);
 
-    if (!attendance) return res.status(404).json({ message: 'Attendance record not found.' });
+    if (!attendance || !belongsToTenant(attendance, tenantId)) {
+      return res.status(404).json({ message: 'Attendance record not found in your organization.' });
+    }
 
     attendance.earlyCheckoutStatus = status;
     attendance.earlyCheckoutReviewedBy = req.user._id;
     attendance.earlyCheckoutReviewedAt = new Date();
     await attendance.save();
 
-    // Notify employee about the decision
     await Notification.create({
+      companyId: tenantId,
       userId: attendance.employeeId,
       type: status === 'Approved' ? 'early_checkout_approved' : 'early_checkout_rejected',
       title: `Early Checkout ${status}`,
@@ -646,13 +659,14 @@ const reviewEarlyCheckout = async (req, res) => {
   }
 };
 
-// @desc    Get pending early check-out requests
+// @desc    Get pending early check-out requests (tenant-isolated)
 // @route   GET /api/attendance/early-checkout/pending
 // @access  Private (TL, PM, Admin, HR)
 const getPendingEarlyCheckouts = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const statuses = ['Pending_TL', 'Pending_PM'];
-    const requests = await Attendance.find({ earlyCheckoutStatus: { $in: statuses } })
+    const requests = await Attendance.find({ companyId: tenantId, earlyCheckoutStatus: { $in: statuses } })
       .populate('employeeId', 'name profilePicture designation employeeCode role')
       .sort({ createdAt: -1 });
     res.json(requests);
@@ -661,16 +675,16 @@ const getPendingEarlyCheckouts = async (req, res) => {
   }
 };
 
-// @desc    Get all early check-out requests (history) with stats & month filter
+// @desc    Get all early check-out requests (history) with stats & month filter (tenant-isolated)
 // @route   GET /api/attendance/early-checkout/all
 // @access  Private (TL, PM, Admin, HR)
 const getAllEarlyCheckouts = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const { month, year } = req.query;
     const allStatuses = ['Pending_TL', 'Pending_PM', 'Approved', 'Rejected'];
 
-    // Build filter
-    const filter = { earlyCheckoutStatus: { $in: allStatuses } };
+    const filter = { companyId: tenantId, earlyCheckoutStatus: { $in: allStatuses } };
     if (month && year) {
       const monthStr = month.toString().padStart(2, '0');
       filter.date = { $regex: `^${year}-${monthStr}` };
@@ -683,8 +697,7 @@ const getAllEarlyCheckouts = async (req, res) => {
       .populate('earlyCheckoutReviewedBy', 'name role employeeCode')
       .sort({ createdAt: -1 });
 
-    // Compute stats from ALL records (unfiltered) for the banner
-    const allRequests = await Attendance.find({ earlyCheckoutStatus: { $in: allStatuses } })
+    const allRequests = await Attendance.find({ companyId: tenantId, earlyCheckoutStatus: { $in: allStatuses } })
       .select('earlyCheckoutStatus')
       .lean();
 
@@ -701,19 +714,23 @@ const getAllEarlyCheckouts = async (req, res) => {
   }
 };
 
-// @desc    Record or update inactive count for today / employee
+// @desc    Record or update inactive count for today / employee (tenant-isolated)
 // @route   POST /api/attendance/record-inactive
 // @access  Private
 const recordInactive = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
     let targetEmployeeId = req.user._id;
     let targetDate = today;
     let countToAdd = parseInt(req.body.count, 10) || 1;
-    const mode = req.body.mode || 'add'; // 'add' or 'set'
+    const mode = req.body.mode || 'add';
 
-    // If Admin or HR, allow specifying another employeeId & date
     if (['Admin', 'HR'].includes(req.user.role) && req.body.employeeId) {
+      const targetEmp = await User.findById(req.body.employeeId).select('companyId _id');
+      if (!targetEmp || !belongsToTenant(targetEmp, tenantId)) {
+        return res.status(403).json({ message: 'Employee does not belong to your organization.' });
+      }
       targetEmployeeId = req.body.employeeId;
       if (req.body.date) targetDate = req.body.date;
     }
@@ -721,11 +738,14 @@ const recordInactive = async (req, res) => {
     let record = await Attendance.findOne({ employeeId: targetEmployeeId, date: targetDate });
     if (!record) {
       record = new Attendance({
+        companyId: tenantId,
         employeeId: targetEmployeeId,
         date: targetDate,
         status: 'Present',
         inactiveCount: 0,
       });
+    } else if (!record.companyId) {
+      record.companyId = tenantId;
     }
 
     if (mode === 'set') {

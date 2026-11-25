@@ -2,6 +2,12 @@ const mongoose = require('mongoose');
 
 const salaryStructureSchema = new mongoose.Schema(
   {
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      index: true,
+      default: null,
+    },
     role: {
       type: String,
       required: [true, 'Role is required'],
@@ -31,7 +37,7 @@ const salaryStructureSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Unique compound index on role + designation
-salaryStructureSchema.index({ role: 1, designation: 1 }, { unique: true });
+// Unique compound index per company on role + designation
+salaryStructureSchema.index({ companyId: 1, role: 1, designation: 1 }, { unique: true });
 
 module.exports = mongoose.model('SalaryStructure', salaryStructureSchema);

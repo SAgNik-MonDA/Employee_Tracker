@@ -3,6 +3,12 @@ const crypto = require('crypto');
 
 const withdrawalRequestSchema = new mongoose.Schema(
   {
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      index: true,
+      default: null,
+    },
     employeeId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

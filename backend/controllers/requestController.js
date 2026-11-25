@@ -1,13 +1,15 @@
 const EmployeeRequest = require('../models/EmployeeRequest');
 const ShiftSchedule = require('../models/ShiftSchedule');
 const Team = require('../models/Team');
-const User = require('../models/User');
 const Notification = require('../models/Notification');
-// @desc    Submit a generic employee request
+const { getTenantId, belongsToTenant, getTenantAdmins } = require('../utils/tenantHelper');
+
+// @desc    Submit a generic employee request (tenant-isolated)
 // @route   POST /api/requests
 // @access  Private
 const submitRequest = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const { requestType, reason, dateRequestedFor, shiftDate, currentShift, desiredShift } = req.body;
 
     const targetDate = shiftDate || dateRequestedFor;
@@ -21,6 +23,7 @@ const submitRequest = async (req, res) => {
     }
 
     const newRequest = await EmployeeRequest.create({
+      companyId: tenantId,
       employeeId: req.user._id,
       requestType,
       reason,
@@ -30,9 +33,10 @@ const submitRequest = async (req, res) => {
       desiredShift: requestType === 'Shift Change' ? desiredShift : '',
     });
 
-    // Notify Admin and HR about the new request
-    const admins = await User.find({ role: { $in: ['Admin', 'HR'] } }, '_id');
+    // Notify ONLY this company's Admin and HR users
+    const admins = await getTenantAdmins(tenantId);
     const notifDocs = admins.map((admin) => ({
+      companyId: tenantId,
       userId: admin._id,
       type: 'general_request_submitted',
       title: `New ${requestType} Request`,
@@ -53,19 +57,20 @@ const submitRequest = async (req, res) => {
 const getMyRequests = async (req, res) => {
   try {
     const requests = await EmployeeRequest.find({ employeeId: req.user._id })
-                                          .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 });
     res.json(requests);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
-// @desc    Get all employee requests (for Admin/HR/PM)
+// @desc    Get all employee requests (Admin/HR/PM — tenant-isolated)
 // @route   GET /api/requests/all
 // @access  Private (Admin, HR, PM, etc.)
 const getAllRequests = async (req, res) => {
   try {
-    const requests = await EmployeeRequest.find({})
+    const tenantId = req.tenantId || getTenantId(req.user);
+    const requests = await EmployeeRequest.find({ companyId: tenantId })
       .populate('employeeId', 'name profilePicture designation employeeCode')
       .populate('reviewedBy', 'name role')
       .sort({ createdAt: -1 });
@@ -75,19 +80,22 @@ const getAllRequests = async (req, res) => {
   }
 };
 
-// @desc    Review (Approve/Reject) a request
+// @desc    Review (Approve/Reject) a request (tenant-isolated)
 // @route   PUT /api/requests/:id/review
 // @access  Private (Admin, HR, PM, etc.)
 const reviewRequest = async (req, res) => {
   try {
-    const { status, reviewNotes } = req.body; // status: 'Approved', 'Rejected'
-    
+    const tenantId = req.tenantId || getTenantId(req.user);
+    const { status, reviewNotes } = req.body;
+
     if (!['Approved', 'Rejected'].includes(status)) {
       return res.status(400).json({ message: 'Invalid status' });
     }
 
     const request = await EmployeeRequest.findById(req.params.id);
-    if (!request) return res.status(404).json({ message: 'Request not found.' });
+    if (!request || !belongsToTenant(request, tenantId)) {
+      return res.status(404).json({ message: 'Request not found in your organization.' });
+    }
 
     request.status = status;
     request.reviewedBy = req.user._id;
@@ -95,7 +103,6 @@ const reviewRequest = async (req, res) => {
 
     await request.save();
 
-    // End-to-End: If Shift Change request is approved, update employee's shift schedule
     if (status === 'Approved' && request.requestType === 'Shift Change' && request.desiredShift) {
       const sDate = request.shiftDate || request.dateRequestedFor;
       if (sDate) {
@@ -111,6 +118,7 @@ const reviewRequest = async (req, res) => {
           await existingGlobal.save();
         } else {
           await ShiftSchedule.create({
+            companyId: tenantId,
             employeeId: request.employeeId,
             shiftType: request.desiredShift,
             date: start,
@@ -118,8 +126,7 @@ const reviewRequest = async (req, res) => {
           });
         }
 
-        // Sync to Team shifts
-        const teams = await Team.find({ members: request.employeeId });
+        const teams = await Team.find({ companyId: tenantId, members: request.employeeId });
         for (const t of teams) {
           let changed = false;
           for (const s of (t.shifts || [])) {
@@ -135,8 +142,8 @@ const reviewRequest = async (req, res) => {
       }
     }
 
-    // Notify employee about the decision
     await Notification.create({
+      companyId: tenantId,
       userId: request.employeeId,
       type: 'general_request_reviewed',
       title: `Request ${status}`,
@@ -154,5 +161,5 @@ module.exports = {
   submitRequest,
   getMyRequests,
   getAllRequests,
-  reviewRequest
+  reviewRequest,
 };

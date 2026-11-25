@@ -2,6 +2,12 @@ const mongoose = require('mongoose');
 
 const meetingSchema = new mongoose.Schema(
   {
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      index: true,
+      default: null,
+    },
     title: {
       type: String,
       required: [true, 'Meeting title is required'],

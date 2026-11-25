@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Subscription = require('../models/Subscription');
+const { getTenantId } = require('../utils/tenantHelper');
 
 const protect = async (req, res, next) => {
   let token;
@@ -17,6 +18,8 @@ const protect = async (req, res, next) => {
       if (!req.user) {
         return res.status(401).json({ message: 'User not found' });
       }
+
+      req.tenantId = getTenantId(req.user);
 
       // Check subscription enforcement if user is NOT SuperAdmin
       if (req.user.role !== 'SuperAdmin') {

@@ -4,6 +4,7 @@ const User = require('../models/User');
 const Notification = require('../models/Notification');
 const LeaveConfig = require('../models/LeaveConfig');
 const SystemSettings = require('../models/SystemSettings');
+const { getTenantId, getTenantUserFilter, belongsToTenant, getTenantAdmins } = require('../utils/tenantHelper');
 
 // ─────────────────────────────────────────────
 // Constants
@@ -16,21 +17,22 @@ const safeDays = (leave) =>
   leave.days ||
   Math.ceil((new Date(leave.endDate) - new Date(leave.startDate)) / (1000 * 60 * 60 * 24)) + 1;
 
-// Helper: get dynamic limits for an employee based on designation and year
+// Helper: get dynamic limits for an employee based on company tenant + designation + year
 const getEmployeeLeaveLimits = async (employeeId, year) => {
   try {
     const user = await User.findById(employeeId);
     if (!user) return FALLBACK_LIMITS;
-    
+
+    const tenantId = getTenantId(user);
     const effectiveDesignation = user.designation && user.designation.trim() !== '' ? user.designation : user.role;
     const dept = user.department || '';
 
-    // Priority 1: Exact Effective Designation + Department
-    let config = await LeaveConfig.findOne({ designation: effectiveDesignation, department: dept, year });
+    // Priority 1: Exact Company + Effective Designation + Department
+    let config = await LeaveConfig.findOne({ companyId: tenantId, designation: effectiveDesignation, department: dept, year });
     if (config) return { Casual: config.casualLeaves, Emergency: config.emergencyLeaves };
-      
-    // Priority 2: Effective Designation + ANY Department
-    config = await LeaveConfig.findOne({ designation: effectiveDesignation, year });
+
+    // Priority 2: Company + Effective Designation + ANY Department
+    config = await LeaveConfig.findOne({ companyId: tenantId, designation: effectiveDesignation, year });
     if (config) return { Casual: config.casualLeaves, Emergency: config.emergencyLeaves };
 
     return FALLBACK_LIMITS;
@@ -39,11 +41,13 @@ const getEmployeeLeaveLimits = async (employeeId, year) => {
   }
 };
 
-// Helper: get the global active leave year
-const getGlobalActiveYear = async () => {
+// Helper: get active leave year for a company tenant
+const getGlobalActiveYear = async (tenantId) => {
   try {
-    const setting = await SystemSettings.findOne({ key: 'ACTIVE_LEAVE_YEAR' });
-    if (setting) return parseInt(setting.value);
+    if (tenantId) {
+      const setting = await SystemSettings.findOne({ key: `ACTIVE_LEAVE_YEAR_${tenantId.toString()}` });
+      if (setting) return parseInt(setting.value);
+    }
     return new Date().getFullYear();
   } catch {
     return new Date().getFullYear();
@@ -53,10 +57,15 @@ const getGlobalActiveYear = async () => {
 // ─────────────────────────────────────────────
 // Shared: compute leave balance for one employee
 // ─────────────────────────────────────────────
-const computeLeaveBalance = async (employeeId, year) => {
-  const targetYear = year || await getGlobalActiveYear();
+const computeLeaveBalance = async (employeeId, year, tenantId = null) => {
+  let effectiveTenant = tenantId;
+  if (!effectiveTenant) {
+    const u = await User.findById(employeeId).select('companyId _id');
+    effectiveTenant = u ? getTenantId(u) : null;
+  }
+  const targetYear = year || await getGlobalActiveYear(effectiveTenant);
   const yearStart = new Date(targetYear, 0, 1);
-  const yearEnd   = new Date(targetYear, 11, 31, 23, 59, 59);
+  const yearEnd = new Date(targetYear, 11, 31, 23, 59, 59);
 
   const leaves = await Leave.find({
     employeeId,
@@ -65,10 +74,9 @@ const computeLeaveBalance = async (employeeId, year) => {
     startDate: { $gte: yearStart, $lte: yearEnd },
   });
 
-  const casualUsed    = leaves.filter((l) => l.leaveType === 'Casual').reduce((s, l) => s + safeDays(l), 0);
+  const casualUsed = leaves.filter((l) => l.leaveType === 'Casual').reduce((s, l) => s + safeDays(l), 0);
   const emergencyUsed = leaves.filter((l) => l.leaveType === 'Emergency').reduce((s, l) => s + safeDays(l), 0);
 
-  // Fetch dynamic limits
   const limits = await getEmployeeLeaveLimits(employeeId, targetYear);
 
   return {
@@ -87,15 +95,15 @@ const computeLeaveBalance = async (employeeId, year) => {
 };
 
 // ─────────────────────────────────────────────
-// @desc    Apply for leave
+// @desc    Apply for leave (tenant-isolated)
 // @route   POST /api/leaves/apply
 // @access  Private (Employee, HR)
 // ─────────────────────────────────────────────
 const applyLeave = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const { leaveType, startDate, endDate, reason } = req.body;
 
-    // Validate inputs
     if (!leaveType || !startDate || !endDate || !reason) {
       return res.status(400).json({ message: 'All fields (including reason) are required' });
     }
@@ -105,7 +113,7 @@ const applyLeave = async (req, res) => {
     }
 
     const start = new Date(startDate);
-    const end   = new Date(endDate);
+    const end = new Date(endDate);
 
     if (isNaN(start) || isNaN(end)) {
       return res.status(400).json({ message: 'Invalid date format' });
@@ -128,8 +136,7 @@ const applyLeave = async (req, res) => {
       const startDay = new Date(start);
       startDay.setHours(0, 0, 0, 0);
       const diffDays = Math.round((startDay - today) / (1000 * 60 * 60 * 24));
-      
-      // If applying in advance for future dates, require at least 3 days advance notice
+
       if (diffDays >= 0 && diffDays < 3) {
         return res.status(400).json({
           message: 'Future Casual leave must be applied at least 3 days in advance. For past absences, submit a post-absence leave request subject to attendance penalty rules.',
@@ -141,33 +148,26 @@ const applyLeave = async (req, res) => {
     todayForAbsence.setHours(23, 59, 59, 999);
     const appliedAfterAbsence = start <= todayForAbsence;
 
-    // Leaves must be within the same calendar month
-    if (
-      start.getMonth() !== end.getMonth() ||
-      start.getFullYear() !== end.getFullYear()
-    ) {
+    if (start.getMonth() !== end.getMonth() || start.getFullYear() !== end.getFullYear()) {
       return res.status(400).json({
         message: 'Leave dates must be within the same calendar month',
       });
     }
 
-    const days  = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-    
-    // We enforce leaves based on the active global year configured by admin.
-    // Ensure the requested leave falls in the active leave year.
-    const activeYear = await getGlobalActiveYear();
+    const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+
+    const activeYear = await getGlobalActiveYear(tenantId);
     if (start.getFullYear() !== activeYear) {
       return res.status(400).json({
         message: `You can only apply for leaves in the active leave year: ${activeYear}`,
       });
     }
 
-    const year  = start.getFullYear(); // which is activeYear now
-    const month = start.getMonth(); // 0-indexed (0 = Jan)
+    const year = start.getFullYear();
+    const month = start.getMonth();
 
-    // ── Annual limit check ────────────────────
     const yearStart = new Date(year, 0, 1);
-    const yearEnd   = new Date(year, 11, 31, 23, 59, 59);
+    const yearEnd = new Date(year, 11, 31, 23, 59, 59);
 
     const existingThisYear = await Leave.find({
       employeeId: req.user._id,
@@ -177,24 +177,19 @@ const applyLeave = async (req, res) => {
     });
 
     const annualUsed = existingThisYear.reduce((s, l) => s + safeDays(l), 0);
-    
-    // Fetch dynamic limit
     const limits = await getEmployeeLeaveLimits(req.user._id, year);
 
     if (annualUsed + days > limits[leaveType]) {
       return res.status(400).json({
-        message: `Annual ${leaveType} leave limit exceeded. You have ${
-          limits[leaveType] - annualUsed
-        } day(s) remaining this year.`,
+        message: `Annual ${leaveType} leave limit exceeded. You have ${limits[leaveType] - annualUsed} day(s) remaining this year.`,
       });
     }
 
-    // ── Overlap check ─────────────────────────
     const overlapping = await Leave.findOne({
       employeeId: req.user._id,
       status: { $ne: 'Rejected' },
       startDate: { $lte: end },
-      endDate:   { $gte: start },
+      endDate: { $gte: start },
     });
     if (overlapping) {
       return res.status(400).json({
@@ -202,10 +197,9 @@ const applyLeave = async (req, res) => {
       });
     }
 
-    // ── Casual: monthly cap (max 2 days/month) ─
     if (leaveType === 'Casual') {
       const monthStart = new Date(year, month, 1);
-      const monthEnd   = new Date(year, month + 1, 0, 23, 59, 59);
+      const monthEnd = new Date(year, month + 1, 0, 23, 59, 59);
 
       const casualThisMonth = await Leave.find({
         employeeId: req.user._id,
@@ -218,22 +212,13 @@ const applyLeave = async (req, res) => {
 
       if (monthUsed + days > CASUAL_MONTHLY_LIMIT) {
         return res.status(400).json({
-          message: `Monthly Casual leave limit exceeded. You can take only ${
-            CASUAL_MONTHLY_LIMIT - monthUsed
-          } more Casual day(s) this month (max ${CASUAL_MONTHLY_LIMIT}/month).`,
+          message: `Monthly Casual leave limit exceeded. You can take only ${CASUAL_MONTHLY_LIMIT - monthUsed} more Casual day(s) this month (max ${CASUAL_MONTHLY_LIMIT}/month).`,
         });
       }
     }
 
-    // ── Emergency: distribution rule ──────────
-    // Distribution: 9 months×1 + 2 months×2 + 1 month×3 = 16 days/year
-    // Rules:
-    //   - Max 3 emergency days in any one month (absolute)
-    //   - At most 1 month can have ≥3 days
-    //   - At most 3 months can have ≥2 days (the 2-day months + the 3-day month)
     if (leaveType === 'Emergency') {
-      // Build per-month day map from existing leaves this year
-      const monthMap = {}; // { monthIndex: totalDaysUsed }
+      const monthMap = {};
       for (const l of existingThisYear) {
         const m = new Date(l.startDate).getMonth();
         monthMap[m] = (monthMap[m] || 0) + safeDays(l);
@@ -242,61 +227,53 @@ const applyLeave = async (req, res) => {
       const existingInMonth = monthMap[month] || 0;
       const newTotalInMonth = existingInMonth + days;
 
-      // Rule 1: Absolute max 3 per month
       if (newTotalInMonth > 3) {
         return res.status(400).json({
-          message: `Cannot exceed 3 Emergency leave days in one month. You have ${
-            3 - existingInMonth
-          } day(s) remaining this month.`,
+          message: `Cannot exceed 3 Emergency leave days in one month. You have ${3 - existingInMonth} day(s) remaining this month.`,
         });
       }
 
-      // Other months' stats (excluding current month)
       const otherEntries = Object.entries(monthMap).filter(([m]) => parseInt(m) !== month);
       const monthsWith3Plus = otherEntries.filter(([, d]) => d >= 3).length;
       const monthsWith2Plus = otherEntries.filter(([, d]) => d >= 2).length;
 
-      // Rule 2: Only 1 month can have ≥3 days
       if (newTotalInMonth >= 3 && monthsWith3Plus >= 1) {
         return res.status(400).json({
-          message:
-            'Only 1 month per year can have 3 Emergency leave days. That slot is already used.',
+          message: 'Only 1 month per year can have 3 Emergency leave days. That slot is already used.',
         });
       }
 
-      // Rule 3: Only 3 months total can have ≥2 days
-      // (= 2 months×2 + 1 month×3); so other months with ≥2 must be < 3
       if (newTotalInMonth >= 2 && monthsWith2Plus >= 3) {
         return res.status(400).json({
-          message:
-            'Only 3 months per year can have 2+ Emergency leave days. All slots are used.',
+          message: 'Only 3 months per year can have 2+ Emergency leave days. All slots are used.',
         });
       }
     }
 
-    // ── Create the leave ──────────────────────
     const leave = await Leave.create({
+      companyId: tenantId,
       employeeId: req.user._id,
       leaveType,
       startDate: start,
-      endDate:   end,
+      endDate: end,
       days,
       reason,
       appliedAfterAbsence,
     });
 
-    // Notify all Admin and HR users about the new leave request
-    const admins = await User.find({ role: { $in: ['Admin', 'HR'] } }, '_id');
+    // Notify ONLY this company's Admin and HR users
+    const admins = await getTenantAdmins(tenantId);
     const notifDocs = admins.map((admin) => ({
+      companyId: tenantId,
       userId: admin._id,
       type: 'leave_applied',
       title: 'New Leave Request',
       message: `${req.user.name} has applied for ${days}-day ${leaveType} leave from ${start.toLocaleDateString()} to ${end.toLocaleDateString()}.`,
       link: '/admin/leaves',
     }));
-    
+
     if (notifDocs.length > 0) {
-      await Promise.all(notifDocs.map(doc => Notification.create(doc)));
+      await Notification.insertMany(notifDocs).catch(() => {});
     }
 
     res.status(201).json(leave);
@@ -320,18 +297,17 @@ const getMyLeaves = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────
-// @desc    Get my leave balance for the current year
+// @desc    Get my leave balance for the active year
 // @route   GET /api/leaves/my-balance
 // @access  Private
 // ─────────────────────────────────────────────
 const getMyBalance = async (req, res) => {
   try {
-    // If year is passed from query, use it, else global active year
-    const activeYear = await getGlobalActiveYear();
+    const tenantId = req.tenantId || getTenantId(req.user);
+    const activeYear = await getGlobalActiveYear(tenantId);
     const year = parseInt(req.query.year) || activeYear;
-    
-    const balance = await computeLeaveBalance(req.user._id, year);
-    // Attach limits directly to response for reference if needed
+
+    const balance = await computeLeaveBalance(req.user._id, year, tenantId);
     res.json(balance);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -339,26 +315,26 @@ const getMyBalance = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────
-// @desc    Get all employees' leave balances (Admin / HR)
+// @desc    Get all employees' leave balances (Admin / HR — tenant-isolated)
 // @route   GET /api/leaves/all-balances
 // @access  Private (Admin, HR)
 // ─────────────────────────────────────────────
 const getAllBalances = async (req, res) => {
   try {
-    const activeYear = await getGlobalActiveYear();
-    const year      = parseInt(req.query.year) || activeYear;
+    const tenantId = req.tenantId || getTenantId(req.user);
+    const activeYear = await getGlobalActiveYear(tenantId);
+    const year = parseInt(req.query.year) || activeYear;
     const yearStart = new Date(year, 0, 1);
-    const yearEnd   = new Date(year, 11, 31, 23, 59, 59);
+    const yearEnd = new Date(year, 11, 31, 23, 59, 59);
 
-    // Get all users to fetch dynamic limits for each
-    const users = await User.find({}).select('_id designation role');
+    const users = await User.find(getTenantUserFilter(tenantId)).select('_id designation role department');
 
-    // MongoDB aggregation: sum days per (employee × leaveType)
     const aggregation = await Leave.aggregate([
       {
         $match: {
+          companyId: tenantId,
           leaveType: { $in: ['Casual', 'Emergency'] },
-          status:    { $ne: 'Rejected' },
+          status: { $ne: 'Rejected' },
           startDate: { $gte: yearStart, $lte: yearEnd },
         },
       },
@@ -388,45 +364,40 @@ const getAllBalances = async (req, res) => {
       },
     ]);
 
-    // Build { employeeId: { casualUsed, emergencyUsed } }
     const map = {};
     for (const row of aggregation) {
       const id = row._id.employeeId.toString();
       if (!map[id]) map[id] = { casualUsed: 0, emergencyUsed: 0 };
-      if (row._id.leaveType === 'Casual')    map[id].casualUsed    = row.totalDays;
+      if (row._id.leaveType === 'Casual') map[id].casualUsed = row.totalDays;
       if (row._id.leaveType === 'Emergency') map[id].emergencyUsed = row.totalDays;
     }
-    
-    // Fetch configs for the year
-    const configs = await LeaveConfig.find({ year });
-    const configMap = {}; // designation_department -> {Casual, Emergency}
-    configs.forEach(c => {
+
+    const configs = await LeaveConfig.find({ companyId: tenantId, year });
+    const configMap = {};
+    configs.forEach((c) => {
       configMap[`${c.designation}_${c.department}`] = { Casual: c.casualLeaves, Emergency: c.emergencyLeaves };
     });
 
-    // Add totals and remaining
     const result = {};
     for (const user of users) {
       const id = user._id.toString();
       const usedData = map[id] || { casualUsed: 0, emergencyUsed: 0 };
-      
+
       const effectiveDesignation = user.designation && user.designation.trim() !== '' ? user.designation : user.role;
       const dept = user.department || '';
 
-      // Try exact designation_department match first, then fallback to designation_ANY
       let limits = configMap[`${effectiveDesignation}_${dept}`];
       if (!limits) {
-        // Find any config that starts with this designation
-        const fallbackKey = Object.keys(configMap).find(k => k.startsWith(`${effectiveDesignation}_`));
+        const fallbackKey = Object.keys(configMap).find((k) => k.startsWith(`${effectiveDesignation}_`));
         limits = fallbackKey ? configMap[fallbackKey] : FALLBACK_LIMITS;
       }
-      
+
       result[id] = {
-        casualUsed:        usedData.casualUsed,
-        casualTotal:       limits.Casual,
-        casualRemaining:   Math.max(0, limits.Casual - usedData.casualUsed),
-        emergencyUsed:     usedData.emergencyUsed,
-        emergencyTotal:    limits.Emergency,
+        casualUsed: usedData.casualUsed,
+        casualTotal: limits.Casual,
+        casualRemaining: Math.max(0, limits.Casual - usedData.casualUsed),
+        emergencyUsed: usedData.emergencyUsed,
+        emergencyTotal: limits.Emergency,
         emergencyRemaining: Math.max(0, limits.Emergency - usedData.emergencyUsed),
       };
     }
@@ -438,14 +409,15 @@ const getAllBalances = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────
-// @desc    Get all leave requests (Admin/HR)
+// @desc    Get all leave requests (Admin/HR — tenant-isolated)
 // @route   GET /api/leaves/all-requests
 // @access  Private (Admin, HR)
 // ─────────────────────────────────────────────
 const getAllLeaveRequests = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const { status } = req.query;
-    const filter = {};
+    const filter = { companyId: tenantId };
     if (status) filter.status = status;
 
     const leaves = await Leave.find(filter)
@@ -459,21 +431,22 @@ const getAllLeaveRequests = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────
-// @desc    Approve or reject a leave request (Admin ONLY)
+// @desc    Approve or reject a leave request (Admin ONLY — tenant-isolated)
 // @route   PUT /api/leaves/status/:id
 // @access  Private (Admin)
 // ─────────────────────────────────────────────
 const updateLeaveStatus = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const { status } = req.body;
 
     if (!['Approved', 'Rejected'].includes(status)) {
       return res.status(400).json({ message: 'Status must be Approved or Rejected' });
     }
 
-    const leave = await Leave.findById(req.params.id).populate('employeeId', 'name email');
-    if (!leave) {
-      return res.status(404).json({ message: 'Leave request not found' });
+    const leave = await Leave.findById(req.params.id).populate('employeeId', 'name email companyId');
+    if (!leave || !belongsToTenant(leave, tenantId)) {
+      return res.status(404).json({ message: 'Leave request not found in your organization' });
     }
     if (leave.status !== 'Pending') {
       return res.status(400).json({ message: 'This leave request has already been processed' });
@@ -482,19 +455,18 @@ const updateLeaveStatus = async (req, res) => {
     leave.status = status;
     await leave.save();
 
-    // Notify the employee about the leave decision
     await Notification.create({
+      companyId: tenantId,
       userId: leave.employeeId._id,
-      type:    status === 'Approved' ? 'leave_approved' : 'leave_rejected',
-      title:   `Leave ${status}`,
+      type: status === 'Approved' ? 'leave_approved' : 'leave_rejected',
+      title: `Leave ${status}`,
       message: `Your ${leave.leaveType} leave request from ${new Date(leave.startDate).toLocaleDateString()} to ${new Date(leave.endDate).toLocaleDateString()} has been ${status.toLowerCase()}.`,
-      link:    '/employee/leaves#leave-history',
+      link: '/employee/leaves#leave-history',
     });
 
-    // Send email notification to employee (fire and forget so it doesn't block the API)
     if (leave.employeeId && leave.employeeId.email) {
       sendEmail({
-        to:      leave.employeeId.email,
+        to: leave.employeeId.email,
         subject: `Leave Request ${status}`,
         html: `
           <h2>Leave Request ${status}</h2>
@@ -505,7 +477,7 @@ const updateLeaveStatus = async (req, res) => {
           has been <strong>${status.toLowerCase()}</strong>.</p>
           <p>Best regards,<br/>HR Team</p>
         `,
-      }).catch(() => {}); // don't fail if email fails
+      }).catch(() => {});
     }
 
     res.json(leave);

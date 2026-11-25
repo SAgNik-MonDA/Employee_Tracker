@@ -2,16 +2,20 @@ const LeaveConfig = require('../models/LeaveConfig');
 const SystemSettings = require('../models/SystemSettings');
 const Notification = require('../models/Notification');
 const User = require('../models/User');
+const { getTenantId, getTenantUserFilter } = require('../utils/tenantHelper');
+
+const leaveYearKey = (tenantId) => `ACTIVE_LEAVE_YEAR_${tenantId.toString()}`;
 
 // ─────────────────────────────────────────────
-// @desc    Get leave configurations for a specific year
+// @desc    Get leave configurations for a specific year (tenant-isolated)
 // @route   GET /api/leave-configs?year=2026
 // @access  Private (Admin, HR)
 // ─────────────────────────────────────────────
 const getConfigsByYear = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const year = parseInt(req.query.year) || new Date().getFullYear();
-    const configs = await LeaveConfig.find({ year }).sort({ designation: 1 });
+    const configs = await LeaveConfig.find({ companyId: tenantId, year }).sort({ designation: 1 });
     res.json(configs);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -19,12 +23,13 @@ const getConfigsByYear = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────
-// @desc    Upsert a leave configuration for a designation and year
+// @desc    Upsert a leave configuration for a designation and year (tenant-isolated)
 // @route   PUT /api/leave-configs
 // @access  Private (Admin, HR)
 // ─────────────────────────────────────────────
 const upsertConfig = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const { designation, department, year, casualLeaves, emergencyLeaves } = req.body;
 
     if (!designation || !department || !year) {
@@ -32,27 +37,34 @@ const upsertConfig = async (req, res) => {
     }
 
     const config = await LeaveConfig.findOneAndUpdate(
-      { designation, department, year: parseInt(year) },
-      { 
-        $set: { 
-          casualLeaves: parseInt(casualLeaves) || 0, 
-          emergencyLeaves: parseInt(emergencyLeaves) || 0 
-        } 
+      { companyId: tenantId, designation, department, year: parseInt(year) },
+      {
+        $set: {
+          companyId: tenantId,
+          casualLeaves: parseInt(casualLeaves) || 0,
+          emergencyLeaves: parseInt(emergencyLeaves) || 0,
+        },
       },
       { new: true, upsert: true, runValidators: true }
     );
 
-    // Find all users with this effective designation and department
-    const users = await User.find({ 
-      $or: [
-        { designation },
-        { designation: { $in: [null, ''] }, role: designation }
+    // Notify matching users ONLY within this company
+    const users = await User.find({
+      ...getTenantUserFilter(tenantId),
+      $and: [
+        {
+          $or: [
+            { designation },
+            { designation: { $in: [null, ''] }, role: designation },
+          ],
+        },
       ],
-      department 
-    });
+      department,
+    }).select('_id');
 
     if (users.length > 0) {
-      const notifications = users.map(user => ({
+      const notifications = users.map((user) => ({
+        companyId: tenantId,
         userId: user._id,
         type: 'leave_quota_assigned',
         title: 'Leave Quota Assigned',
@@ -60,15 +72,10 @@ const upsertConfig = async (req, res) => {
         metadata: {
           casualLeaves: config.casualLeaves,
           emergencyLeaves: config.emergencyLeaves,
-          year: config.year
-        }
+          year: config.year,
+        },
       }));
-      const docs = await Notification.insertMany(notifications);
-      if (global.io) {
-        docs.forEach(doc => {
-          global.io.to(`user-${doc.userId.toString()}`).emit('new-notification', doc);
-        });
-      }
+      await Notification.insertMany(notifications);
     }
 
     res.json(config);
@@ -78,45 +85,55 @@ const upsertConfig = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────
-// @desc    Get Global Settings (Active Leave Year)
+// @desc    Get Company Settings (Active Leave Year)
 // @route   GET /api/settings/leave-year
 // @access  Private
 // ─────────────────────────────────────────────
 const getActiveLeaveYear = async (req, res) => {
   try {
-    const setting = await SystemSettings.findOne({ key: 'ACTIVE_LEAVE_YEAR' });
+    const tenantId = req.tenantId || getTenantId(req.user);
+    const setting = tenantId
+      ? await SystemSettings.findOne({ key: leaveYearKey(tenantId) })
+      : null;
+
     if (setting) {
       return res.json({ activeYear: setting.value });
-    } else {
-      // Fallback
-      return res.json({ activeYear: new Date().getFullYear() });
     }
+    return res.json({ activeYear: new Date().getFullYear() });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
 // ─────────────────────────────────────────────
-// @desc    Set Global Settings (Active Leave Year)
+// @desc    Set Company Settings (Active Leave Year)
 // @route   PUT /api/settings/leave-year
 // @access  Private (Admin)
 // ─────────────────────────────────────────────
 const setActiveLeaveYear = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const { year } = req.body;
     if (!year) {
       return res.status(400).json({ message: 'Year is required' });
     }
 
+    const parsedYear = parseInt(year);
     const setting = await SystemSettings.findOneAndUpdate(
-      { key: 'ACTIVE_LEAVE_YEAR' },
-      { $set: { value: parseInt(year) } },
+      { key: leaveYearKey(tenantId) },
+      { $set: { value: parsedYear } },
       { new: true, upsert: true }
     );
 
-    // Emit real-time update to all connected clients
+    // Emit update scoped only to this company's connected users
     if (global.io) {
-      global.io.emit('settings-updated', { type: 'LEAVE_YEAR_UPDATED', year: parseInt(year) });
+      const companyUsers = await User.find(getTenantUserFilter(tenantId)).select('_id').lean();
+      companyUsers.forEach((u) => {
+        global.io.to(`user-${u._id.toString()}`).emit('settings-updated', {
+          type: 'LEAVE_YEAR_UPDATED',
+          year: parsedYear,
+        });
+      });
     }
 
     res.json({ activeYear: setting.value });

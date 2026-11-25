@@ -1,11 +1,14 @@
 const Performance = require('../models/Performance');
 const Notification = require('../models/Notification');
+const User = require('../models/User');
+const { getTenantId, belongsToTenant } = require('../utils/tenantHelper');
 
-// @desc    Submit monthly KPI review (Admin/HR)
+// @desc    Submit monthly KPI review (Admin/HR — tenant-isolated)
 // @route   POST /api/performance/review
 // @access  Private (Admin, HR)
 const submitReview = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const { employeeId, monthYear, kpiRating, feedback } = req.body;
 
     if (!employeeId || !monthYear || !kpiRating) {
@@ -16,17 +19,20 @@ const submitReview = async (req, res) => {
       return res.status(400).json({ message: 'KPI rating must be between 1 and 5' });
     }
 
-    // Check for existing review
-    const existing = await Performance.findOne({ employeeId, monthYear });
+    const emp = await User.findById(employeeId).select('companyId _id');
+    if (!emp || !belongsToTenant(emp, tenantId)) {
+      return res.status(403).json({ message: 'Employee does not belong to your organization' });
+    }
+
+    const existing = await Performance.findOne({ employeeId, monthYear, companyId: tenantId });
     if (existing) {
-      // Update existing review
       existing.kpiRating = kpiRating;
       existing.feedback = feedback || existing.feedback;
       existing.reviewedBy = req.user._id;
       await existing.save();
 
-      // Notify employee of updated review
       await Notification.create({
+        companyId: tenantId,
         userId: employeeId,
         type: 'performance_reviewed',
         title: 'Performance Review Updated',
@@ -38,6 +44,7 @@ const submitReview = async (req, res) => {
     }
 
     const review = await Performance.create({
+      companyId: tenantId,
       employeeId,
       monthYear,
       kpiRating,
@@ -45,8 +52,8 @@ const submitReview = async (req, res) => {
       reviewedBy: req.user._id,
     });
 
-    // Notify employee of new review
     await Notification.create({
+      companyId: tenantId,
       userId: employeeId,
       type: 'performance_reviewed',
       title: 'Performance Review Submitted',
@@ -74,12 +81,13 @@ const getMyReviews = async (req, res) => {
   }
 };
 
-// @desc    Get all performance reviews (Admin/HR)
+// @desc    Get all performance reviews (Admin/HR — tenant-isolated)
 // @route   GET /api/performance/all
 // @access  Private (Admin, HR)
 const getAllReviews = async (req, res) => {
   try {
-    const reviews = await Performance.find({})
+    const tenantId = req.tenantId || getTenantId(req.user);
+    const reviews = await Performance.find({ companyId: tenantId })
       .populate('employeeId', 'name email department designation')
       .populate('reviewedBy', 'name')
       .sort({ createdAt: -1 });

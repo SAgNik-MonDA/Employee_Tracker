@@ -4,8 +4,15 @@ const User         = require('../models/User');
 const FaceResetLog = require('../models/FaceResetLog');
 const generateToken = require('../utils/generateToken');
 const sendEmail    = require('../utils/sendEmail');
+const sendCredentialsEmail = require('../utils/sendCredentialsEmail');
 const { cloudinary, uploadToCloudinary } = require('../config/cloudinary');
-const { generateQrToken, buildQrPayload, generateQrDataUrl, generateQrPdf } = require('../utils/generateQR');
+const { generateQrToken, buildQrPayload, generateQrDataUrl } = require('../utils/generateQR');
+const {
+  getTenantId,
+  getTenantUserFilter,
+  belongsToTenant,
+  getTenantAdmins,
+} = require('../utils/tenantHelper');
 
 // Helper: extract Cloudinary public_id from a secure_url
 const getCloudinaryPublicId = (url) => {
@@ -29,6 +36,8 @@ const userResponse = (user) => ({
   name:             user.name,
   email:            user.email,
   role:             user.role,
+  companyId:        user.companyId        || null,
+  companyName:      user.companyName      || '',
   employeeCode:     user.employeeCode     || '',
   designation:      user.designation      || '',
   department:       user.department       || '',
@@ -80,17 +89,26 @@ const registerUser = async (req, res) => {
       return res.status(400).json({ message: 'Employee already exists with this email address' });
     }
 
-    let finalEmployeeCode = employeeCode;
+    const tenantId = req.tenantId || getTenantId(req.user);
+
+    let finalEmployeeCode = employeeCode ? employeeCode.trim() : '';
     if (finalEmployeeCode) {
-      const codeExists = await User.findOne({ employeeCode: finalEmployeeCode });
+      const codeRegex = new RegExp('^' + finalEmployeeCode.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i');
+      const codeExists = await User.findOne({
+        $or: [{ companyId: tenantId }, { _id: tenantId }],
+        employeeCode: { $regex: codeRegex },
+      });
       if (codeExists) {
-        return res.status(400).json({ message: `Employee code "${finalEmployeeCode}" is already taken` });
+        return res.status(400).json({ message: `Employee code "${finalEmployeeCode}" is already taken in your organization` });
       }
     } else {
       let isUnique = false;
       let nextNumber = 1;
       
-      const usersWithCodes = await User.find({ employeeCode: /^EMP-/i }, 'employeeCode');
+      const usersWithCodes = await User.find(
+        { $or: [{ companyId: tenantId }, { _id: tenantId }], employeeCode: /^EMP-/i },
+        'employeeCode'
+      );
       if (usersWithCodes.length > 0) {
          let maxNum = 0;
          usersWithCodes.forEach(u => {
@@ -105,7 +123,10 @@ const registerUser = async (req, res) => {
       
       while (!isUnique) {
         finalEmployeeCode = `EMP-${nextNumber.toString().padStart(3, '0')}`;
-        const codeExists = await User.findOne({ employeeCode: finalEmployeeCode });
+        const codeExists = await User.findOne({
+          $or: [{ companyId: tenantId }, { _id: tenantId }],
+          employeeCode: finalEmployeeCode,
+        });
         if (codeExists) {
           nextNumber++;
         } else {
@@ -142,7 +163,7 @@ const registerUser = async (req, res) => {
       email: cleanEmail,
       password,
       role:             role             || 'Employee',
-      companyId:        req.user.companyId || req.user._id,
+      companyId:        tenantId,
       companyName:      req.user.companyName || '',
       designation:      designation      || '',
       department:       department       || '',
@@ -162,181 +183,17 @@ const registerUser = async (req, res) => {
       isFirstLogin:     true,
     });
 
-    // ── Generate QR Code for the new employee ─────────────────────────────────
-    const qrToken = generateQrToken(user._id);
-    user.qrLoginToken = qrToken;
-    await user.save({ validateBeforeSave: false });
-
-    const qrPayload = buildQrPayload(user._id, qrToken);
-    const qrDataUrl = await generateQrDataUrl(qrPayload);
-    const pdfBuffer = await generateQrPdf(user, qrDataUrl, password);
-
-    // ── Send registration credentials email with QR PDF attached ─────────────
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    try {
-      const emailResult = await sendEmail({
-        to: cleanEmail,
-        subject: `🎉 Welcome to Employee Tracker — Your Account Credentials (${finalEmployeeCode})`,
-        html: `
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Welcome to Employee Tracker</title>
-          </head>
-          <body style="margin:0;padding:0;background-color:#0b1120;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
-            <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#0b1120;padding:24px 12px;">
-              <tr>
-                <td align="center">
-                  <!-- Main Card Container -->
-                  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width:580px;background:#0f172a;border-radius:18px;overflow:hidden;border:1px solid #1e293b;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
-                    
-                    <!-- Gradient Top Rim / Brand Header -->
-                    <tr>
-                      <td style="background:linear-gradient(135deg,#08252b 0%,#0e4b56 50%,#065f46 100%);padding:36px 32px 30px;border-bottom:2px solid #14b8a6;">
-                        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
-                          <tr>
-                            <td>
-                              <div style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#10b981);color:#ffffff;font-weight:900;font-size:20px;padding:6px 14px;border-radius:10px;letter-spacing:1.5px;box-shadow:0 4px 12px rgba(20,184,166,0.3);margin-bottom:12px;">
-                                ET
-                              </div>
-                              <h1 style="margin:0;font-size:24px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">EMPLOYEE TRACKER <span style="font-size:12px;padding:3px 8px;border-radius:20px;background:rgba(20,184,166,0.2);color:#5eead4;border:1px solid #14b8a6;vertical-align:middle;">PRO</span></h1>
-                              <p style="margin:6px 0 0;color:#99f6e4;font-size:13px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;">Smart Attendance &amp; Statutory Payroll Suite</p>
-                            </td>
-                          </tr>
-                        </table>
-                      </td>
-                    </tr>
-
-                    <!-- Body Content -->
-                    <tr>
-                      <td style="padding:32px 28px;">
-                        <h2 style="margin:0 0 10px;font-size:21px;font-weight:700;color:#ffffff;">Welcome to the Team, ${name}! 👋</h2>
-                        <p style="color:#94a3b8;margin:0 0 24px;font-size:14px;line-height:1.6;">
-                          Your official employee portal profile has been created. Use the credentials below or your personal QR login badge for instant, secure workspace access:
-                        </p>
-
-                        <!-- Credentials Box -->
-                        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background:#1e293b;border:1px solid #334155;border-radius:14px;overflow:hidden;margin-bottom:24px;">
-                          <tr>
-                            <td style="padding:16px 20px;background:#162032;border-bottom:1px solid #334155;">
-                              <span style="font-size:12px;font-weight:700;color:#2dd4bf;text-transform:uppercase;letter-spacing:1px;">🔐 Access Credentials</span>
-                            </td>
-                          </tr>
-                          <tr>
-                            <td style="padding:16px 20px;">
-                              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
-                                <tr>
-                                  <td style="color:#94a3b8;font-size:13px;padding:8px 0;width:150px;border-bottom:1px solid rgba(51,65,85,0.6);">Employee Code</td>
-                                  <td style="color:#ffffff;font-weight:700;font-size:15px;padding:8px 0;font-family:monospace;letter-spacing:1px;border-bottom:1px solid rgba(51,65,85,0.6);">
-                                    <span style="background:rgba(20,184,166,0.15);color:#2dd4bf;padding:3px 8px;border-radius:6px;border:1px solid rgba(45,212,191,0.3);">${finalEmployeeCode}</span>
-                                  </td>
-                                </tr>
-                                <tr>
-                                  <td style="color:#94a3b8;font-size:13px;padding:8px 0;border-bottom:1px solid rgba(51,65,85,0.6);">Corporate Email</td>
-                                  <td style="color:#f8fafc;font-weight:600;font-size:14px;padding:8px 0;border-bottom:1px solid rgba(51,65,85,0.6);">${cleanEmail}</td>
-                                </tr>
-                                <tr>
-                                  <td style="color:#94a3b8;font-size:13px;padding:8px 0;border-bottom:1px solid rgba(51,65,85,0.6);">Temporary Password</td>
-                                  <td style="color:#fef08a;font-weight:700;font-size:14px;padding:8px 0;font-family:monospace;letter-spacing:2px;border-bottom:1px solid rgba(51,65,85,0.6);">${password}</td>
-                                </tr>
-                                <tr>
-                                  <td style="color:#94a3b8;font-size:13px;padding:8px 0;border-bottom:1px solid rgba(51,65,85,0.6);">Mediclaim ID</td>
-                                  <td style="color:#14b8a6;font-weight:600;font-size:13px;padding:8px 0;font-family:monospace;letter-spacing:1px;border-bottom:1px solid rgba(51,65,85,0.6);">${user.mediclaimId}</td>
-                                </tr>
-                                <tr>
-                                  <td style="color:#94a3b8;font-size:13px;padding:8px 0;border-bottom:1px solid rgba(51,65,85,0.6);">PF Account ID</td>
-                                  <td style="color:#fbbf24;font-weight:600;font-size:13px;padding:8px 0;font-family:monospace;letter-spacing:1px;border-bottom:1px solid rgba(51,65,85,0.6);">${user.pfId}</td>
-                                </tr>
-                                <tr>
-                                  <td style="color:#94a3b8;font-size:13px;padding:8px 0;">Designation / Role</td>
-                                  <td style="color:#e2e8f0;font-weight:600;font-size:13px;padding:8px 0;">${user.designation || user.role} (${user.department || 'General'})</td>
-                                </tr>
-                              </table>
-                            </td>
-                          </tr>
-                        </table>
-
-                        <!-- QR Code Card -->
-                        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background:rgba(14,75,86,0.15);border:1px solid rgba(45,212,191,0.3);border-radius:14px;padding:20px;margin-bottom:24px;text-align:center;">
-                          <tr>
-                            <td align="center">
-                              <div style="display:inline-block;background:#0d9488;color:#ffffff;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;margin-bottom:10px;">
-                                📱 1-Click QR Code Login
-                              </div>
-                              <p style="color:#94a3b8;font-size:13px;margin:0 0 14px;line-height:1.5;">
-                                Scan the QR code below on the login page for instant biometric badge access — no password typing required:
-                              </p>
-                              <div style="display:inline-block;background:#ffffff;padding:12px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.3);">
-                                <img src="${qrDataUrl}" alt="Login QR Code" width="150" height="150" style="display:block;border-radius:4px;" />
-                              </div>
-                              <p style="color:#64748b;font-size:11px;margin:12px 0 0;">
-                                (Also attached as a printable high-resolution PDF badge)
-                              </p>
-                            </td>
-                          </tr>
-                        </table>
-
-                        <!-- Action Button CTA -->
-                        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom:24px;">
-                          <tr>
-                            <td align="center">
-                              <a href="${frontendUrl}/login" style="display:inline-block;background:linear-gradient(135deg,#0d9488 0%,#10b981 100%);color:#ffffff;text-decoration:none;padding:14px 34px;border-radius:12px;font-weight:700;font-size:15px;box-shadow:0 10px 24px rgba(16,185,129,0.25);letter-spacing:0.3px;">
-                                🚀 Sign In to Workspace &rarr;
-                              </a>
-                            </td>
-                          </tr>
-                        </table>
-
-                        <!-- Security Warning -->
-                        <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:10px;padding:14px 16px;">
-                          <p style="color:#fcd34d;font-size:12px;margin:0;line-height:1.5;">
-                            ⚠️ <strong>Security Notice:</strong> Please keep your credentials and attached QR login card safe. You can change your password anytime under <em>Profile &rarr; Security</em>.
-                          </p>
-                        </div>
-
-                      </td>
-                    </tr>
-
-                    <!-- Footer -->
-                    <tr>
-                      <td style="background:#0b1120;padding:20px;text-align:center;border-top:1px solid #1e293b;">
-                        <p style="color:#64748b;font-size:12px;margin:0 0 4px;">
-                          &copy; 2026 Employee Tracker Pro &bull; Enterprise HR &amp; Accounting System
-                        </p>
-                        <p style="color:#475569;font-size:11px;margin:0;">
-                          Confidential automated corporate notification. Do not reply to this email.
-                        </p>
-                      </td>
-                    </tr>
-
-                  </table>
-                </td>
-              </tr>
-            </table>
-          </body>
-          </html>
-        `,
-        attachments: [
-          {
-            filename: `${finalEmployeeCode}_QR_Login_Card.pdf`,
-            content: pdfBuffer,
-            contentType: 'application/pdf',
-          },
-        ],
-      });
-      if (emailResult) {
-        console.log(`✅ Registration credentials email dispatched to ${cleanEmail}`);
-      } else {
-        console.warn(`⚠️ Warning: Registration email could not be delivered to ${cleanEmail}`);
-      }
-    } catch (emailErr) {
-      console.error('❌ Registration email sending exception:', emailErr);
-    }
+    // ── Send registration credentials email with Branded QR + Credentials PDF attached ──
+    const portalOrigin = req.headers.origin || process.env.FRONTEND_URL || 'https://employee-tracker-project.sagnikmondal.in';
+    const emailSent = await sendCredentialsEmail({
+      user,
+      plainPassword: password,
+      portalUrl: portalOrigin,
+    });
 
     res.status(201).json({
       ...userResponse(user),
+      emailSent,
       token: generateToken(user._id, user.role),
     });
   } catch (error) {
@@ -359,22 +216,23 @@ const loginUser = async (req, res) => {
     const cleanCode = employeeCode.trim();
     const cleanEmail = email.trim().toLowerCase();
 
-    // 1. Check if Employee Code exists (case-insensitive) or fallback for SuperAdmin
-    let user = await User.findOne({
-      employeeCode: { $regex: new RegExp('^' + cleanCode.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') }
-    });
+    // 1. Check if Employee Code exists (tenant-safe: multiple companies may use EMP-001)
+    const codeRegex = new RegExp('^' + cleanCode.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i');
+    const codeMatches = await User.find({ employeeCode: { $regex: codeRegex } });
 
-    if (!user && (cleanCode.toUpperCase() === 'SUPERADMIN' || cleanCode.toUpperCase() === 'ADMIN')) {
+    let user = codeMatches.find((u) => u.email.toLowerCase() === cleanEmail) || null;
+
+    if (codeMatches.length === 0 && (cleanCode.toUpperCase() === 'SUPERADMIN' || cleanCode.toUpperCase() === 'ADMIN')) {
       const superUser = await User.findOne({ email: cleanEmail, role: 'SuperAdmin' });
       if (superUser) user = superUser;
     }
 
-    if (!user) {
+    if (codeMatches.length === 0 && !user) {
       return res.status(401).json({ message: 'Wrong Employee Code' });
     }
 
-    // 2. Check if Email Address matches
-    if (user.email.toLowerCase() !== cleanEmail) {
+    // 2. Check if Email Address matches any matched employee code
+    if (!user) {
       return res.status(401).json({ message: 'Incorrect Email Address for this Employee Code' });
     }
 
@@ -836,16 +694,9 @@ const getAllEmployees = async (req, res) => {
   try {
     const isAdminRoles = ['Admin', 'HR', 'Payroll Manager', 'Accounts Payable (AP) Specialist', 'Chief Financial Officer (CFO)', 'CTO', 'COO', 'CEO'];
     
-    // Strict multi-tenant isolation
-    const companyId = req.user.companyId || req.user._id;
-    const query = {
-      $or: [
-        { companyId },
-        { _id: companyId },
-        { companyId: null }
-      ],
-      role: { $ne: 'SuperAdmin' }
-    };
+    // Strict multi-tenant isolation (never leak legacy companyId:null records across companies)
+    const tenantId = req.tenantId || getTenantId(req.user);
+    const query = getTenantUserFilter(tenantId);
 
     if (isAdminRoles.includes(req.user.role)) {
       const employees = await User.find(query)
@@ -870,8 +721,11 @@ const getAllEmployees = async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 const updateEmployee = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const user = await User.findById(req.params.id);
-    if (!user) return res.status(404).json({ message: 'Employee not found' });
+    if (!user || !belongsToTenant(user, tenantId)) {
+      return res.status(404).json({ message: 'Employee not found in your organization' });
+    }
 
     const {
       name, email, role, designation, department,
@@ -881,9 +735,13 @@ const updateEmployee = async (req, res) => {
     } = req.body;
 
     if (employeeCode && employeeCode !== user.employeeCode) {
-      const codeExists = await User.findOne({ employeeCode, _id: { $ne: user._id } });
+      const codeExists = await User.findOne({
+        $or: [{ companyId: tenantId }, { _id: tenantId }],
+        employeeCode,
+        _id: { $ne: user._id },
+      });
       if (codeExists) {
-        return res.status(400).json({ message: `Employee code "${employeeCode}" is already taken` });
+        return res.status(400).json({ message: `Employee code "${employeeCode}" is already taken in your organization` });
       }
     }
 
@@ -971,10 +829,11 @@ const updateEmployee = async (req, res) => {
 
     const updated = await user.save();
     
-    // If weeklyHolidays were updated, notify admins/HR
+    // If weeklyHolidays were updated, notify ONLY this company's admins/HR
     if (weeklyHolidays !== undefined && weeklyHolidays.length > 0) {
-      const adminsAndHR = await User.find({ role: { $in: ['Admin', 'HR'] } }).select('_id');
+      const adminsAndHR = await getTenantAdmins(tenantId);
       const notifications = adminsAndHR.map(admin => ({
+        companyId: tenantId,
         userId: admin._id,
         title: 'Holidays Set',
         message: `Weekly holidays have been successfully set for ${updated.name}. They will be valid for 1 week.`,
@@ -982,7 +841,6 @@ const updateEmployee = async (req, res) => {
         link: '/admin/holidays'
       }));
       if (notifications.length > 0) {
-        // Require inside to avoid circular dependency issues at the top
         const Notification = require('../models/Notification');
         await Notification.insertMany(notifications).catch(() => {});
       }
@@ -995,14 +853,20 @@ const updateEmployee = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// @desc    Delete employee (Admin only)
+// @desc    Delete employee (Admin only — tenant-isolated)
 // @route   DELETE /api/auth/employees/:id
 // @access  Private (Admin)
 // ─────────────────────────────────────────────────────────────────────────────
 const deleteEmployee = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const user = await User.findById(req.params.id);
-    if (!user) return res.status(404).json({ message: 'Employee not found' });
+    if (!user || !belongsToTenant(user, tenantId)) {
+      return res.status(404).json({ message: 'Employee not found in your organization' });
+    }
+    if (user._id.toString() === req.user._id.toString()) {
+      return res.status(400).json({ message: 'You cannot delete your own Admin account' });
+    }
     await User.findByIdAndDelete(req.params.id);
     res.json({ message: 'Employee removed successfully' });
   } catch (error) {
@@ -1163,16 +1027,18 @@ const saveFaceDescriptor = async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 const requestFaceReset = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     user.faceResetRequest = 'Pending';
     await user.save();
 
-    // Notify Admin and HR about the face reset request
+    // Notify ONLY Admin and HR in the same company tenant
     const Notification = require('../models/Notification');
-    const admins = await User.find({ role: { $in: ['Admin', 'HR'] } }, '_id');
+    const admins = await getTenantAdmins(tenantId);
     const notifDocs = admins.map((admin) => ({
+      companyId: tenantId,
       userId: admin._id,
       type: 'face_reset_requested',
       title: 'Face Reset Request',
@@ -1188,15 +1054,18 @@ const requestFaceReset = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// @desc    Approve or reject face reset request
+// @desc    Approve or reject face reset request (tenant-isolated)
 // @route   PUT /api/auth/approve-face-reset/:id
 // @access  Private (Admin, HR, etc.)
 // ─────────────────────────────────────────────────────────────────────────────
 const reviewFaceReset = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const { status } = req.body; // 'Approved' or 'Rejected'
     const user = await User.findById(req.params.id);
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!user || !belongsToTenant(user, tenantId)) {
+      return res.status(404).json({ message: 'Employee not found in your organization' });
+    }
 
     user.faceResetRequest = status;
     if (status === 'Approved') {
@@ -1204,9 +1073,10 @@ const reviewFaceReset = async (req, res) => {
     }
     await user.save();
 
-    // Log to audit history
+    // Log to audit history (tenant-scoped)
     if (status === 'Approved' || status === 'Rejected') {
       await FaceResetLog.create({
+        companyId: tenantId,
         employee: user._id,
         employeeName: user.name || 'Employee',
         employeeCode: user.employeeCode || '',
@@ -1218,9 +1088,9 @@ const reviewFaceReset = async (req, res) => {
         reviewedAt: new Date(),
       });
 
-      // Notify employee about the decision
       const Notification = require('../models/Notification');
       await Notification.create({
+        companyId: tenantId,
         userId: user._id,
         type: status === 'Approved' ? 'face_reset_approved' : 'face_reset_rejected',
         title: `Face Reset ${status}`,
@@ -1236,19 +1106,20 @@ const reviewFaceReset = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// @desc    Get face reset history & stats
+// @desc    Get face reset history & stats (tenant-isolated)
 // @route   GET /api/auth/face-resets/history
 // @access  Private (Admin, HR)
 // ─────────────────────────────────────────────────────────────────────────────
 const getFaceResetHistory = async (req, res) => {
   try {
-    const history = await FaceResetLog.find()
+    const tenantId = req.tenantId || getTenantId(req.user);
+    const history = await FaceResetLog.find({ companyId: tenantId })
       .populate('employee', 'name employeeCode profilePicture designation')
       .populate('reviewedBy', 'name role employeeCode')
       .sort({ reviewedAt: -1, createdAt: -1 });
 
-    const approved = await FaceResetLog.countDocuments({ status: 'Approved' });
-    const rejected = await FaceResetLog.countDocuments({ status: 'Rejected' });
+    const approved = await FaceResetLog.countDocuments({ companyId: tenantId, status: 'Approved' });
+    const rejected = await FaceResetLog.countDocuments({ companyId: tenantId, status: 'Rejected' });
 
     res.json({
       history,
@@ -1275,10 +1146,9 @@ const qrLogin = async (req, res) => {
       return res.status(400).json({ message: 'QR payload is required' });
     }
 
-    // 1. Verify the JWT signature
     let decoded;
     try {
-      decoded = jwt.verify(qrPayload, process.env.JWT_SECRET);
+      decoded = jwt.verify(qrPayload, process.env.JWT_SECRET || 'supersecretjwtkey_employeetracker_2026');
     } catch (err) {
       return res.status(401).json({ message: 'Invalid or tampered QR code' });
     }
@@ -1288,7 +1158,6 @@ const qrLogin = async (req, res) => {
       return res.status(401).json({ message: 'Malformed QR code payload' });
     }
 
-    // 2. Find user and compare token
     const user = await User.findById(userId);
     if (!user) {
       return res.status(401).json({ message: 'User not found' });
@@ -1298,7 +1167,22 @@ const qrLogin = async (req, res) => {
       return res.status(401).json({ message: 'QR code is invalid or has been revoked' });
     }
 
-    // 3. Issue session JWT (same as normal login)
+    // Check Subscription Expiration for non-Admin staff
+    if (user.role !== 'SuperAdmin') {
+      const Subscription = require('../models/Subscription');
+      const companyId = user.companyId || user._id;
+      const sub = await Subscription.findOne({ companyId }).sort({ createdAt: -1 });
+      if (sub) {
+        const diffTime = new Date(sub.endDate).getTime() - Date.now();
+        const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        if (daysRemaining < -5 && user.role !== 'Admin') {
+          return res.status(403).json({
+            message: 'Your organization subscription has expired. Please contact your company administrator to renew.',
+          });
+        }
+      }
+    }
+
     res.json({
       ...userResponse(user),
       token: generateToken(user._id, user.role),

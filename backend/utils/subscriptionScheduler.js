@@ -104,18 +104,41 @@ const checkSubscriptionsLifecycle = async () => {
           });
           const userIds = companyUsers.map((u) => u._id);
 
-          if (userIds.length > 0) {
-            // Purge related tenant records
-            await Attendance.deleteMany({ userId: { $in: userIds } });
-            await Leave.deleteMany({ userId: { $in: userIds } });
-            await Payroll.deleteMany({ employeeId: { $in: userIds } });
-            await Performance.deleteMany({ employeeId: { $in: userIds } });
-            await Meeting.deleteMany({ createdBy: { $in: userIds } });
-            await Team.deleteMany({ createdBy: { $in: userIds } });
+          if (userIds.length > 0 || companyId) {
+            const EmployeeRequest = require('../models/EmployeeRequest');
+            const ShiftSchedule = require('../models/ShiftSchedule');
+            const WithdrawalRequest = require('../models/WithdrawalRequest');
+            const SalaryStructure = require('../models/SalaryStructure');
+            const LeaveConfig = require('../models/LeaveConfig');
+            const FaceResetLog = require('../models/FaceResetLog');
+            const Notification = require('../models/Notification');
+            const TeamHistory = require('../models/TeamHistory');
+            const TeamChat = require('../models/TeamChat');
+            const SystemSettings = require('../models/SystemSettings');
 
-            // Delete users
-            await User.deleteMany({ _id: { $in: userIds } });
-            console.log(`🗑️ Successfully purged ${userIds.length} users and associated records for ${sub.companyName}.`);
+            await Promise.all([
+              Attendance.deleteMany({ $or: [{ companyId }, { employeeId: { $in: userIds } }] }),
+              Leave.deleteMany({ $or: [{ companyId }, { employeeId: { $in: userIds } }] }),
+              Payroll.deleteMany({ $or: [{ companyId }, { employeeId: { $in: userIds } }] }),
+              Performance.deleteMany({ $or: [{ companyId }, { employeeId: { $in: userIds } }] }),
+              Meeting.deleteMany({ $or: [{ companyId }, { createdBy: { $in: userIds } }] }),
+              Team.deleteMany({ $or: [{ companyId }, { createdBy: { $in: userIds } }] }),
+              TeamHistory.deleteMany({ companyId }),
+              TeamChat.deleteMany({ $or: [{ companyId }, { senderId: { $in: userIds } }] }),
+              EmployeeRequest.deleteMany({ $or: [{ companyId }, { employeeId: { $in: userIds } }] }),
+              ShiftSchedule.deleteMany({ $or: [{ companyId }, { employeeId: { $in: userIds } }] }),
+              WithdrawalRequest.deleteMany({ $or: [{ companyId }, { employeeId: { $in: userIds } }] }),
+              SalaryStructure.deleteMany({ companyId }),
+              LeaveConfig.deleteMany({ companyId }),
+              FaceResetLog.deleteMany({ $or: [{ companyId }, { employee: { $in: userIds } }] }),
+              Notification.deleteMany({ $or: [{ companyId }, { userId: { $in: userIds } }] }),
+              SystemSettings.deleteMany({ key: `ACTIVE_LEAVE_YEAR_${String(companyId)}` }),
+            ]);
+
+            if (userIds.length > 0) {
+              await User.deleteMany({ _id: { $in: userIds } });
+            }
+            console.log(`🗑️ Successfully purged ${userIds.length} users and all tenant records for ${sub.companyName}.`);
           }
 
           sub.isPurged = true;

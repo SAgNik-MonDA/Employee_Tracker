@@ -49,12 +49,30 @@ io.on('connection', (socket) => {
     socket.join(`user-${userId}`);
   }
 
-  socket.on('join-team', (teamId) => socket.join(`team-${teamId}`));
+  socket.on('join-team', async (teamId) => {
+    try {
+      if (userId && teamId) {
+        const team = await Team.findById(teamId).select('companyId members teamLead createdBy');
+        const User = require('./models/User');
+        const usr = await User.findById(userId).select('companyId role _id');
+        if (team && usr && usr.role !== 'SuperAdmin') {
+          const userTenant = String(usr.companyId || usr._id);
+          const teamTenant = String(team.companyId || '');
+          if (!teamTenant || userTenant === teamTenant) {
+            socket.join(`team-${teamId}`);
+          }
+        }
+      }
+    } catch { /* ignore invalid ids */ }
+  });
 
   socket.on('team-message', async (data) => {
     // data: { teamId, senderId, senderName, senderAvatar, message }
     try {
+      const team = await Team.findById(data.teamId).select('companyId members teamLead createdBy projectName');
+      if (!team) return;
       const msg = await TeamChat.create({
+        companyId: team.companyId || null,
         teamId: data.teamId,
         senderId: data.senderId,
         message: data.message,
@@ -72,26 +90,21 @@ io.on('connection', (socket) => {
 
       // Send chat notification to all relevant team members EXCEPT the sender
       try {
-        const team = await Team.findById(data.teamId).select('members teamLead createdBy projectName');
-        if (team) {
-          const notifyIds = new Set();
-          if (team.members) team.members.forEach(m => notifyIds.add(m.toString()));
-          if (team.teamLead) notifyIds.add(team.teamLead.toString());
-          if (team.createdBy) notifyIds.add(team.createdBy.toString());
-          
-          // Always send to admins who are actively viewing the team in frontend,
-          // but for background notifications we strictly notify associated users.
-          notifyIds.delete(data.senderId);
+        const notifyIds = new Set();
+        if (team.members) team.members.forEach(m => notifyIds.add(m.toString()));
+        if (team.teamLead) notifyIds.add(team.teamLead.toString());
+        if (team.createdBy) notifyIds.add(team.createdBy.toString());
 
-          notifyIds.forEach(memberId => {
-            io.to(`user-${memberId}`).emit('team-chat-notification', {
-              teamId: data.teamId,
-              teamName: team.projectName,
-              senderName: data.senderName,
-              message: data.message,
-            });
+        notifyIds.delete(data.senderId);
+
+        notifyIds.forEach(memberId => {
+          io.to(`user-${memberId}`).emit('team-chat-notification', {
+            teamId: data.teamId,
+            teamName: team.projectName,
+            senderName: data.senderName,
+            message: data.message,
           });
-        }
+        });
       } catch (notifErr) { /* silent */ }
     } catch (e) { console.error('Chat error:', e.message); }
   });

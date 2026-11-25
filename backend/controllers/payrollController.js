@@ -4,6 +4,7 @@ const Attendance = require('../models/Attendance');
 const Leave = require('../models/Leave');
 const Notification = require('../models/Notification');
 const sendEmail = require('../utils/sendEmail');
+const { getTenantId, getTenantUserFilter, belongsToTenant } = require('../utils/tenantHelper');
 
 // ── Helper: get the number of calendar days in a month ──────────────
 const getDaysInMonth = (month, year) => new Date(year, month, 0).getDate();
@@ -282,6 +283,7 @@ const processEmployeePayrollRecord = async ({
   } else {
     isNew = true;
     payroll = await Payroll.create({
+      companyId: getTenantId(emp),
       employeeId: emp._id,
       monthYear,
       baseSalary: proratedSalary,
@@ -330,6 +332,7 @@ const processEmployeePayrollRecord = async ({
 
   // In-app Notification for employee
   Notification.create({
+    companyId: getTenantId(emp),
     userId: emp._id,
     type: 'payroll_generated',
     title: isAutoCron ? 'Monthly Salary & Fund Deductions Processed' : 'Payslip Updated',
@@ -447,6 +450,7 @@ const processEmployeePayrollRecord = async ({
 // @access  Private (Admin, HR)
 const generatePayroll = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const { monthYear, employeeId } = req.body; // MM-YYYY, optional employeeId
 
     if (!monthYear) {
@@ -463,11 +467,12 @@ const generatePayroll = async (req, res) => {
 
     const totalDaysInMonth = getDaysInMonth(month, year);
     const lastDayOfMonth   = new Date(year, month, 0, 23, 59, 59, 999);
-    const ADMIN_ROLES      = ['Admin'];
+    const ADMIN_ROLES      = ['Admin', 'SuperAdmin'];
 
-    // ── CASE A: Single Employee Manual Generation ────────────────────
+    // ── CASE A: Single Employee Manual Generation (Tenant-Isolated) ──
     if (employeeId) {
       const emp = await User.findOne({
+        ...getTenantUserFilter(tenantId),
         _id: employeeId,
         role: { $nin: ADMIN_ROLES },
         basicSalary: { $gt: 0 },
@@ -476,7 +481,7 @@ const generatePayroll = async (req, res) => {
 
       if (!emp) {
         return res.status(404).json({
-          message: 'Employee not found or not eligible for payroll in this month (check basic salary and joining date).',
+          message: 'Employee not found in your organization or not eligible for payroll in this month (check basic salary and joining date).',
         });
       }
 
@@ -496,15 +501,16 @@ const generatePayroll = async (req, res) => {
       });
     }
 
-    // ── CASE B: Bulk Generation for All Eligible Employees ─────────────
+    // ── CASE B: Bulk Generation Strictly for This Company Tenant ─────
     const employees = await User.find({
+      ...getTenantUserFilter(tenantId),
       role: { $nin: ADMIN_ROLES },
       basicSalary: { $gt: 0 },
       joiningDate: { $lte: lastDayOfMonth },
     });
 
     if (employees.length === 0) {
-      return res.status(400).json({ message: 'No eligible employees found for this month' });
+      return res.status(400).json({ message: 'No eligible employees found in your organization for this month' });
     }
 
     const payrollResults = [];
@@ -542,12 +548,11 @@ const generateSinglePayroll = async (req, res) => {
   return generatePayroll(req, res);
 };
 
-// @desc    Automated Payroll & Fund Deductions Runner (Triggered on 2nd of each month by cron or test)
-const runAutoPayrollJob = async (customMonthYear = null) => {
+// @desc    Automated Payroll & Fund Deductions Runner (Cron runs across all; Admin manual trigger scopes to tenantId)
+const runAutoPayrollJob = async (customMonthYear = null, tenantId = null) => {
   let targetMonthYear = customMonthYear;
   if (!targetMonthYear) {
     const now = new Date();
-    // On 2nd of month M, process completed month M-1
     const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const m = prevMonthDate.getMonth() + 1;
     const y = prevMonthDate.getFullYear();
@@ -560,12 +565,21 @@ const runAutoPayrollJob = async (customMonthYear = null) => {
   const totalDaysInMonth = getDaysInMonth(month, year);
   const lastDayOfMonth   = new Date(year, month, 0, 23, 59, 59, 999);
 
-  const ADMIN_ROLES = ['Admin'];
-  const employees = await User.find({
-    role: { $nin: ADMIN_ROLES },
-    basicSalary: { $gt: 0 },
-    joiningDate: { $lte: lastDayOfMonth },
-  });
+  const ADMIN_ROLES = ['Admin', 'SuperAdmin'];
+  const empFilter = tenantId
+    ? {
+        ...getTenantUserFilter(tenantId),
+        role: { $nin: ADMIN_ROLES },
+        basicSalary: { $gt: 0 },
+        joiningDate: { $lte: lastDayOfMonth },
+      }
+    : {
+        role: { $nin: ADMIN_ROLES },
+        basicSalary: { $gt: 0 },
+        joiningDate: { $lte: lastDayOfMonth },
+      };
+
+  const employees = await User.find(empFilter);
 
   console.log(`[Auto Payroll Runner] Starting automated payroll run for ${targetMonthYear} across ${employees.length} employees...`);
 
@@ -591,13 +605,14 @@ const runAutoPayrollJob = async (customMonthYear = null) => {
   return { targetMonthYear, count: results.length, results };
 };
 
-// @desc    Admin manual trigger for auto-payroll scheduler (test / on-demand)
+// @desc    Admin manual trigger for auto-payroll scheduler (strictly scoped to caller's organization)
 // @route   POST /api/payroll/trigger-auto-job
 // @access  Private (Admin)
 const triggerAutoPayroll = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const { monthYear } = req.body;
-    const result = await runAutoPayrollJob(monthYear);
+    const result = await runAutoPayrollJob(monthYear, tenantId);
     res.json({
       message: `Automated payroll job executed successfully for ${result.targetMonthYear}`,
       result,
@@ -621,37 +636,38 @@ const getMyPayslips = async (req, res) => {
   }
 };
 
-// @desc    Get all payroll records (Admin/HR)
+// @desc    Get all payroll records (Admin/HR — strictly tenant-isolated)
 // @route   GET /api/payroll/all
 // @access  Private (Admin, HR)
 const getAllPayroll = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const { monthYear } = req.query;
-    const filter = {};
+    const filter = { companyId: tenantId };
     if (monthYear) filter.monthYear = monthYear;
 
     const payrolls = await Payroll.find(filter)
       .populate('employeeId', 'name email department designation employeeCode role pfId mediclaimId bankDetails basicSalary pfAmount mediclaimAmount totalPfAccumulated totalMediclaimAccumulated phone')
       .sort({ createdAt: -1 });
 
-    // Return data as-is from database — no dummy enrichment
     res.json(payrolls);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
-// @desc    Update payroll status (Paid, Unpaid, Pending)
+// @desc    Update payroll status (Paid, Unpaid, Pending — tenant-isolated)
 // @route   PUT /api/payroll/mark-paid/:id
 // @access  Private (Admin, HR)
 const markAsPaid = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const { status } = req.body;
     const newStatus = status && ['Paid', 'Unpaid', 'Pending'].includes(status) ? status : 'Paid';
 
     const payroll = await Payroll.findById(req.params.id);
-    if (!payroll) {
-      return res.status(404).json({ message: 'Payroll record not found' });
+    if (!payroll || !belongsToTenant(payroll, tenantId)) {
+      return res.status(404).json({ message: 'Payroll record not found in your organization' });
     }
 
     payroll.status = newStatus;
@@ -663,11 +679,12 @@ const markAsPaid = async (req, res) => {
   }
 };
 
-// @desc    Generate / Award bonus to an employee (adds directly into monthly payslip)
+// @desc    Generate / Award bonus to an employee (tenant-isolated)
 // @route   POST /api/payroll/generate-bonus
 // @access  Private (Admin, HR)
 const generateBonus = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const { employeeId, amount, monthYear, reason } = req.body;
 
     if (!employeeId) {
@@ -680,8 +697,8 @@ const generateBonus = async (req, res) => {
     }
 
     const emp = await User.findById(employeeId);
-    if (!emp) {
-      return res.status(404).json({ message: 'Employee not found.' });
+    if (!emp || !belongsToTenant(emp, tenantId)) {
+      return res.status(404).json({ message: 'Employee not found in your organization.' });
     }
 
     // Default to current month-year (MM-YYYY) if not specified
@@ -765,6 +782,7 @@ const generateBonus = async (req, res) => {
       });
 
       payroll = await Payroll.create({
+        companyId: tenantId,
         employeeId: emp._id,
         monthYear: targetMonthYear,
         type: 'Regular',
@@ -794,6 +812,7 @@ const generateBonus = async (req, res) => {
 
     // In-app Notification for the employee
     await Notification.create({
+      companyId: tenantId,
       userId: emp._id,
       type: 'bonus_awarded',
       title: '🎉 Special Bonus Awarded!',

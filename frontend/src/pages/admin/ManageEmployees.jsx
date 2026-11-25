@@ -363,8 +363,12 @@ const ManageEmployees = () => {
         toast.success('Employee updated! 🎉');
       } else {
         if (!formData.password) { toast.error('Password is required'); setSubmitting(false); return; }
-        await API.post('/auth/register', payload);
-        toast.success('Employee registered! 🎉');
+        const { data: regData } = await API.post('/auth/register', payload);
+        if (regData?.emailSent === false) {
+          toast('Employee registered, but credentials email delivery failed. Check SMTP settings.', { icon: '⚠️' });
+        } else {
+          toast.success('Employee registered & credentials PDF emailed! 🎉');
+        }
       }
       setShowModal(false);
       resetForm();

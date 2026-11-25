@@ -3,6 +3,12 @@ const { Schema } = mongoose;
 
 const teamHistorySchema = new Schema(
   {
+    companyId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      index: true,
+      default: null,
+    },
     teamId: {
       type: String,
       default: function() { return 'TM-' + Math.floor(1000 + Math.random() * 9000); },

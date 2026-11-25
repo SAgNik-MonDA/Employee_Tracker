@@ -2,20 +2,26 @@ const ShiftSchedule = require('../models/ShiftSchedule');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
 const Team = require('../models/Team');
+const { getTenantId, belongsToTenant } = require('../utils/tenantHelper');
 
-// @desc    Assign a shift (daily or weekly) for an employee
+// @desc    Assign a shift (daily or weekly) for an employee (tenant-isolated)
 // @route   POST /api/shifts/assign
 // @access  Private (Admin, HR, PM, etc.)
 const assignShift = async (req, res) => {
   try {
-    // dates expects an array of date strings 'YYYY-MM-DD'
+    const tenantId = req.tenantId || getTenantId(req.user);
     const { employeeId, shiftType, dates } = req.body;
 
     if (!employeeId || !shiftType || !dates || !Array.isArray(dates)) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
-    const empTeam = await Team.findOne({ members: employeeId });
+    const emp = await User.findById(employeeId).select('companyId _id');
+    if (!emp || !belongsToTenant(emp, tenantId)) {
+      return res.status(403).json({ message: 'Employee does not belong to your organization' });
+    }
+
+    const empTeam = await Team.findOne({ companyId: tenantId, members: employeeId });
     const teamIdToSet = empTeam ? empTeam.teamId : '';
 
     const updates = dates.map(async (dateStr) => {
@@ -24,6 +30,7 @@ const assignShift = async (req, res) => {
       const existing = await ShiftSchedule.findOne({ employeeId, date: { $gte: start, $lte: end } });
 
       if (existing) {
+        if (!existing.companyId) existing.companyId = tenantId;
         if (!existing.isLocked) {
           existing.shiftType = shiftType;
           existing.scheduledBy = req.user._id;
@@ -34,9 +41,10 @@ const assignShift = async (req, res) => {
           existing.teamId = teamIdToSet;
           await existing.save();
         }
-        return existing; // skip if locked
+        return existing;
       } else {
         return ShiftSchedule.create({
+          companyId: tenantId,
           employeeId,
           shiftType,
           date: start,
@@ -48,18 +56,18 @@ const assignShift = async (req, res) => {
 
     await Promise.all(updates);
 
-    // Create Notification
     if (dates.length > 0) {
       const sortedDates = [...dates].sort();
-      const firstDate = new Date(sortedDates[0]).toLocaleDateString('en-GB'); // DD/MM/YYYY
+      const firstDate = new Date(sortedDates[0]).toLocaleDateString('en-GB');
       const lastDate = new Date(sortedDates[sortedDates.length - 1]).toLocaleDateString('en-GB');
 
       await Notification.create({
+        companyId: tenantId,
         userId: employeeId,
         type: 'shift_assigned',
         title: 'New Shift Assigned',
         message: `You have been assigned a ${shiftType} shift from ${firstDate} to ${lastDate}.`,
-        link: '/employee/shifts'
+        link: '/employee/shifts',
       });
     }
 
@@ -69,14 +77,20 @@ const assignShift = async (req, res) => {
   }
 };
 
-// @desc    Lock a shift schedule (prevents modification)
+// @desc    Lock a shift schedule (tenant-isolated)
 // @route   PUT /api/shifts/lock
 // @access  Private (Admin, HR, PM)
 const lockShifts = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const { employeeId, dates, shiftType = 'General' } = req.body;
     if (!employeeId || !dates || !Array.isArray(dates)) {
       return res.status(400).json({ message: 'Missing employeeId or dates' });
+    }
+
+    const emp = await User.findById(employeeId).select('companyId _id');
+    if (!emp || !belongsToTenant(emp, tenantId)) {
+      return res.status(403).json({ message: 'Employee does not belong to your organization' });
     }
 
     let modifiedCount = 0;
@@ -87,11 +101,13 @@ const lockShifts = async (req, res) => {
 
       const existing = await ShiftSchedule.findOne({ employeeId, date: { $gte: start, $lte: end } });
       if (existing) {
+        if (!existing.companyId) existing.companyId = tenantId;
         existing.isLocked = true;
         await existing.save();
         modifiedCount++;
       } else {
         await ShiftSchedule.create({
+          companyId: tenantId,
           employeeId,
           shiftType,
           date: start,
@@ -102,8 +118,7 @@ const lockShifts = async (req, res) => {
       }
     }
 
-    // Sync to Team shifts
-    const teams = await Team.find({ members: employeeId });
+    const teams = await Team.find({ companyId: tenantId, members: employeeId });
     for (const t of teams) {
       let changed = false;
       for (const s of (t.shifts || [])) {
@@ -123,14 +138,20 @@ const lockShifts = async (req, res) => {
   }
 };
 
-// @desc    Unlock a shift schedule
+// @desc    Unlock a shift schedule (tenant-isolated)
 // @route   PUT /api/shifts/unlock
 // @access  Private (Admin, HR, PM)
 const unlockShifts = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const { employeeId, dates } = req.body;
     if (!employeeId || !dates || !Array.isArray(dates)) {
       return res.status(400).json({ message: 'Missing employeeId or dates' });
+    }
+
+    const emp = await User.findById(employeeId).select('companyId _id');
+    if (!emp || !belongsToTenant(emp, tenantId)) {
+      return res.status(403).json({ message: 'Employee does not belong to your organization' });
     }
 
     let modifiedCount = 0;
@@ -147,8 +168,7 @@ const unlockShifts = async (req, res) => {
       }
     }
 
-    // Sync to Team shifts
-    const teams = await Team.find({ members: employeeId });
+    const teams = await Team.find({ companyId: tenantId, members: employeeId });
     for (const t of teams) {
       let changed = false;
       for (const s of (t.shifts || [])) {
@@ -168,30 +188,32 @@ const unlockShifts = async (req, res) => {
   }
 };
 
-// @desc    Get shift schedules for an employee within a date range
+// @desc    Get shift schedules for an employee within a date range (tenant-isolated)
 // @route   GET /api/shifts/:employeeId
 // @access  Private
 const getShifts = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
+    const emp = await User.findById(req.params.employeeId).select('companyId _id');
+    if (!emp || !belongsToTenant(emp, tenantId)) {
+      return res.status(403).json({ message: 'Access denied: employee belongs to another organization' });
+    }
+
     const { startDate, endDate } = req.query;
-    
-    let query = { employeeId: req.params.employeeId };
-    
+    const query = { employeeId: req.params.employeeId };
+
     if (startDate && endDate) {
       const start = new Date(startDate + 'T00:00:00.000Z');
       const end = new Date(endDate + 'T23:59:59.999Z');
-      query.date = {
-        $gte: start,
-        $lte: end
-      };
+      query.date = { $gte: start, $lte: end };
     }
 
     const shifts = await ShiftSchedule.find(query).sort({ date: 1 });
-    
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const enriched = shifts.map(s => {
+    const enriched = shifts.map((s) => {
       const obj = s.toObject();
       const shiftDate = new Date(s.date);
       shiftDate.setHours(0, 0, 0, 0);
@@ -208,13 +230,14 @@ const getShifts = async (req, res) => {
   }
 };
 
-// @desc    Get all assigned shifts for History view (filtered by month/year, date ascending)
+// @desc    Get all assigned shifts for History view (tenant-isolated)
 // @route   GET /api/shifts/all
 // @access  Private (Admin, HR, PM)
 const getAllShifts = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const { month, year, employeeId } = req.query;
-    let query = {};
+    const query = { companyId: tenantId };
 
     if (employeeId) {
       query.employeeId = employeeId;
@@ -229,15 +252,15 @@ const getAllShifts = async (req, res) => {
     }
 
     const shifts = await ShiftSchedule.find(query)
-      .sort({ date: 1 }) // Date Ascending
+      .sort({ date: 1 })
       .populate('employeeId', 'name employeeCode designation department role profilePicture')
       .populate('scheduledBy', 'name');
 
-    const teams = await Team.find({}).lean();
+    const teams = await Team.find({ companyId: tenantId }).lean();
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const enriched = shifts.map(s => {
+    const enriched = shifts.map((s) => {
       const obj = s.toObject();
       const shiftDate = new Date(s.date);
       shiftDate.setHours(0, 0, 0, 0);
@@ -248,7 +271,7 @@ const getAllShifts = async (req, res) => {
 
       if (!obj.teamId && obj.employeeId) {
         const empIdStr = (obj.employeeId._id || obj.employeeId).toString();
-        const foundTeam = teams.find(t => t.members && t.members.some(m => m.toString() === empIdStr));
+        const foundTeam = teams.find((t) => t.members && t.members.some((m) => m.toString() === empIdStr));
         if (foundTeam) {
           obj.teamId = foundTeam.teamId;
         }
@@ -262,13 +285,16 @@ const getAllShifts = async (req, res) => {
   }
 };
 
-// @desc    Delete a shift schedule (blocked if locked or < 1 day before shift date)
+// @desc    Delete a shift schedule (tenant-isolated)
 // @route   DELETE /api/shifts/:id
 // @access  Private (Admin, HR, PM)
 const deleteShift = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const shift = await ShiftSchedule.findById(req.params.id);
-    if (!shift) return res.status(404).json({ message: 'Shift not found' });
+    if (!shift || !belongsToTenant(shift, tenantId)) {
+      return res.status(404).json({ message: 'Shift not found in your organization' });
+    }
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -279,7 +305,7 @@ const deleteShift = async (req, res) => {
 
     if (shift.isLocked || today >= lockThreshold) {
       return res.status(400).json({
-        message: 'Cannot delete shift less than 1 day before it occurs, after it has passed, or when locked.'
+        message: 'Cannot delete shift less than 1 day before it occurs, after it has passed, or when locked.',
       });
     }
 
@@ -289,7 +315,7 @@ const deleteShift = async (req, res) => {
     end.setHours(23, 59, 59, 999);
 
     await Team.updateMany(
-      { 'shifts.employeeId': shift.employeeId, 'shifts.date': { $gte: start, $lte: end } },
+      { companyId: tenantId, 'shifts.employeeId': shift.employeeId, 'shifts.date': { $gte: start, $lte: end } },
       { $pull: { shifts: { employeeId: shift.employeeId, date: { $gte: start, $lte: end } } } }
     );
 
@@ -300,19 +326,21 @@ const deleteShift = async (req, res) => {
   }
 };
 
-// @desc    Get all employees with their current active shift schedule (helper for Admin UI)
+// @desc    Get upcoming shift summary (tenant-isolated)
 // @route   GET /api/shifts/summary
 // @access  Private (Admin, HR, PM)
 const getShiftSummary = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const today = new Date();
-    today.setHours(0,0,0,0);
-    
+    today.setHours(0, 0, 0, 0);
+
     const upcomingLimit = new Date(today);
     upcomingLimit.setDate(today.getDate() + 7);
 
     const schedules = await ShiftSchedule.find({
-      date: { $gte: today, $lte: upcomingLimit }
+      companyId: tenantId,
+      date: { $gte: today, $lte: upcomingLimit },
     }).populate('employeeId', 'name employeeCode designation role');
 
     res.json(schedules);
@@ -328,5 +356,5 @@ module.exports = {
   getShifts,
   getAllShifts,
   deleteShift,
-  getShiftSummary
+  getShiftSummary,
 };

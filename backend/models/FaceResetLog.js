@@ -2,6 +2,12 @@ const mongoose = require('mongoose');
 
 const FaceResetLogSchema = new mongoose.Schema(
   {
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      index: true,
+      default: null,
+    },
     employee: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

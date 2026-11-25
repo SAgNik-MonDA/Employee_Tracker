@@ -5,6 +5,7 @@ const User = require('../models/User');
 const LandingContent = require('../models/LandingContent');
 const SystemSettings = require('../models/SystemSettings');
 const sendEmail = require('../utils/sendEmail');
+const sendCredentialsEmail = require('../utils/sendCredentialsEmail');
 const ExcelJS = require('exceljs');
 const jwt = require('jsonwebtoken');
 
@@ -324,34 +325,19 @@ exports.verifyAndRegister = async (req, res) => {
       ],
     });
 
-    // Dispatch onboarding & invoice confirmation email with Employee Code
-    const expiryStr = endDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-    sendEmail({
-      to: adminUser.email,
-      subject: `🎉 Welcome to Employee Tracker Enterprise — ${adminUser.companyName} Workspace Activated`,
-      html: `
-        <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:0 auto;background:#08252b;color:#f1f5f9;border-radius:16px;overflow:hidden;border:1px solid #14b8a6;">
-          <div style="background:linear-gradient(135deg,#0d9488,#042f2e);padding:32px;text-align:center;">
-            <h1 style="margin:0;color:#ffffff;font-size:22px;">ENTERPRISE WORKSPACE ACTIVATED</h1>
-            <p style="margin:6px 0 0;color:#99f6e4;font-size:13px;font-weight:600;">Subscription Confirmed via Razorpay</p>
-          </div>
-          <div style="padding:30px;">
-            <p style="font-size:15px;color:#e2e8f0;margin-top:0;">Dear <strong>${adminUser.name}</strong>,</p>
-            <p style="font-size:14px;color:#94a3b8;line-height:1.6;">
-              Your corporate subscription for <strong>${adminUser.companyName}</strong> is now live. Save your Admin credentials below to sign in anytime:
-            </p>
-            <div style="background:#0f172a;border:1px solid #14b8a6;border-radius:12px;padding:18px;margin:20px 0;">
-              <p style="margin:4px 0;font-size:13px;color:#94a3b8;">Admin Employee Code: <strong style="color:#2dd4bf;font-size:16px;">${adminUser.employeeCode}</strong></p>
-              <p style="margin:4px 0;font-size:13px;color:#94a3b8;">Work Email: <strong style="color:#f8fafc;">${adminUser.email}</strong></p>
-              <p style="margin:4px 0;font-size:13px;color:#94a3b8;">Active Plan: <strong style="color:#34d399;">${planInfo.title} (₹${planInfo.price})</strong></p>
-              <p style="margin:4px 0;font-size:13px;color:#94a3b8;">Valid Until: <strong style="color:#f8fafc;">${expiryStr}</strong></p>
-              <p style="margin:4px 0;font-size:12px;color:#64748b;">Razorpay Payment ID: ${razorpayPaymentId}</p>
-            </div>
-            <p style="font-size:13px;color:#94a3b8;">You can now add employees, configure shifts, and automate statutory payroll from your Admin Dashboard.</p>
-          </div>
-        </div>
-      `,
-    }).catch(() => {});
+    // Dispatch onboarding email WITH branded Credentials + QR Login Card PDF attached
+    const portalOrigin = req.headers.origin || process.env.FRONTEND_URL || 'https://employee-tracker-project.sagnikmondal.in';
+    const emailSent = await sendCredentialsEmail({
+      user: adminUser,
+      plainPassword: password,
+      portalUrl: portalOrigin,
+      subscriptionMeta: {
+        planName: planInfo.title,
+        price: planInfo.price,
+        endDate,
+        razorpayPaymentId,
+      },
+    });
 
     // Generate JWT token for auto login
     const token = jwt.sign(
@@ -362,7 +348,10 @@ exports.verifyAndRegister = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'Payment verified & Enterprise Admin account created! 🎉',
+      message: emailSent
+        ? 'Payment verified & Enterprise Admin account created! Credentials PDF sent to your email. 🎉'
+        : 'Payment verified & Enterprise Admin account created! Save your Employee Code below. 🎉',
+      emailSent,
       token,
       user: {
         _id: adminUser._id,

@@ -3,6 +3,7 @@ const { Schema } = mongoose;
 
 const teamChatSchema = new Schema(
   {
+    companyId: { type: Schema.Types.ObjectId, ref: 'User', index: true, default: null },
     teamId:   { type: Schema.Types.ObjectId, ref: 'Team', required: true, index: true },
     senderId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     message:  { type: String, required: true, trim: true },

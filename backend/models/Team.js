@@ -41,9 +41,14 @@ const shiftSchema = new Schema({
 
 const teamSchema = new Schema(
   {
+    companyId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      index: true,
+      default: null,
+    },
     teamId: {
       type: String,
-      unique: true,
       trim: true,
     },
     projectName: {
@@ -70,11 +75,14 @@ const teamSchema = new Schema(
   { timestamps: true }
 );
 
+teamSchema.index({ companyId: 1, teamId: 1 }, { unique: true, sparse: true });
+
 teamSchema.pre('save', async function (next) {
   if (!this.teamId) {
     try {
-      const activeTeams = await mongoose.model('Team').find({}, 'teamId');
-      const historyTeams = await mongoose.model('TeamHistory').find({}, 'teamId');
+      const tenantFilter = this.companyId ? { companyId: this.companyId } : {};
+      const activeTeams = await mongoose.model('Team').find(tenantFilter, 'teamId');
+      const historyTeams = await mongoose.model('TeamHistory').find(tenantFilter, 'teamId');
 
       let maxNum = 0;
       const checkTeam = (t) => {
@@ -94,7 +102,7 @@ teamSchema.pre('save', async function (next) {
 
       this.teamId = 'TM-' + String(maxNum + 1).padStart(4, '0');
     } catch (e) {
-      const count = await mongoose.model('Team').countDocuments();
+      const count = await mongoose.model('Team').countDocuments(this.companyId ? { companyId: this.companyId } : {});
       this.teamId = 'TM-' + String(count + 1).padStart(4, '0');
     }
   }

@@ -6,6 +6,7 @@ const ShiftSchedule = require('../models/ShiftSchedule');
 const TeamHistory = require('../models/TeamHistory');
 const Notification = require('../models/Notification');
 const { cloudinary, uploadToCloudinary } = require('../config/cloudinary');
+const { getTenantId, getTenantUserFilter, belongsToTenant } = require('../utils/tenantHelper');
 
 // Helper: extract Cloudinary public_id from a secure_url
 const getCloudinaryPublicId = (url) => {
@@ -33,17 +34,33 @@ const canManageTeam = (user) => {
   return TEAM_CREATOR_DESIGNATIONS.some((d) => des.includes(d));
 };
 
-// ── Create Team ──────────────────────────────────────────────────────────────
+// Helper: populate & resolve companyId from a team document safely
+const getTeamTenantId = (team) => {
+  if (!team) return null;
+  return team.companyId || getTenantId(team.createdBy) || null;
+};
+
+// ── Create Team (strictly tenant-isolated) ───────────────────────────────────
 exports.createTeam = async (req, res) => {
   try {
     if (!canManageTeam(req.user))
       return res.status(403).json({ message: 'Not authorized to create teams' });
 
+    const tenantId = req.tenantId || getTenantId(req.user);
     const { projectName, members, teamLead, startDate, endDate, techStack } = req.body;
+
+    // Validate all assigned members & teamLead belong strictly to this company
+    const companyUserIds = new Set(
+      (await User.find(getTenantUserFilter(tenantId)).distinct('_id')).map((id) => id.toString())
+    );
+    const safeMembers = (members || []).filter((m) => companyUserIds.has(m.toString()));
+    const safeLead = teamLead && companyUserIds.has(teamLead.toString()) ? teamLead : null;
+
     const team = await Team.create({
+      companyId: tenantId,
       projectName,
-      members: members || [],
-      teamLead: teamLead || null,
+      members: safeMembers,
+      teamLead: safeLead,
       createdBy: req.user._id,
       startDate: startDate || null,
       endDate: endDate || null,
@@ -59,12 +76,16 @@ exports.createTeam = async (req, res) => {
   }
 };
 
-const processTeamExpirations = async () => {
+const processTeamExpirations = async (tenantFilterId = null) => {
   try {
-    const activeTeams = await Team.find({ status: 'Active' })
+    const query = tenantFilterId
+      ? { companyId: tenantFilterId, status: 'Active' }
+      : { status: 'Active' };
+
+    const activeTeams = await Team.find(query)
       .populate('members', 'name designation role profilePicture employeeCode')
       .populate('teamLead', 'name designation role profilePicture employeeCode')
-      .populate('createdBy', 'name designation role profilePicture employeeCode');
+      .populate('createdBy', 'name designation role profilePicture employeeCode companyId');
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -72,30 +93,39 @@ const processTeamExpirations = async () => {
     for (const team of activeTeams) {
       if (!team.endDate) continue;
 
+      const teamTenantId = getTeamTenantId(team);
       const endDate = new Date(team.endDate);
       endDate.setHours(23, 59, 59, 999);
 
       const oneDayBeforeEnd = new Date(endDate.getTime() - 24 * 60 * 60 * 1000);
       oneDayBeforeEnd.setHours(0, 0, 0, 0);
 
-      // 1. Expiry Warning: 1 day before End Date
+      // 1. Expiry Warning: 1 day before End Date (notify ONLY this team's company Admins/HR/PMs)
       if (today >= oneDayBeforeEnd && today <= endDate && !team.expiryWarningSent) {
         const targetUserIds = new Set();
         if (team.createdBy?._id) targetUserIds.add(team.createdBy._id.toString());
         if (team.teamLead?._id) targetUserIds.add(team.teamLead._id.toString());
 
-        const pms = await User.find({
-          $or: [
-            { role: { $in: ['Admin', 'HR'] } },
-            { designation: { $regex: /project manager|program manager|operations manager/i } }
-          ]
-        });
-        pms.forEach(p => targetUserIds.add(p._id.toString()));
+        if (teamTenantId) {
+          const pms = await User.find({
+            ...getTenantUserFilter(teamTenantId),
+            $and: [
+              {
+                $or: [
+                  { role: { $in: ['Admin', 'HR'] } },
+                  { designation: { $regex: /project manager|program manager|operations manager/i } },
+                ],
+              },
+            ],
+          }).select('_id');
+          pms.forEach((p) => targetUserIds.add(p._id.toString()));
+        }
 
         const formattedDate = new Date(team.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 
         for (const uid of targetUserIds) {
           await Notification.create({
+            companyId: teamTenantId,
             userId: uid,
             type: 'team_expiry_warning',
             title: `⚠️ Team End Date Approaching: ${team.projectName}`,
@@ -111,32 +141,37 @@ const processTeamExpirations = async () => {
       // 2. Auto-completion & Archival: After End Date has passed
       if (today > endDate) {
         await TeamHistory.create({
+          companyId: teamTenantId,
           teamId: team.teamId || `TM-${String(team._id).slice(-4).toUpperCase()}`,
           projectName: team.projectName,
-          members: (team.members || []).map(m => ({
+          members: (team.members || []).map((m) => ({
             _id: m._id,
             name: m.name,
             employeeCode: m.employeeCode,
             designation: m.designation,
             role: m.role,
-            profilePicture: m.profilePicture
+            profilePicture: m.profilePicture,
           })),
-          teamLead: team.teamLead ? {
-            _id: team.teamLead._id,
-            name: team.teamLead.name,
-            employeeCode: team.teamLead.employeeCode,
-            designation: team.teamLead.designation,
-            role: team.teamLead.role,
-            profilePicture: team.teamLead.profilePicture
-          } : null,
-          createdBy: team.createdBy ? {
-            _id: team.createdBy._id,
-            name: team.createdBy.name,
-            employeeCode: team.createdBy.employeeCode,
-            designation: team.createdBy.designation,
-            role: team.createdBy.role,
-            profilePicture: team.createdBy.profilePicture
-          } : null,
+          teamLead: team.teamLead
+            ? {
+                _id: team.teamLead._id,
+                name: team.teamLead.name,
+                employeeCode: team.teamLead.employeeCode,
+                designation: team.teamLead.designation,
+                role: team.teamLead.role,
+                profilePicture: team.teamLead.profilePicture,
+              }
+            : null,
+          createdBy: team.createdBy
+            ? {
+                _id: team.createdBy._id,
+                name: team.createdBy.name,
+                employeeCode: team.createdBy.employeeCode,
+                designation: team.createdBy.designation,
+                role: team.createdBy.role,
+                profilePicture: team.createdBy.profilePicture,
+              }
+            : null,
           startDate: team.startDate,
           endDate: team.endDate,
           completedAt: new Date(),
@@ -145,10 +180,9 @@ const processTeamExpirations = async () => {
           documents: team.documents || [],
           progressUpdates: team.progressUpdates || [],
           shifts: team.shifts || [],
-          reasonArchived: 'Auto-completed after project end date expired'
+          reasonArchived: 'Auto-completed after project end date expired',
         });
 
-        // Ensure ShiftSchedule records retain teamId
         if (team.teamId) {
           for (const s of (team.shifts || [])) {
             const empId = s.employeeId?._id || s.employeeId;
@@ -170,6 +204,7 @@ const processTeamExpirations = async () => {
 
         for (const uid of targetUserIds) {
           await Notification.create({
+            companyId: teamTenantId,
             userId: uid,
             type: 'team_auto_archived',
             title: `✅ Team Completed & Archived: ${team.projectName}`,
@@ -187,18 +222,22 @@ const processTeamExpirations = async () => {
   }
 };
 
-// ── Get all teams for current user ───────────────────────────────────────────
+// ── Get all teams for current user (strictly tenant-isolated) ────────────────
 exports.getTeams = async (req, res) => {
   try {
-    await processTeamExpirations();
-    const isAdmin = ['Admin','HR'].includes(req.user.role);
-    const query = isAdmin ? {} : {
-      $or: [
-        { members: req.user._id },
-        { createdBy: req.user._id },
-        { teamLead: req.user._id },
-      ],
-    };
+    const tenantId = req.tenantId || getTenantId(req.user);
+    await processTeamExpirations(tenantId);
+    const isAdmin = ['Admin', 'HR'].includes(req.user.role);
+    const query = isAdmin
+      ? { companyId: tenantId }
+      : {
+          companyId: tenantId,
+          $or: [
+            { members: req.user._id },
+            { createdBy: req.user._id },
+            { teamLead: req.user._id },
+          ],
+        };
     const teams = await Team.find(query)
       .sort({ createdAt: -1 })
       .populate('members', 'name designation role profilePicture employeeCode')
@@ -215,9 +254,10 @@ exports.getTeams = async (req, res) => {
   }
 };
 
-// ── Get single team ──────────────────────────────────────────────────────────
+// ── Get single team (tenant-isolated) ────────────────────────────────────────
 exports.getTeamById = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const team = await Team.findById(req.params.id)
       .populate('members', 'name designation role profilePicture employeeCode department weeklyHolidays holidayStartDate holidayValidUntil')
       .populate('teamLead', 'name designation role profilePicture employeeCode')
@@ -229,18 +269,23 @@ exports.getTeamById = async (req, res) => {
       .populate('shifts.employeeId', 'name designation profilePicture employeeCode')
       .populate('shifts.scheduledBy', 'name')
       .populate('documents.uploadedBy', 'name');
-    if (!team) return res.status(404).json({ message: 'Team not found' });
+    if (!team || !belongsToTenant(team, tenantId)) {
+      return res.status(404).json({ message: 'Team not found in your organization' });
+    }
     res.json(team);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
-// ── Update Team ──────────────────────────────────────────────────────────────
+// ── Update Team (tenant-isolated) ────────────────────────────────────────────
 exports.updateTeam = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const team = await Team.findById(req.params.id);
-    if (!team) return res.status(404).json({ message: 'Team not found' });
+    if (!team || !belongsToTenant(team, tenantId)) {
+      return res.status(404).json({ message: 'Team not found in your organization' });
+    }
 
     const isCreator = team.createdBy.toString() === req.user._id.toString();
     const isAdmin = ['Admin', 'HR'].includes(req.user.role);
@@ -250,29 +295,33 @@ exports.updateTeam = async (req, res) => {
 
     const { projectName, members, teamLead, startDate, endDate, techStack, status } = req.body;
     if (projectName !== undefined) team.projectName = projectName;
-    if (members !== undefined)     team.members = members;
-    if (teamLead !== undefined)    team.teamLead = teamLead ? teamLead : null;
-    if (startDate !== undefined)   team.startDate = startDate ? startDate : null;
+    if (members !== undefined || teamLead !== undefined) {
+      const companyUserIds = new Set(
+        (await User.find(getTenantUserFilter(tenantId)).distinct('_id')).map((id) => id.toString())
+      );
+      if (members !== undefined) team.members = members.filter((m) => companyUserIds.has(m.toString()));
+      if (teamLead !== undefined) team.teamLead = teamLead && companyUserIds.has(teamLead.toString()) ? teamLead : null;
+    }
+    if (startDate !== undefined) team.startDate = startDate ? startDate : null;
 
-    // Only Project Managers and Admins can extend or change the team End Date
     if (endDate !== undefined) {
       const oldEndDateStr = team.endDate ? new Date(team.endDate).toISOString().split('T')[0] : '';
       const newEndDateStr = endDate ? new Date(endDate).toISOString().split('T')[0] : '';
 
       if (newEndDateStr !== oldEndDateStr) {
-        const isPMOrAdmin = ['Admin', 'HR'].includes(req.user.role) || 
+        const isPMOrAdmin = ['Admin', 'HR'].includes(req.user.role) ||
           /project manager|program manager|operations manager/i.test(req.user.designation || req.user.role || '');
 
         if (!isPMOrAdmin) {
           return res.status(403).json({ message: 'Only Project Managers and Admins are authorized to extend or modify the project End Date.' });
         }
         team.endDate = endDate ? endDate : null;
-        team.expiryWarningSent = false; // Reset warning flag when extended
+        team.expiryWarningSent = false;
       }
     }
 
-    if (techStack !== undefined)   team.techStack = Array.isArray(techStack) ? techStack : [techStack];
-    if (status !== undefined)      team.status = status;
+    if (techStack !== undefined) team.techStack = Array.isArray(techStack) ? techStack : [techStack];
+    if (status !== undefined) team.status = status;
 
     await team.save();
     const updated = await Team.findById(team._id)
@@ -292,17 +341,19 @@ exports.updateTeam = async (req, res) => {
   }
 };
 
-// ── Delete Team ──────────────────────────────────────────────────────────────
+// ── Delete Team (tenant-isolated) ────────────────────────────────────────────
 exports.deleteTeam = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const team = await Team.findById(req.params.id);
-    if (!team) return res.status(404).json({ message: 'Team not found' });
+    if (!team || !belongsToTenant(team, tenantId)) {
+      return res.status(404).json({ message: 'Team not found in your organization' });
+    }
     const isCreator = team.createdBy.toString() === req.user._id.toString();
-    const isAdmin   = ['Admin', 'HR'].includes(req.user.role);
+    const isAdmin = ['Admin', 'HR'].includes(req.user.role);
     if (!isCreator && !isAdmin)
       return res.status(403).json({ message: 'Not authorized to delete this team' });
 
-    // Populate full team data to archive in TeamHistory before deletion
     const populatedTeam = await Team.findById(req.params.id)
       .populate('members', 'name designation role profilePicture employeeCode')
       .populate('teamLead', 'name designation role profilePicture employeeCode')
@@ -310,32 +361,37 @@ exports.deleteTeam = async (req, res) => {
 
     if (populatedTeam) {
       await TeamHistory.create({
+        companyId: tenantId,
         teamId: populatedTeam.teamId || `TM-${String(populatedTeam._id).slice(-4).toUpperCase()}`,
         projectName: populatedTeam.projectName,
-        members: (populatedTeam.members || []).map(m => ({
+        members: (populatedTeam.members || []).map((m) => ({
           _id: m._id,
           name: m.name,
           employeeCode: m.employeeCode,
           designation: m.designation,
           role: m.role,
-          profilePicture: m.profilePicture
+          profilePicture: m.profilePicture,
         })),
-        teamLead: populatedTeam.teamLead ? {
-          _id: populatedTeam.teamLead._id,
-          name: populatedTeam.teamLead.name,
-          employeeCode: populatedTeam.teamLead.employeeCode,
-          designation: populatedTeam.teamLead.designation,
-          role: populatedTeam.teamLead.role,
-          profilePicture: populatedTeam.teamLead.profilePicture
-        } : null,
-        createdBy: populatedTeam.createdBy ? {
-          _id: populatedTeam.createdBy._id,
-          name: populatedTeam.createdBy.name,
-          employeeCode: populatedTeam.createdBy.employeeCode,
-          designation: populatedTeam.createdBy.designation,
-          role: populatedTeam.createdBy.role,
-          profilePicture: populatedTeam.createdBy.profilePicture
-        } : null,
+        teamLead: populatedTeam.teamLead
+          ? {
+              _id: populatedTeam.teamLead._id,
+              name: populatedTeam.teamLead.name,
+              employeeCode: populatedTeam.teamLead.employeeCode,
+              designation: populatedTeam.teamLead.designation,
+              role: populatedTeam.teamLead.role,
+              profilePicture: populatedTeam.teamLead.profilePicture,
+            }
+          : null,
+        createdBy: populatedTeam.createdBy
+          ? {
+              _id: populatedTeam.createdBy._id,
+              name: populatedTeam.createdBy.name,
+              employeeCode: populatedTeam.createdBy.employeeCode,
+              designation: populatedTeam.createdBy.designation,
+              role: populatedTeam.createdBy.role,
+              profilePicture: populatedTeam.createdBy.profilePicture,
+            }
+          : null,
         startDate: populatedTeam.startDate,
         endDate: populatedTeam.endDate,
         completedAt: new Date(),
@@ -344,11 +400,10 @@ exports.deleteTeam = async (req, res) => {
         documents: populatedTeam.documents || [],
         progressUpdates: populatedTeam.progressUpdates || [],
         shifts: populatedTeam.shifts || [],
-        reasonArchived: `Team deleted by ${req.user.name}`
+        reasonArchived: `Team deleted by ${req.user.name}`,
       });
     }
 
-    // Preserve teamId on all ShiftSchedule records belonging to this team before deleting
     if (team.teamId) {
       for (const s of (team.shifts || [])) {
         const empId = s.employeeId?._id || s.employeeId;
@@ -380,11 +435,14 @@ exports.deleteTeam = async (req, res) => {
   }
 };
 
-// ── Submit Progress Update ───────────────────────────────────────────────────
+// ── Submit Progress Update (tenant-isolated) ─────────────────────────────────
 exports.addProgressUpdate = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const team = await Team.findById(req.params.id);
-    if (!team) return res.status(404).json({ message: 'Team not found' });
+    if (!team || !belongsToTenant(team, tenantId)) {
+      return res.status(404).json({ message: 'Team not found in your organization' });
+    }
     const { message } = req.body;
     if (!message) return res.status(400).json({ message: 'Message is required' });
     team.progressUpdates.push({ message, submittedBy: req.user._id });
@@ -397,16 +455,19 @@ exports.addProgressUpdate = async (req, res) => {
   }
 };
 
-// ── Approve / Reject Progress Update ────────────────────────────────────────
+// ── Approve / Reject Progress Update (tenant-isolated) ──────────────────────
 exports.approveProgressUpdate = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const team = await Team.findById(req.params.id);
-    if (!team) return res.status(404).json({ message: 'Team not found' });
+    if (!team || !belongsToTenant(team, tenantId)) {
+      return res.status(404).json({ message: 'Team not found in your organization' });
+    }
 
     const update = team.progressUpdates.id(req.params.updateId);
     if (!update) return res.status(404).json({ message: 'Progress update not found' });
 
-    const { action, rejectReason } = req.body; // 'pm-approve' | 'dm-approve' | 'reject'
+    const { action, rejectReason } = req.body;
     const des = (req.user.designation || req.user.role || '').toLowerCase();
     const isPM = des.includes('project manager') || des.includes('program manager');
     const isDM = des.includes('delivery manager') || des.includes('operations manager');
@@ -437,11 +498,14 @@ exports.approveProgressUpdate = async (req, res) => {
   }
 };
 
-// ── Upload / Write Document ──────────────────────────────────────────────────
+// ── Upload / Write Document (tenant-isolated) ────────────────────────────────
 exports.addDocument = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const team = await Team.findById(req.params.id);
-    if (!team) return res.status(404).json({ message: 'Team not found' });
+    if (!team || !belongsToTenant(team, tenantId)) {
+      return res.status(404).json({ message: 'Team not found in your organization' });
+    }
 
     let doc;
     if (req.file) {
@@ -471,11 +535,14 @@ exports.addDocument = async (req, res) => {
   }
 };
 
-// ── Delete Document ──────────────────────────────────────────────────────────
+// ── Delete Document (tenant-isolated) ────────────────────────────────────────
 exports.deleteDocument = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const team = await Team.findById(req.params.id);
-    if (!team) return res.status(404).json({ message: 'Team not found' });
+    if (!team || !belongsToTenant(team, tenantId)) {
+      return res.status(404).json({ message: 'Team not found in your organization' });
+    }
     const doc = team.documents.id(req.params.docId);
     if (!doc) return res.status(404).json({ message: 'Document not found' });
 
@@ -505,15 +572,18 @@ exports.deleteDocument = async (req, res) => {
   }
 };
 
-// ── Schedule Shift ───────────────────────────────────────────────────────────
+// ── Schedule Shift (tenant-isolated) ─────────────────────────────────────────
 exports.scheduleShift = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const team = await Team.findById(req.params.id);
-    if (!team) return res.status(404).json({ message: 'Team not found' });
+    if (!team || !belongsToTenant(team, tenantId)) {
+      return res.status(404).json({ message: 'Team not found in your organization' });
+    }
 
     const des = (req.user.designation || req.user.role || '').toLowerCase();
     const canSchedule = des.includes('team lead') || des.includes('project manager') ||
-      des.includes('program manager') || ['Admin','HR'].includes(req.user.role);
+      des.includes('program manager') || ['Admin', 'HR'].includes(req.user.role);
     const isLead = team.teamLead && team.teamLead.toString() === req.user._id.toString();
     const isCreator = team.createdBy && team.createdBy.toString() === req.user._id.toString();
     if (!canSchedule && !isLead && !isCreator) {
@@ -522,7 +592,6 @@ exports.scheduleShift = async (req, res) => {
 
     const { employeeId, shiftType, date, isLocked } = req.body;
 
-    // Sync with ShiftSchedule model so it shows in Employee's My Shifts & Attendance check
     const start = new Date(date + 'T00:00:00.000Z');
     const end = new Date(date + 'T23:59:59.999Z');
     const existingGlobal = await ShiftSchedule.findOne({ employeeId, date: { $gte: start, $lte: end } });
@@ -533,6 +602,7 @@ exports.scheduleShift = async (req, res) => {
     await team.save();
 
     if (existingGlobal) {
+      if (!existingGlobal.companyId) existingGlobal.companyId = tenantId;
       if (!existingGlobal.isLocked) {
         existingGlobal.shiftType = shiftType;
         existingGlobal.scheduledBy = req.user._id;
@@ -542,6 +612,7 @@ exports.scheduleShift = async (req, res) => {
       await existingGlobal.save();
     } else {
       await ShiftSchedule.create({
+        companyId: tenantId,
         employeeId,
         shiftType,
         date: start,
@@ -560,24 +631,26 @@ exports.scheduleShift = async (req, res) => {
   }
 };
 
-// ── Delete Shift ─────────────────────────────────────────────────────────────
+// ── Delete Shift (tenant-isolated) ───────────────────────────────────────────
 exports.deleteShift = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const team = await Team.findById(req.params.id);
-    if (!team) return res.status(404).json({ message: 'Team not found' });
+    if (!team || !belongsToTenant(team, tenantId)) {
+      return res.status(404).json({ message: 'Team not found in your organization' });
+    }
     const shift = team.shifts.id(req.params.shiftId);
     if (!shift) return res.status(404).json({ message: 'Shift not found' });
 
     const des = (req.user.designation || req.user.role || '').toLowerCase();
     const canSchedule = des.includes('team lead') || des.includes('project manager') ||
-      des.includes('program manager') || ['Admin','HR'].includes(req.user.role);
+      des.includes('program manager') || ['Admin', 'HR'].includes(req.user.role);
     const isLead = team.teamLead && team.teamLead.toString() === req.user._id.toString();
     const isCreator = team.createdBy && team.createdBy.toString() === req.user._id.toString();
     if (!canSchedule && !isLead && !isCreator) {
       return res.status(403).json({ message: 'Not authorized to delete shift' });
     }
 
-    // 1-Day Auto-Lock & Lock check
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -595,7 +668,7 @@ exports.deleteShift = async (req, res) => {
 
     if (globalShift?.isLocked || shift.isLocked || today >= lockThreshold) {
       return res.status(400).json({
-        message: 'Cannot delete shift less than 1 day before it occurs, after it has passed, or when locked.'
+        message: 'Cannot delete shift less than 1 day before it occurs, after it has passed, or when locked.',
       });
     }
 
@@ -611,15 +684,18 @@ exports.deleteShift = async (req, res) => {
   }
 };
 
-// ── Team Attendance Sheet ────────────────────────────────────────────────────
+// ── Team Attendance Sheet (tenant-isolated) ──────────────────────────────────
 exports.getTeamAttendance = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const team = await Team.findById(req.params.id).populate('members', 'name designation role profilePicture employeeCode department weeklyHolidays holidayStartDate holidayValidUntil');
-    if (!team) return res.status(404).json({ message: 'Team not found' });
+    if (!team || !belongsToTenant(team, tenantId)) {
+      return res.status(404).json({ message: 'Team not found in your organization' });
+    }
 
     const des = (req.user.designation || req.user.role || '').toLowerCase();
     const isLeadOrPM = des.includes('team lead') || des.includes('project manager') ||
-      des.includes('program manager') || ['Admin','HR'].includes(req.user.role);
+      des.includes('program manager') || ['Admin', 'HR'].includes(req.user.role);
     const isLead = team.teamLead && team.teamLead.toString() === req.user._id.toString();
     const isCreator = team.createdBy && team.createdBy.toString() === req.user._id.toString();
     if (!isLeadOrPM && !isLead && !isCreator) {
@@ -629,10 +705,11 @@ exports.getTeamAttendance = async (req, res) => {
     const { month, year } = req.query;
     const now = new Date();
     const monthStr = (month || (now.getMonth() + 1)).toString().padStart(2, '0');
-    const yearStr  = (year || now.getFullYear()).toString();
+    const yearStr = (year || now.getFullYear()).toString();
 
     const memberIds = (team.members || []).map((m) => m._id);
     const records = await Attendance.find({
+      companyId: tenantId,
       employeeId: { $in: memberIds },
       date: { $regex: `^${yearStr}-${monthStr}` },
     }).sort({ date: 1 });
@@ -643,9 +720,15 @@ exports.getTeamAttendance = async (req, res) => {
   }
 };
 
-// ── Get Chat Messages ────────────────────────────────────────────────────────
+// ── Get Chat Messages (tenant-isolated) ──────────────────────────────────────
 exports.getChatMessages = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
+    const team = await Team.findById(req.params.id).select('companyId createdBy');
+    if (!team || !belongsToTenant(team, tenantId)) {
+      return res.status(404).json({ message: 'Team not found in your organization' });
+    }
+
     const msgs = await TeamChat.find({ teamId: req.params.id })
       .sort({ createdAt: 1 })
       .limit(100)
@@ -656,12 +739,23 @@ exports.getChatMessages = async (req, res) => {
   }
 };
 
-// ── Send Chat Message (REST fallback) ───────────────────────────────────────
+// ── Send Chat Message (REST fallback — tenant-isolated) ─────────────────────
 exports.sendChatMessage = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
+    const team = await Team.findById(req.params.id).select('companyId createdBy');
+    if (!team || !belongsToTenant(team, tenantId)) {
+      return res.status(404).json({ message: 'Team not found in your organization' });
+    }
+
     const { message } = req.body;
     if (!message) return res.status(400).json({ message: 'Message required' });
-    const msg = await TeamChat.create({ teamId: req.params.id, senderId: req.user._id, message });
+    const msg = await TeamChat.create({
+      companyId: tenantId,
+      teamId: req.params.id,
+      senderId: req.user._id,
+      message,
+    });
     await msg.populate('senderId', 'name profilePicture designation role');
     res.status(201).json(msg);
   } catch (err) {
@@ -669,23 +763,25 @@ exports.sendChatMessage = async (req, res) => {
   }
 };
 
-// ── Get Team History & Archives ──────────────────────────────────────────────
+// ── Get Team History & Archives (tenant-isolated) ────────────────────────────
 exports.getTeamHistory = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const isAdmin = ['Admin', 'HR'].includes(req.user.role);
     const des = (req.user.designation || req.user.role || '').toLowerCase();
     const isPM = des.includes('project manager') || des.includes('program manager') || des.includes('operations manager');
 
-    let query = {};
+    let query = { companyId: tenantId };
     if (!isAdmin && !isPM) {
       query = {
+        companyId: tenantId,
         $or: [
           { 'members._id': req.user._id },
-          { 'members': req.user._id },
+          { members: req.user._id },
           { 'teamLead._id': req.user._id },
-          { 'teamLead': req.user._id },
+          { teamLead: req.user._id },
           { 'createdBy._id': req.user._id },
-          { 'createdBy': req.user._id },
+          { createdBy: req.user._id },
         ],
       };
     }
@@ -697,9 +793,10 @@ exports.getTeamHistory = async (req, res) => {
   }
 };
 
-// ── Delete Single Team History Archive ─────────────────────────────────────────
+// ── Delete Single Team History Archive (tenant-isolated) ───────────────────────
 exports.deleteTeamHistory = async (req, res) => {
   try {
+    const tenantId = req.tenantId || getTenantId(req.user);
     const isAdmin = ['Admin', 'HR'].includes(req.user.role);
     const des = (req.user.designation || req.user.role || '').toLowerCase();
     const isPM = des.includes('project manager') || des.includes('program manager') || des.includes('operations manager');
@@ -708,8 +805,8 @@ exports.deleteTeamHistory = async (req, res) => {
     }
 
     const historyItem = await TeamHistory.findById(req.params.id);
-    if (!historyItem) {
-      return res.status(404).json({ message: 'History record not found' });
+    if (!historyItem || !belongsToTenant(historyItem, tenantId)) {
+      return res.status(404).json({ message: 'History record not found in your organization' });
     }
 
     await TeamHistory.findByIdAndDelete(req.params.id);
@@ -736,7 +833,6 @@ exports.editChatMessage = async (req, res) => {
       return res.status(400).json({ message: 'Cannot edit a deleted message' });
     }
 
-    // 10-minute edit window
     const tenMin = 10 * 60 * 1000;
     if (Date.now() - msg.createdAt.getTime() > tenMin) {
       return res.status(400).json({ message: 'Edit window expired (10 minutes)' });
@@ -747,7 +843,6 @@ exports.editChatMessage = async (req, res) => {
     msg.editedAt = new Date();
     await msg.save();
 
-    // Broadcast via socket
     if (global.io) {
       global.io.to(`team-${msg.teamId.toString()}`).emit('message-edited', {
         _id: msg._id,
@@ -777,10 +872,9 @@ exports.deleteChatMessage = async (req, res) => {
     }
 
     msg.isDeleted = true;
-    msg.message = '[deleted]'; // required:true validation fails on empty string
+    msg.message = '[deleted]';
     await msg.save();
 
-    // Broadcast via socket
     if (global.io) {
       global.io.to(`team-${msg.teamId.toString()}`).emit('message-deleted', {
         _id: msg._id,
