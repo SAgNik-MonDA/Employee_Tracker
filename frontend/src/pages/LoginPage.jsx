@@ -76,7 +76,13 @@ const LoginPage = () => {
     try {
       const data = await login(employeeCode, email, password);
       toast.success(`Welcome back, ${data.name}! 👋`);
-      navigate(data.role === 'Employee' ? '/employee/dashboard' : '/admin/dashboard');
+      if (data.role === 'SuperAdmin') {
+        navigate('/superadmin/dashboard');
+      } else if (data.role === 'Employee') {
+        navigate('/employee/dashboard');
+      } else {
+        navigate('/admin/dashboard');
+      }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Login failed. Please check credentials.');
     } finally {

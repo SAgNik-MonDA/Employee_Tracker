@@ -5,6 +5,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
 const connectDB = require('./config/db');
+const seedSuperAdmin = require('./utils/superAdminSeed');
 const { startBirthdayScheduler } = require('./utils/birthdayScheduler');
 const TeamChat = require('./models/TeamChat');
 
@@ -14,11 +15,10 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 dotenv.config();
 
 // Connect to MongoDB
-connectDB();
-
-// Seed default SuperAdmin account
-const seedSuperAdmin = require('./utils/superAdminSeed');
-seedSuperAdmin();
+connectDB().then(() => {
+  // Seed default SuperAdmin account
+  seedSuperAdmin();
+});
 
 // Start birthday email scheduler (runs daily at 08:00 AM IST)
 startBirthdayScheduler();
