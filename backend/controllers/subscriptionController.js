@@ -308,6 +308,19 @@ exports.renewSubscription = async (req, res) => {
       return res.status(404).json({ message: 'No existing subscription record found' });
     }
 
+    // Verify Signature if live Razorpay keys are active and not mock
+    const secret = process.env.RAZORPAY_KEY_SECRET;
+    if (secret && razorpaySignature && razorpayOrderId && !razorpayOrderId.startsWith('order_mock_')) {
+      const generated_signature = crypto
+        .createHmac('sha256', secret)
+        .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+        .digest('hex');
+
+      if (generated_signature !== razorpaySignature) {
+        return res.status(400).json({ message: 'Renewal payment verification failed: invalid signature' });
+      }
+    }
+
     const planInfo = await getPlanPricing(planId);
 
     // Calculate new start and end dates without data loss
