@@ -236,7 +236,7 @@ const AdminDashboard = () => {
       </div>
 
       {/* ── Pending Mediclaim & PF Withdrawal Requests ────────────────── */}
-      <div className="glass-card p-6 md:col-span-2 mt-6 border-l-4 border-teal-500">
+      <div className="glass-card p-6 md:col-span-2 mt-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
           <div className="flex items-center gap-2.5">
             <span className="p-2 rounded-xl bg-teal-500/10 text-teal-400">
@@ -272,7 +272,7 @@ const AdminDashboard = () => {
         </div>
 
         {pendingWithdrawals.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-surface-400 bg-surface-800/30 rounded-xl border border-surface-700/40">
+          <div className="flex flex-col items-center justify-center py-8 text-surface-400 bg-surface-800/30 rounded-xl border border-[#84B800]/35 dark:border-[#BEEB00]/35">
             <span className="text-3xl mb-2">🎉</span>
             <p className="text-sm font-medium text-surface-300">No pending Mediclaim or PF requests.</p>
             <p className="text-xs text-surface-500 mt-0.5">All employee benefit disbursement claims are fully settled.</p>
@@ -287,7 +287,7 @@ const AdminDashboard = () => {
               return (
                 <div
                   key={req._id}
-                  className="p-4 rounded-xl bg-surface-800/40 border border-surface-700/50 hover:border-surface-600 transition-all flex flex-col md:flex-row gap-4 items-start md:items-center justify-between"
+                  className="p-4 rounded-xl bg-surface-800/40 border border-[#84B800]/35 dark:border-[#BEEB00]/35 hover:border-[#6A9600] dark:hover:border-[#D2F801] transition-all flex flex-col md:flex-row gap-4 items-start md:items-center justify-between"
                 >
                   <div className="flex items-start gap-3 flex-1">
                     <div
@@ -366,7 +366,7 @@ const AdminDashboard = () => {
         ) : (
           <div className="space-y-4">
             {pendingEarlyCheckouts.map(req => (
-              <div key={req._id} className="p-4 rounded-xl bg-surface-800/30 border border-surface-700/50 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+              <div key={req._id} className="p-4 rounded-xl bg-surface-800/30 border border-[#84B800]/35 dark:border-[#BEEB00]/35 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-semibold text-surface-200">{req.employeeId?.name || 'Employee'}</span>
@@ -408,7 +408,7 @@ const AdminDashboard = () => {
         ) : (
           <div className="space-y-4">
             {pendingFaceResets.map(req => (
-              <div key={req._id} className="p-4 rounded-xl bg-surface-800/30 border border-surface-700/50 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+              <div key={req._id} className="p-4 rounded-xl bg-surface-800/30 border border-[#84B800]/35 dark:border-[#BEEB00]/35 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-semibold text-surface-200">{req.name || 'Employee'}</span>

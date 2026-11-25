@@ -36,10 +36,17 @@ const SuperAdminLayout = () => {
   ];
 
   return (
-    <div className="flex h-screen overflow-hidden bg-surface-950 text-surface-100 transition-colors">
+    <div className="relative flex h-screen overflow-hidden bg-surface-950 text-surface-100 transition-colors">
+      {/* Ambient Liquid Glass Refraction Orbs */}
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden="true">
+        <div className="absolute -top-24 -left-24 w-80 h-80 rounded-full bg-[#D2F801]/25 dark:bg-[#D2F801]/16 blur-3xl" />
+        <div className="absolute top-1/2 -left-16 w-72 h-72 rounded-full bg-teal-400/20 dark:bg-[#A6EB00]/12 blur-3xl" />
+        <div className="absolute -bottom-24 left-12 w-72 h-72 rounded-full bg-[#D2F801]/20 dark:bg-emerald-500/10 blur-3xl" />
+      </div>
+
       {/* ── Sidebar ── */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-50 w-72 bg-white dark:bg-[#0E1015] border-r border-neutral-200 dark:border-[#242934] flex flex-col justify-between transition-transform duration-300 ${
+        className={`fixed lg:relative inset-y-0 left-0 z-50 lg:z-20 w-72 sidebar-liquid-glass overflow-hidden flex flex-col justify-between transition-transform duration-300 ${
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
@@ -72,7 +79,7 @@ const SuperAdminLayout = () => {
           </div>
 
           {/* Privacy Notice Reminder */}
-          <div className="mx-4 my-4 p-3 bg-[#F6F7F9] dark:bg-[#14171F] border border-neutral-200 dark:border-[#D2F801]/30 rounded-2xl flex items-start gap-2.5 text-[11px] text-surface-200">
+          <div className="mx-4 my-4 p-3 bg-white/55 dark:bg-white/[0.04] backdrop-blur-md border border-[#84B800]/55 dark:border-[#BEEB00]/55 rounded-2xl flex items-start gap-2.5 text-[11px] text-surface-200 shadow-sm">
             <HiOutlineShieldCheck className="w-4 h-4 text-[#3F5C00] dark:text-[#D2F801] flex-shrink-0 mt-0.5" />
             <span>
               <strong>Tenant Privacy Active:</strong> SuperAdmin has zero access to individual corporate employee profiles, payroll, or biometric data.
@@ -102,7 +109,7 @@ const SuperAdminLayout = () => {
         </div>
 
         {/* User Card & Logout */}
-        <div className="p-4 border-t border-neutral-200 dark:border-[#242934]">
+        <div className="p-4 border-t border-neutral-200/60 dark:border-[#D2F801]/20 bg-white/40 dark:bg-white/[0.03] backdrop-blur-md">
           <div className="flex items-center justify-between mb-3 px-2">
             <div>
               <p className="text-xs font-bold text-surface-100">{user?.name || 'SuperAdmin'}</p>

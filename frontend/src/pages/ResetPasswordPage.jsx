@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import API from '../api/axios';
 import toast from 'react-hot-toast';
 import { HiOutlineLockClosed, HiOutlineEye, HiOutlineEyeOff } from 'react-icons/hi';
+import BrandLogo from '../components/common/BrandLogo';
 
 const ResetPasswordPage = () => {
   const [searchParams]              = useSearchParams();
@@ -61,15 +62,12 @@ const ResetPasswordPage = () => {
 
       <div className="relative z-10 w-full max-w-md mx-4 animate-slide-up">
         {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-700 via-teal-800 to-teal-950 shadow-2xl shadow-teal-900/40 mb-4 border border-teal-500/30">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-300 via-teal-100 to-amber-300 font-bold text-2xl font-display">ET</span>
-          </div>
-          <h1 className="text-3xl font-display font-extrabold text-surface-100 tracking-tight">Employee Tracker</h1>
-          <p className="text-surface-400 mt-1 text-sm">Secure Password Recovery Portal</p>
+        <div className="flex flex-col items-center text-center mb-8">
+          <BrandLogo />
+          <p className="text-surface-400 mt-3 text-sm font-medium">Secure Password Recovery Portal</p>
         </div>
 
-        <div className="liquid-glass p-8 rounded-3xl shadow-2xl border border-white/20 dark:border-white/10">
+        <div className="liquid-glass p-8 rounded-3xl shadow-2xl">
           {success ? (
             /* ── Success state ──────────────────────────────────────────── */
             <div className="text-center py-4">

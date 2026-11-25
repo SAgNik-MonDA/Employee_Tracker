@@ -123,7 +123,7 @@ const SuperAdminDashboard = () => {
       {/* 4 Financial Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* Monthly Revenue */}
-        <div className="liquid-glass p-6 rounded-3xl border border-teal-500/30 shadow-xl">
+        <div className="liquid-glass p-6 rounded-3xl shadow-xl">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-teal-400">Monthly Cash Inflow</span>
             <div className="w-9 h-9 rounded-xl bg-teal-500/10 flex items-center justify-center text-teal-300">
@@ -137,7 +137,7 @@ const SuperAdminDashboard = () => {
         </div>
 
         {/* Yearly Revenue */}
-        <div className="liquid-glass p-6 rounded-3xl border border-emerald-500/30 shadow-xl">
+        <div className="liquid-glass p-6 rounded-3xl shadow-xl">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">Yearly Revenue</span>
             <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-300">
@@ -151,7 +151,7 @@ const SuperAdminDashboard = () => {
         </div>
 
         {/* Lifetime Revenue */}
-        <div className="liquid-glass p-6 rounded-3xl border border-amber-500/30 shadow-xl">
+        <div className="liquid-glass p-6 rounded-3xl shadow-xl">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-amber-400">All-Time Revenue</span>
             <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-300">
@@ -165,7 +165,7 @@ const SuperAdminDashboard = () => {
         </div>
 
         {/* Subscribed Enterprises */}
-        <div className="liquid-glass p-6 rounded-3xl border border-purple-500/30 shadow-xl">
+        <div className="liquid-glass p-6 rounded-3xl shadow-xl">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-purple-400">Subscribed Companies</span>
             <div className="w-9 h-9 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-300">
@@ -184,7 +184,7 @@ const SuperAdminDashboard = () => {
       </div>
 
       {/* Revenue Trend Visualizer Chart */}
-      <div className="liquid-glass p-6 sm:p-8 rounded-3xl border border-surface-800 shadow-2xl">
+      <div className="liquid-glass p-6 sm:p-8 rounded-3xl shadow-2xl">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h3 className="text-base font-bold text-surface-100">Monthly Revenue Trajectory</h3>

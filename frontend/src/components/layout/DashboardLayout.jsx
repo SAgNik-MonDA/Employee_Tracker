@@ -28,7 +28,14 @@ const DashboardLayout = () => {
   }, [user]);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-surface-950 transition-colors duration-300">
+    <div className="relative flex h-screen overflow-hidden bg-surface-950 transition-colors duration-300">
+      {/* Ambient Liquid Glass Refraction Orbs behind Sidebar & Workspace */}
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden="true">
+        <div className="absolute -top-24 -left-24 w-80 h-80 rounded-full bg-[#D2F801]/25 dark:bg-[#D2F801]/16 blur-3xl" />
+        <div className="absolute top-1/2 -left-16 w-72 h-72 rounded-full bg-teal-400/20 dark:bg-[#A6EB00]/12 blur-3xl" />
+        <div className="absolute -bottom-24 left-10 w-72 h-72 rounded-full bg-[#D2F801]/20 dark:bg-emerald-500/10 blur-3xl" />
+      </div>
+
       {/* Sidebar */}
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 

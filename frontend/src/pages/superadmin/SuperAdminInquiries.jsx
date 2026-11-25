@@ -82,7 +82,7 @@ const SuperAdminInquiries = () => {
       </div>
 
       {/* Inquiries Table */}
-      <div className="liquid-glass rounded-3xl border border-surface-800 shadow-xl overflow-hidden">
+      <div className="liquid-glass rounded-3xl shadow-xl overflow-hidden">
         <div className="table-container">
           <table className="data-table">
             <thead>
@@ -171,7 +171,7 @@ const SuperAdminInquiries = () => {
       {/* ── Reply Email Modal ── */}
       {selectedInquiry && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-          <div className="relative w-full max-w-lg liquid-glass rounded-3xl p-6 sm:p-8 shadow-2xl border-[1.5px] border-teal-500/40">
+          <div className="relative w-full max-w-lg liquid-glass rounded-3xl p-6 sm:p-8 shadow-2xl">
             <button
               onClick={() => setSelectedInquiry(null)}
               className="absolute top-5 right-5 p-2 rounded-xl text-surface-400 hover:text-surface-100"

@@ -126,7 +126,7 @@ const SuperAdminSubscriptions = () => {
       </div>
 
       {/* Subscriptions Table */}
-      <div className="liquid-glass rounded-3xl border border-surface-800 shadow-xl overflow-hidden">
+      <div className="liquid-glass rounded-3xl shadow-xl overflow-hidden">
         <div className="table-container">
           <table className="data-table">
             <thead>

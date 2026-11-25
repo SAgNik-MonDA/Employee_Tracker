@@ -27,6 +27,7 @@ import {
 import LoginModal from '../components/auth/LoginModal';
 import SubscribeModal from '../components/subscription/SubscribeModal';
 import ReviewModal from '../components/landing/ReviewModal';
+import BrandLogo from '../components/common/BrandLogo';
 import analyticsDeskImg from '../assets/images/analytics_desk.jpg';
 import teamCollabImg from '../assets/images/team_collab.jpg';
 import officeDiscussionImg from '../assets/images/office_discussion.jpg';
@@ -309,29 +310,8 @@ const LandingPage = () => {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-3">
           {/* Brand Logo */}
-          <a href="#" className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#0F1115] dark:bg-[#D2F801] border border-[#D2F801]/40 flex items-center justify-center shadow-md flex-shrink-0">
-              <span className="text-base sm:text-lg text-[#D2F801] dark:text-[#0B0D11] font-extrabold">
-                ⚡
-              </span>
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <span className="font-bold text-base sm:text-lg tracking-tight truncate">
-                  Employee Tracker
-                </span>
-                <span className="text-[10px] font-extrabold tracking-wider uppercase px-2 py-0.5 rounded-full bg-[#D2F801] text-[#0B0D11]">
-                  PRO
-                </span>
-              </div>
-              <span
-                className={`text-[9px] sm:text-[10px] font-semibold block -mt-0.5 tracking-wider uppercase truncate ${
-                  isLight ? 'text-neutral-500' : 'text-[#D2F801]'
-                }`}
-              >
-                Enterprise Attendance &amp; Payroll
-              </span>
-            </div>
+          <a href="#" className="flex items-center min-w-0">
+            <BrandLogo />
           </a>
 
           {/* Center Links (Desktop) */}
@@ -1443,16 +1423,11 @@ const LandingPage = () => {
       {/* ── 10. ENTERPRISE OBSIDIAN FOOTER (Screenshot Bottom Style) ── */}
       <footer className="relative z-10 w-full bg-[#090A0D] text-white border-t border-white/10 py-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6 text-xs text-neutral-400">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-[#D2F801] text-[#0B0D11] flex items-center justify-center font-extrabold shadow-sm">
-              ⚡
-            </div>
-            <div>
-              <span className="font-bold text-white">Employee Tracker PRO</span>
-              <span className="block text-[10px] text-neutral-500">
-                © 2026 Employee Tracker Enterprise HRMS. All rights reserved.
-              </span>
-            </div>
+          <div className="flex flex-col gap-1.5">
+            <BrandLogo darkOnly compact />
+            <span className="text-[10px] text-neutral-500 pl-1">
+              © 2026 Employee Tracker Enterprise HRMS. All rights reserved.
+            </span>
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-5 sm:gap-6">

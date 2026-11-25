@@ -1,4 +1,5 @@
 import { NavLink, Link } from 'react-router-dom';
+import BrandLogo from '../common/BrandLogo';
 import { useAuth } from '../../context/AuthContext';
 import UserAvatar from '../common/UserAvatar';
 import {
@@ -105,38 +106,30 @@ const Sidebar = ({ isOpen, onClose }) => {
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-50 h-full w-72 backdrop-blur-xl border-r
+        className={`fixed top-0 left-0 z-50 h-full w-72 sidebar-liquid-glass overflow-hidden
                      transform transition-all duration-300 ease-in-out flex flex-col
-                     ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:static lg:z-auto
-                     bg-white dark:bg-[#0E1015] border-neutral-200 dark:border-[#242934]`}
+                     ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:relative lg:z-20`}
       >
+        {/* Subtle internal liquid-glass refraction highlight */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+          <div className="absolute -top-16 -right-12 w-40 h-40 rounded-full bg-[#D2F801]/18 dark:bg-[#D2F801]/12 blur-2xl" />
+          <div className="absolute bottom-24 -left-10 w-36 h-36 rounded-full bg-white/40 dark:bg-white/[0.04] blur-2xl" />
+        </div>
+
         {/* Logo */}
-        <div className="flex items-center justify-between p-6 border-b border-neutral-200 dark:border-[#242934]">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#0F1115] dark:bg-[#D2F801] flex items-center justify-center shadow-md">
-              <span className="text-[#D2F801] dark:text-[#0B0D11] font-display font-extrabold text-lg">
-                ET
-              </span>
-            </div>
-            <div>
-              <h1 className="font-display font-extrabold text-base text-surface-100 tracking-tight">
-                Employee Tracker
-              </h1>
-              <p className="text-[11px] font-semibold text-[#3F5C00] dark:text-[#D2F801] -mt-0.5 tracking-wider uppercase">
-                HR &amp; Finance Suite
-              </p>
-            </div>
-          </div>
+        <div className="relative z-10 flex items-center justify-between px-5 py-5 border-b border-neutral-200/60 dark:border-[#D2F801]/20">
+          <BrandLogo compact />
           <button
             onClick={onClose}
-            className="lg:hidden p-2 rounded-lg transition-colors hover:bg-surface-800 text-surface-400"
+            className="lg:hidden p-2 rounded-lg transition-colors hover:bg-black/5 dark:hover:bg-white/10 text-surface-400"
+            aria-label="Close sidebar"
           >
             <HiOutlineX className="w-5 h-5" />
           </button>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto p-4 space-y-1.5 custom-scrollbar">
+        <nav className="relative z-10 flex-1 overflow-y-auto p-4 space-y-1.5 custom-scrollbar">
           {links.map((link) => (
             <NavLink
               key={link.to}
@@ -145,8 +138,8 @@ const Sidebar = ({ isOpen, onClose }) => {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 border focus:outline-none
                  ${isActive
-                   ? 'bg-[#0F1115] dark:bg-[#D2F801] text-white dark:text-[#0B0D11] border-transparent shadow-md font-bold'
-                   : 'text-surface-400 hover:text-surface-100 hover:bg-surface-800/60 border-transparent'
+                   ? 'bg-[#0F1115] dark:bg-[#D2F801] text-white dark:text-[#0B0D11] border-[#D2F801]/40 shadow-md font-bold'
+                   : 'text-surface-400 hover:text-surface-100 hover:bg-white/60 dark:hover:bg-white/[0.07] hover:backdrop-blur-md border-transparent hover:border-[#84B800]/30 dark:hover:border-[#D2F801]/25'
                  }`
               }
             >
@@ -157,11 +150,11 @@ const Sidebar = ({ isOpen, onClose }) => {
         </nav>
 
         {/* Bottom user info — Clickable profile card */}
-        <div className="p-3 border-t shrink-0 border-neutral-200 dark:border-[#242934] bg-white dark:bg-[#0E1015]">
+        <div className="relative z-10 p-3 border-t shrink-0 border-neutral-200/60 dark:border-[#D2F801]/20 bg-white/40 dark:bg-white/[0.03] backdrop-blur-md">
           <Link
             to={profilePath}
             onClick={onClose}
-            className="flex items-center gap-3 p-2 rounded-xl transition-all duration-200 hover:bg-surface-800/80 group border border-transparent hover:border-[#D2F801]/50"
+            className="flex items-center gap-3 p-2.5 rounded-xl transition-all duration-200 bg-white/55 dark:bg-white/[0.05] hover:bg-white/80 dark:hover:bg-white/[0.09] group border border-[#84B800]/50 dark:border-[#BEEB00]/45 hover:border-[#6A9600] dark:hover:border-[#D2F801] shadow-sm"
             title="Go to My Profile"
           >
             <UserAvatar user={user} size="sm" className="group-hover:ring-2 group-hover:ring-[#D2F801]/70 transition-all" />

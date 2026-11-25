@@ -4,6 +4,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import API from '../api/axios';
 import toast from 'react-hot-toast';
+import BrandLogo from '../components/common/BrandLogo';
 import jsQR from 'jsqr';
 import {
   HiOutlineMail,
@@ -225,24 +226,7 @@ const LoginPage = () => {
       {/* ── TOP HEADER / NAV BAR ── */}
       <header className="relative z-30 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between">
         {/* Logo Mark */}
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-full bg-[#0F1115] dark:bg-[#D2F801] shadow-lg flex items-center justify-center">
-            <span className="font-display font-black text-xl text-[#D2F801] dark:text-[#0B0D11]">
-              ET
-            </span>
-          </div>
-          <div>
-            <span className="text-lg font-display font-extrabold tracking-tight text-surface-100 flex items-center gap-1.5">
-              EMPLOYEE TRACKER
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-[#D2F801] text-[#0B0D11] font-bold">
-                PRO
-              </span>
-            </span>
-            <span className="text-[11px] font-bold text-teal-400 block -mt-1 tracking-wider uppercase">
-              Smart Attendance &amp; Payroll Suite
-            </span>
-          </div>
-        </div>
+        <BrandLogo />
 
         {/* Right Action: System Status & Theme Toggle */}
         <div className="flex items-center gap-3">
