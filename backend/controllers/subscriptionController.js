@@ -1020,3 +1020,23 @@ exports.testEmailDelivery = async (req, res) => {
     res.status(500).json({ message: error.message || 'Email test failed' });
   }
 };
+
+/**
+ * 13. AUTHORIZE SINGLE-USE NONCE FOR VERCEL HTTPS -> SMTP BRIDGE
+ * POST /api/subscription/authorize-relay
+ */
+exports.authorizeEmailRelay = async (req, res) => {
+  try {
+    const { nonce, to, subject } = req.body || {};
+    const authorized = sendEmail.authorizeRelayNonce(nonce, to, subject);
+    if (!authorized) {
+      return res.status(403).json({
+        authorized: false,
+        message: 'Invalid or expired relay authorization nonce',
+      });
+    }
+    return res.json({ authorized: true });
+  } catch (error) {
+    return res.status(500).json({ authorized: false, message: error.message });
+  }
+};

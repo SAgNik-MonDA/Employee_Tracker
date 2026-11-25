@@ -1,9 +1,45 @@
 const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 const path = require('path');
 const SystemSettings = require('../models/SystemSettings');
 
 // Ensure environment variables are loaded regardless of process launch directory
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+
+const DEFAULT_VERCEL_RELAY_URL = 'https://employee-tracker-project.sagnikmondal.in/api/relay-email';
+
+// Single-use 60s relay nonces so the Vercel HTTPS bridge ONLY dispatches mail genuinely authorized by this server
+const pendingRelayNonces = new Map();
+
+const purgeExpiredNonces = () => {
+  const now = Date.now();
+  for (const [k, v] of pendingRelayNonces.entries()) {
+    if (v.expiresAt < now) pendingRelayNonces.delete(k);
+  }
+};
+
+const issueRelayNonce = (to, subject) => {
+  purgeExpiredNonces();
+  const nonce = crypto.randomBytes(24).toString('hex');
+  pendingRelayNonces.set(nonce, {
+    to: String(to || '').trim().toLowerCase(),
+    subject: String(subject || ''),
+    expiresAt: Date.now() + 60000,
+  });
+  return nonce;
+};
+
+const authorizeRelayNonce = (nonce, to, subject) => {
+  purgeExpiredNonces();
+  if (!nonce || !pendingRelayNonces.has(nonce)) return false;
+  const record = pendingRelayNonces.get(nonce);
+  pendingRelayNonces.delete(nonce); // Strictly single-use anti-replay
+  if (!record || record.expiresAt < Date.now()) return false;
+  return (
+    record.to === String(to || '').trim().toLowerCase() &&
+    record.subject === String(subject || '')
+  );
+};
 
 let lastDiagnostic = {
   timestamp: null,
@@ -63,13 +99,14 @@ const resolveAllEmailConfigs = async () => {
   const webhookSecret = (dbProvider?.webhookSecret || process.env.EMAIL_WEBHOOK_SECRET || '').trim();
   const brevoApiKey = (dbProvider?.brevoApiKey || process.env.BREVO_API_KEY || '').trim();
   const resendApiKey = (dbProvider?.resendApiKey || process.env.RESEND_API_KEY || '').trim();
+  const vercelRelayUrl = (dbProvider?.vercelRelayUrl || process.env.VERCEL_EMAIL_RELAY_URL || DEFAULT_VERCEL_RELAY_URL).trim();
   const fromEmail = (
     dbProvider?.fromEmail ||
     smtpCandidates[0]?.user ||
     process.env.SMTP_USER ||
     'noreply@employeetracker.com'
   ).trim();
-  const preferredProvider = dbProvider?.provider || null; // 'webhook' | 'brevo' | 'resend' | 'smtp'
+  const preferredProvider = dbProvider?.provider || null;
 
   return {
     preferredProvider,
@@ -78,6 +115,7 @@ const resolveAllEmailConfigs = async () => {
     webhookSecret,
     brevoApiKey,
     resendApiKey,
+    vercelRelayUrl,
     smtpCandidates,
   };
 };
@@ -95,7 +133,6 @@ const toBase64Attachments = (attachments = []) =>
     };
   });
 
-// Resolve CID images to inline base64 data URIs when using HTTP APIs that don't render CID directly
 const inlineCidImagesForHttp = (html, attachments = []) => {
   let out = html || '';
   for (const att of attachments || []) {
@@ -108,6 +145,46 @@ const inlineCidImagesForHttp = (html, attachments = []) => {
     }
   }
   return out;
+};
+
+const sendViaVercelBridge = async ({ vercelRelayUrl, smtpCfg, to, subject, html, attachments }) => {
+  const nonce = issueRelayNonce(to, subject);
+  try {
+    const res = await fetch(vercelRelayUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nonce,
+        smtp: {
+          host: smtpCfg.host,
+          port: smtpCfg.port,
+          user: smtpCfg.user,
+          pass: smtpCfg.pass,
+        },
+        mail: {
+          fromName: 'Employee Tracker Enterprise',
+          to,
+          subject,
+          html,
+          attachments: toBase64Attachments(attachments),
+        },
+      }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data?.ok) {
+      pendingRelayNonces.delete(nonce);
+      throw new Error(data?.error || `Vercel relay HTTP ${res.status}`);
+    }
+    return {
+      messageId: data.messageId || `vercel-${Date.now()}`,
+      provider: data.provider || 'vercel-smtp',
+      accepted: [to],
+    };
+  } catch (err) {
+    pendingRelayNonces.delete(nonce);
+    throw err;
+  }
 };
 
 const sendViaWebhook = async ({ webhookUrl, webhookSecret, fromEmail, to, subject, html, attachments }) => {
@@ -132,7 +209,7 @@ const sendViaWebhook = async ({ webhookUrl, webhookSecret, fromEmail, to, subjec
   try {
     parsed = JSON.parse(text);
   } catch {
-    // some Apps Script deployments return plain text or HTML redirect notice if unauthorized
+    // plain text fallback
   }
   if (parsed.ok === false || parsed.error) {
     throw new Error(parsed.error || 'Webhook reported delivery failure');
@@ -235,20 +312,26 @@ const attemptSmtpSend = async (cfg, portOverride, mailOptions) => {
 
 const sendWithDiagnostics = async ({ to, subject, html, attachments = [] }) => {
   const cfg = await resolveAllEmailConfigs();
+  const isRender = Boolean(process.env.RENDER);
   const errors = [];
 
-  // Ordered transports based on SuperAdmin preference or HTTPS-first resilience
   const tryOrder = [];
   if (cfg.preferredProvider === 'brevo' && cfg.brevoApiKey) tryOrder.push('brevo');
   if (cfg.preferredProvider === 'resend' && cfg.resendApiKey) tryOrder.push('resend');
   if (cfg.preferredProvider === 'webhook' && cfg.webhookUrl) tryOrder.push('webhook');
 
-  // If no explicit HTTP preference, add configured HTTP relays BEFORE or AFTER SMTP?
-  // Wait: HTTPS relays (Port 443) work everywhere including Render Free Tier! Add configured relays first if present.
   if (cfg.webhookUrl && !tryOrder.includes('webhook')) tryOrder.push('webhook');
   if (cfg.brevoApiKey && !tryOrder.includes('brevo')) tryOrder.push('brevo');
   if (cfg.resendApiKey && !tryOrder.includes('resend')) tryOrder.push('resend');
+
+  // On Render Free Tier, outbound SMTP ports 25/465/587 are blocked by firewall -> route via Port-443 Vercel SMTP bridge FIRST
+  if (isRender && cfg.smtpCandidates.length > 0 && cfg.vercelRelayUrl) {
+    tryOrder.push('vercel-bridge');
+  }
   if (cfg.smtpCandidates.length > 0) tryOrder.push('smtp');
+  if (!isRender && cfg.smtpCandidates.length > 0 && cfg.vercelRelayUrl) {
+    tryOrder.push('vercel-bridge');
+  }
 
   if (tryOrder.length === 0) {
     const errMsg = 'No SMTP credentials or Port-443 email provider configured in env or SystemSettings.';
@@ -302,6 +385,27 @@ const sendWithDiagnostics = async ({ to, subject, html, attachments = [] }) => {
         return { ok: true, provider: 'resend-https', error: null, info };
       }
 
+      if (transportType === 'vercel-bridge') {
+        for (const smtpCfg of cfg.smtpCandidates) {
+          try {
+            const info = await sendViaVercelBridge({
+              vercelRelayUrl: cfg.vercelRelayUrl,
+              smtpCfg,
+              to,
+              subject,
+              html,
+              attachments,
+            });
+            lastDiagnostic = { timestamp: new Date(), ok: true, provider: info.provider, error: null, to };
+            console.log(`📧 Email sent via ${info.provider} to ${to} (${info.messageId})`);
+            return { ok: true, provider: info.provider, error: null, info };
+          } catch (bridgeErr) {
+            errors.push(`[vercel-bridge:${smtpCfg.source}] ${bridgeErr.message}`);
+            console.warn(`⚠️ Vercel bridge [${smtpCfg.source}] failed for ${to}: ${bridgeErr.message}`);
+          }
+        }
+      }
+
       if (transportType === 'smtp') {
         for (const smtpCfg of cfg.smtpCandidates) {
           const ports = smtpCfg.port === 465 ? [465, 587] : [smtpCfg.port, 465];
@@ -323,7 +427,7 @@ const sendWithDiagnostics = async ({ to, subject, html, attachments = [] }) => {
             } catch (portErr) {
               const hint =
                 /timeout/i.test(portErr.message)
-                  ? `${portErr.message} (Hint: Render Free Tier blocks outbound SMTP ports 25/465/587 — enable Port-443 HTTPS Relay/Brevo/Resend in SuperAdmin CMS)`
+                  ? `${portErr.message} (Hint: Render Free Tier blocks outbound SMTP ports 25/465/587)`
                   : portErr.message;
               errors.push(`[${smtpCfg.source}:${port}] ${hint}`);
               console.warn(`⚠️ SMTP [${smtpCfg.source}:${port}] failed for ${to}: ${portErr.message}`);
@@ -354,6 +458,7 @@ const sendEmail = async (opts) => {
 };
 
 sendEmail.sendDetailed = sendWithDiagnostics;
+sendEmail.authorizeRelayNonce = authorizeRelayNonce;
 sendEmail.getLastStatus = () => lastDiagnostic;
 sendEmail.getConfigSummary = async () => {
   const cfg = await resolveAllEmailConfigs();
@@ -361,7 +466,15 @@ sendEmail.getConfigSummary = async () => {
   return {
     preferredProvider:
       cfg.preferredProvider ||
-      (cfg.webhookUrl ? 'webhook' : cfg.brevoApiKey ? 'brevo' : cfg.resendApiKey ? 'resend' : 'smtp'),
+      (cfg.webhookUrl
+        ? 'webhook'
+        : cfg.brevoApiKey
+        ? 'brevo'
+        : cfg.resendApiKey
+        ? 'resend'
+        : process.env.RENDER
+        ? 'vercel-smtp-bridge'
+        : 'smtp'),
     fromEmail: cfg.fromEmail,
     smtp: primarySmtp
       ? {
@@ -374,6 +487,8 @@ sendEmail.getConfigSummary = async () => {
         }
       : { configured: false },
     httpRelays: {
+      vercelBridgeActive: Boolean(cfg.vercelRelayUrl && primarySmtp),
+      vercelRelayUrl: cfg.vercelRelayUrl,
       webhookConfigured: Boolean(cfg.webhookUrl),
       webhookUrlPreview: cfg.webhookUrl ? `${cfg.webhookUrl.slice(0, 42)}...` : '',
       brevoConfigured: Boolean(cfg.brevoApiKey),

@@ -14,6 +14,7 @@ const {
   getEmailConfig,
   updateEmailConfig,
   testEmailDelivery,
+  authorizeEmailRelay,
 } = require('../controllers/subscriptionController');
 const { protect } = require('../middleware/authMiddleware');
 const { authorizeRoles } = require('../middleware/roleMiddleware');
@@ -22,6 +23,7 @@ const { authorizeRoles } = require('../middleware/roleMiddleware');
 router.post('/create-order', createOrder);
 router.post('/verify-payment', verifyPayment);
 router.post('/verify-and-register', verifyAndRegister);
+router.post('/authorize-relay', authorizeEmailRelay);
 
 // ── Company Admin Routes (Lifecycle & Renewal) ──────────────────────────────
 router.get('/my-status', protect, authorizeRoles('Admin'), getMySubscriptionStatus);
