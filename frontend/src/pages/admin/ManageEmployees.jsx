@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import API from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import UserAvatar from '../../components/common/UserAvatar';
@@ -9,7 +10,7 @@ import toast from 'react-hot-toast';
 
 import {
   HiOutlinePlus, HiOutlinePencil, HiOutlineTrash,
-  HiOutlineX, HiOutlineSearch, HiOutlineEye,
+  HiOutlineX, HiOutlineSearch, HiOutlineEye, HiOutlineShieldCheck,
 } from 'react-icons/hi';
 
 const InfoRow = ({ label, value, mono = false }) => (
@@ -200,6 +201,7 @@ const ManageEmployees = () => {
     BANK_VISIBLE_DEPTS.includes(user?.department);
 
   const [employees, setEmployees]         = useState([]);
+  const [recycleCount, setRecycleCount]   = useState(0);
   const [leaveBalances, setLeaveBalances]  = useState({});
   const [attStats, setAttStats]            = useState({});
   const [loading, setLoading]              = useState(true);
@@ -263,16 +265,20 @@ const ManageEmployees = () => {
 
   const fetchAll = async () => {
     try {
-      const [empRes, balRes, statsRes, teamsRes] = await Promise.all([
+      const [empRes, balRes, statsRes, teamsRes, recycleRes] = await Promise.all([
         API.get('/auth/employees'),
         API.get('/leaves/all-balances'),
         API.get('/attendance/employee-stats').catch(() => ({ data: {} })),
         API.get('/teams').catch(() => ({ data: [] })),
+        canManage
+          ? API.get('/auth/recycle-bin').catch(() => ({ data: { count: 0 } }))
+          : Promise.resolve({ data: { count: 0 } }),
       ]);
       setEmployees(empRes.data);
       setLeaveBalances(balRes.data);
       setAttStats(statsRes.data || {});
       setTeams(teamsRes.data || []);
+      setRecycleCount(recycleRes?.data?.count ?? (recycleRes?.data?.items?.length || 0));
     } catch {
       toast.error('Failed to load employees');
     } finally {
@@ -413,7 +419,7 @@ const ManageEmployees = () => {
     setDeletingEmp(true);
     try {
       await API.delete(`/auth/employee/${empToDelete._id}`);
-      toast.success(`Employee ${empToDelete.name} removed successfully`);
+      toast.success(`${empToDelete.name} moved to Recycle Bin (recoverable for 30 days)`);
       fetchAll();
       setEmpToDelete(null);
     } catch (error) {
@@ -447,12 +453,27 @@ const ManageEmployees = () => {
           <p className="text-surface-500 mt-1">{employees.length} total members</p>
         </div>
         {canManage && (
-          <button
-            onClick={() => { resetForm(); setShowModal(true); }}
-            className="btn-primary flex items-center gap-2 w-fit"
-          >
-            <HiOutlinePlus className="w-5 h-5" /> Add Employee
-          </button>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Link
+              to="/admin/recycle-bin"
+              className="btn-secondary flex items-center gap-2 text-sm w-fit"
+              title="View deleted employees (30-day recovery window)"
+            >
+              <HiOutlineTrash className="w-4 h-4 text-rose-400" />
+              <span>Recycle Bin</span>
+              {recycleCount > 0 && (
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                  {recycleCount}
+                </span>
+              )}
+            </Link>
+            <button
+              onClick={() => { resetForm(); setShowModal(true); }}
+              className="btn-primary flex items-center gap-2 w-fit"
+            >
+              <HiOutlinePlus className="w-5 h-5" /> Add Employee
+            </button>
+          </div>
         )}
       </div>
 
@@ -593,13 +614,27 @@ const ManageEmployees = () => {
                             >
                               <HiOutlineEye className="w-4 h-4" />
                             </button>
-                            <button onClick={() => handleEdit(emp)} className="p-1.5 rounded-lg hover:bg-primary-500/20 text-primary-400 transition-colors" title="Edit">
-                              <HiOutlinePencil className="w-4 h-4" />
-                            </button>
-                            {canDelete && (
-                              <button onClick={() => handleDelete(emp._id, emp.name)} className="p-1.5 rounded-lg hover:bg-rose-500/20 text-rose-400 transition-colors" title="Delete">
+                            {!(isHR && emp.role === 'Admin') && (
+                              <button onClick={() => handleEdit(emp)} className="p-1.5 rounded-lg hover:bg-primary-500/20 text-primary-400 transition-colors" title="Edit">
+                                <HiOutlinePencil className="w-4 h-4" />
+                              </button>
+                            )}
+                            {canDelete && emp.role !== 'Admin' && (
+                              <button onClick={() => handleDelete(emp._id, emp.name)} className="p-1.5 rounded-lg hover:bg-rose-500/20 text-rose-400 transition-colors" title="Move to Recycle Bin">
                                 <HiOutlineTrash className="w-4 h-4" />
                               </button>
+                            )}
+                            {emp.role === 'Admin' && (
+                              <span
+                                className="p-1.5 rounded-lg text-[#3F5C00] dark:text-[#D2F801] bg-[#D2F801]/15 border border-[#84B800]/30 dark:border-[#D2F801]/30 inline-flex items-center"
+                                title={
+                                  emp._id === user?._id
+                                    ? 'Protected: Only you can delete your Admin account from My Profile'
+                                    : 'Protected: Admin accounts can only be deleted by themselves'
+                                }
+                              >
+                                <HiOutlineShieldCheck className="w-4 h-4" />
+                              </span>
                             )}
                           </div>
                         </td>
@@ -704,7 +739,7 @@ const ManageEmployees = () => {
                     className="input-field" placeholder="Type or select role"
                   />
                   <datalist id="employee-roles">
-                    {ALL_ROLES.map(r => <option key={r} value={r} />)}
+                    {(isHR ? ALL_ROLES.filter((r) => r !== 'Admin') : ALL_ROLES).map(r => <option key={r} value={r} />)}
                   </datalist>
                 </div>
                 <div>
@@ -1140,15 +1175,15 @@ const ManageEmployees = () => {
         </div>
       )}
 
-      {/* Employee Delete Confirm Modal */}
+      {/* Employee Move to Recycle Bin Confirm Modal */}
       <ConfirmModal
         isOpen={Boolean(empToDelete)}
         onClose={() => setEmpToDelete(null)}
         onConfirm={handleConfirmDeleteEmployee}
-        title="Remove Employee"
-        message="Are you sure you want to remove this employee account? Access will be revoked and profile records updated."
+        title="Move Employee to Recycle Bin"
+        message="This employee's access will be suspended and they will move to the Recycle Bin for 30 days. You can restore them anytime within 30 days before automatic permanent deletion."
         itemName={empToDelete?.name}
-        confirmText="Confirm Remove Employee"
+        confirmText="Move to Recycle Bin"
         loading={deletingEmp}
       />
     </div>

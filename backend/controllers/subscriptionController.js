@@ -264,6 +264,11 @@ exports.verifyAndRegister = async (req, res) => {
     const cleanEmail = adminEmail.toLowerCase().trim();
     const existingUser = await User.findOne({ email: cleanEmail });
     if (existingUser) {
+      if (existingUser.isDeleted) {
+        return res.status(400).json({
+          message: 'This email belongs to a deactivated employee currently inside an organization Recycle Bin. Use a different Admin email.',
+        });
+      }
       return res.status(400).json({
         message: 'An account with this email already exists. Please use a different work email for this company.',
       });

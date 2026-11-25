@@ -182,6 +182,35 @@ const userSchema = new mongoose.Schema(
       sparse: true,
     },
 
+    // Recycle Bin / 30-Day Soft Delete
+    isDeleted: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
+    scheduledPurgeAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    deletedByName: {
+      type: String,
+      default: '',
+    },
+    deletedByRole: {
+      type: String,
+      default: '',
+    },
+
     // Forgot-password flow
 
     resetPasswordToken: {
@@ -241,5 +270,6 @@ userSchema.methods.getResetPasswordToken = function () {
 
 userSchema.index({ companyId: 1 });
 userSchema.index({ companyId: 1, employeeCode: 1 });
+userSchema.index({ isDeleted: 1, scheduledPurgeAt: 1 });
 
 module.exports = mongoose.model('User', userSchema);

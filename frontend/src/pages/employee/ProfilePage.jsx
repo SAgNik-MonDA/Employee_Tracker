@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import API from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
@@ -14,7 +15,8 @@ import toast from 'react-hot-toast';
 import {
   HiOutlineLockClosed, HiOutlineEye, HiOutlineEyeOff,
   HiOutlineX, HiOutlineCheck, HiOutlinePencil, HiOutlinePlus,
-  HiOutlineQrcode, HiOutlineDownload,
+  HiOutlineQrcode, HiOutlineDownload, HiOutlineTrash, HiOutlineExclamation,
+  HiOutlineShieldCheck,
 } from 'react-icons/hi';
 
 
@@ -45,7 +47,8 @@ const RoleBadge = ({ role }) => {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const ProfilePage = () => {
-  const { user, updateSessionUser } = useAuth();
+  const { user, updateSessionUser, logout } = useAuth();
+  const navigate = useNavigate();
   const { notifications, socket } = useNotifications();
   const [profile, setProfile]       = useState(null);
   const [leaveBalance, setLeaveBalance] = useState(null);
@@ -97,6 +100,15 @@ const ProfilePage = () => {
   // Real-time current password verification
   const [isCurrentPasswordValid, setIsCurrentPasswordValid] = useState(null); // null, true, or false
   const [checkingPassword, setCheckingPassword] = useState(false);
+
+  // Admin-only Self-Delete Account modal state
+  const [showSelfDeleteModal, setShowSelfDeleteModal] = useState(false);
+  const [selfDeleteStatus, setSelfDeleteStatus] = useState(null);
+  const [loadingDeleteStatus, setLoadingDeleteStatus] = useState(false);
+  const [selfDeletePassword, setSelfDeletePassword] = useState('');
+  const [selfDeleteConfirmText, setSelfDeleteConfirmText] = useState('');
+  const [showSelfDeletePw, setShowSelfDeletePw] = useState(false);
+  const [selfDeleting, setSelfDeleting] = useState(false);
 
   useEffect(() => {
     if (!resetForm.oldPassword) {
@@ -239,6 +251,52 @@ const ProfilePage = () => {
       toast.error(error.response?.data?.message || 'Failed to change password');
     } finally {
       setResetting(false);
+    }
+  };
+
+  const handleOpenSelfDeleteModal = async () => {
+    setSelfDeletePassword('');
+    setSelfDeleteConfirmText('');
+    setShowSelfDeletePw(false);
+    setShowSelfDeleteModal(true);
+    setLoadingDeleteStatus(true);
+    try {
+      const { data } = await API.get('/auth/self-delete-status');
+      setSelfDeleteStatus(data);
+    } catch {
+      setSelfDeleteStatus(null);
+    } finally {
+      setLoadingDeleteStatus(false);
+    }
+  };
+
+  const handleSelfDeleteAdmin = async (e) => {
+    e.preventDefault();
+    if (!selfDeletePassword) {
+      toast.error('Please enter your current Admin password');
+      return;
+    }
+    if (selfDeleteConfirmText.trim().toUpperCase() !== 'DELETE MY ACCOUNT') {
+      toast.error('Please type "DELETE MY ACCOUNT" exactly to confirm');
+      return;
+    }
+
+    setSelfDeleting(true);
+    try {
+      const { data } = await API.delete('/auth/self-delete-admin', {
+        data: {
+          password: selfDeletePassword,
+          confirmText: selfDeleteConfirmText.trim().toUpperCase(),
+        },
+      });
+      toast.success(data?.message || 'Admin account deleted permanently');
+      setShowSelfDeleteModal(false);
+      logout();
+      navigate('/', { replace: true });
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to delete Admin account');
+    } finally {
+      setSelfDeleting(false);
     }
   };
 
@@ -517,6 +575,32 @@ const ProfilePage = () => {
             Reset Password
           </button>
         </div>
+
+        {/* ── Danger Zone: Admin Self-Delete ONLY ─────────────────────────── */}
+        {(profile?.role === 'Admin' || user?.role === 'Admin') && (
+          <div className="mt-6 pt-5 border-t border-rose-500/30">
+            <h3 className="text-sm font-semibold text-rose-600 dark:text-rose-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <HiOutlineShieldCheck className="w-4 h-4" />
+              Danger Zone — Admin Account Ownership
+            </h3>
+            <div className="p-4 sm:p-5 rounded-xl bg-rose-500/10 border border-rose-500/35 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <p className="text-sm font-bold text-surface-100">Delete My Admin Account</p>
+                <p className="text-xs text-surface-300 leading-relaxed max-w-lg">
+                  Your Admin account is strictly protected: nobody else (not even another Admin or SuperAdmin) can delete your account. Only you can delete yourself here after password verification.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleOpenSelfDeleteModal}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-lg shadow-rose-600/25 transition-all whitespace-nowrap flex-shrink-0"
+              >
+                <HiOutlineTrash className="w-4 h-4" />
+                Delete My Admin Account
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Reset Password Modal ───────────────────────────────────────────── */}
@@ -856,6 +940,119 @@ const ProfilePage = () => {
                 <p className="text-sm text-red-400 py-12">Failed to load QR code. Please try again.</p>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Admin Self-Delete Confirmation Modal ─────────────────────────── */}
+      {showSelfDeleteModal && (profile?.role === 'Admin' || user?.role === 'Admin') && (
+        <div className="fixed inset-0 bg-surface-950/75 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="glass-card w-full max-w-md animate-slide-up my-auto overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-rose-500/30 bg-rose-500/10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400">
+                  <HiOutlineExclamation className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-display font-bold text-surface-100">
+                    Delete My Admin Account
+                  </h2>
+                  <p className="text-xs text-rose-600 dark:text-rose-300">Permanent self-deletion</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSelfDeleteModal(false)}
+                disabled={selfDeleting}
+                className="p-2 rounded-lg hover:bg-surface-700/50 text-surface-400"
+              >
+                <HiOutlineX className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSelfDeleteAdmin} className="p-6 space-y-4">
+              {loadingDeleteStatus ? (
+                <p className="text-xs text-surface-400">Checking organization ownership impact...</p>
+              ) : selfDeleteStatus?.isSoleAdmin ? (
+                <div className="p-3.5 rounded-xl bg-rose-500/15 border border-rose-500/40 text-xs text-rose-800 dark:text-rose-200 space-y-1">
+                  <p className="font-bold text-rose-700 dark:text-rose-300">
+                    Warning: You are the SOLE Admin of {selfDeleteStatus.companyName || 'this organization'}
+                  </p>
+                  <p className="leading-relaxed">
+                    Deleting your account will permanently erase your Admin profile along with {selfDeleteStatus.activeStaffCount} staff account(s) and organization records. This action cannot be undone.
+                  </p>
+                </div>
+              ) : selfDeleteStatus ? (
+                <div className="p-3.5 rounded-xl bg-amber-500/15 border border-amber-500/35 text-xs text-amber-800 dark:text-amber-200 space-y-1">
+                  <p className="font-bold text-amber-700 dark:text-amber-300">
+                    Organization will remain active ({selfDeleteStatus.otherAdminsCount} other Admin remaining)
+                  </p>
+                  <p className="leading-relaxed">
+                    Only your Admin account will be permanently deleted. Other Admins retain access to manage {selfDeleteStatus.companyName || 'the organization'}.
+                  </p>
+                </div>
+              ) : null}
+
+              <div>
+                <label className="block text-sm font-medium text-surface-300 mb-1.5">
+                  Current Password <span className="text-rose-500 dark:text-rose-400">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showSelfDeletePw ? 'text' : 'password'}
+                    required
+                    value={selfDeletePassword}
+                    onChange={(e) => setSelfDeletePassword(e.target.value)}
+                    className="input-field pr-10"
+                    placeholder="Verify your Admin password"
+                    autoComplete="current-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSelfDeletePw((p) => !p)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-500 hover:text-surface-300"
+                  >
+                    {showSelfDeletePw ? <HiOutlineEyeOff className="w-4 h-4" /> : <HiOutlineEye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-surface-300 mb-1.5">
+                  Type <code className="px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-700 dark:text-rose-300 font-mono text-xs font-bold">DELETE MY ACCOUNT</code> to confirm
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={selfDeleteConfirmText}
+                  onChange={(e) => setSelfDeleteConfirmText(e.target.value)}
+                  className="input-field font-mono"
+                  placeholder="DELETE MY ACCOUNT"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowSelfDeleteModal(false)}
+                  disabled={selfDeleting}
+                  className="btn-secondary flex-1"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={
+                    selfDeleting ||
+                    !selfDeletePassword ||
+                    selfDeleteConfirmText.trim().toUpperCase() !== 'DELETE MY ACCOUNT'
+                  }
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-rose-600/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {selfDeleting ? 'Deleting...' : 'Permanently Delete'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

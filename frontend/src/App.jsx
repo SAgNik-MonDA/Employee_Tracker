@@ -28,6 +28,7 @@ import MediclaimPage from './pages/employee/MediclaimPage';
 // Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
 import ManageEmployees from './pages/admin/ManageEmployees';
+import RecycleBin from './pages/admin/RecycleBin';
 import SetHolidays from './pages/admin/SetHolidays';
 import AttendanceOverview from './pages/admin/AttendanceOverview';
 import LeaveApprovals from './pages/admin/LeaveApprovals';
@@ -147,6 +148,14 @@ function App() {
         <Route path="teams"        element={<TeamsPage />} />
         <Route path="meetings"     element={<MeetingsPage />} />
         <Route path="employees"    element={<ManageEmployees />} />
+        <Route
+          path="recycle-bin"
+          element={
+            <ProtectedRoute allowedRoles={['Admin', 'HR']}>
+              <RecycleBin />
+            </ProtectedRoute>
+          }
+        />
         <Route path="holidays"     element={<SetHolidays />} />
         <Route path="shift-schedule" element={<ShiftScheduler />} />
         <Route path="attendance" element={<AttendanceOverview />} />

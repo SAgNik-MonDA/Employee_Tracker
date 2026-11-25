@@ -10,9 +10,16 @@ const { generateQrToken, buildQrPayload, generateQrDataUrl } = require('../utils
 const {
   getTenantId,
   getTenantUserFilter,
+  getTenantRecycleBinFilter,
   belongsToTenant,
   getTenantAdmins,
 } = require('../utils/tenantHelper');
+const {
+  RECYCLE_BIN_RETENTION_DAYS,
+  permanentlyPurgeEmployee,
+  purgeTenantOrganization,
+  destroyCloudinaryAvatarIfExists,
+} = require('../utils/recycleBinScheduler');
 
 // Helper: extract Cloudinary public_id from a secure_url
 const getCloudinaryPublicId = (url) => {
@@ -83,9 +90,21 @@ const registerUser = async (req, res) => {
       return res.status(400).json({ message: 'Name, email and password are required' });
     }
 
+    if (role === 'SuperAdmin') {
+      return res.status(403).json({ message: 'Cannot create SuperAdmin accounts' });
+    }
+    if (req.user.role === 'HR' && role === 'Admin') {
+      return res.status(403).json({ message: 'HR users cannot create Admin accounts' });
+    }
+
     const cleanEmail = email.trim().toLowerCase();
     const userExists = await User.findOne({ email: cleanEmail });
     if (userExists) {
+      if (userExists.isDeleted) {
+        return res.status(400).json({
+          message: `An employee with email "${cleanEmail}" is currently in the Recycle Bin. Restore them or permanently delete them first.`,
+        });
+      }
       return res.status(400).json({ message: 'Employee already exists with this email address' });
     }
 
@@ -99,6 +118,11 @@ const registerUser = async (req, res) => {
         employeeCode: { $regex: codeRegex },
       });
       if (codeExists) {
+        if (codeExists.isDeleted) {
+          return res.status(400).json({
+            message: `Employee code "${finalEmployeeCode}" belongs to an employee in the Recycle Bin. Restore or permanently delete them first.`,
+          });
+        }
         return res.status(400).json({ message: `Employee code "${finalEmployeeCode}" is already taken in your organization` });
       }
     } else {
@@ -242,6 +266,12 @@ const loginUser = async (req, res) => {
     const isPasswordMatch = await user.matchPassword(password);
     if (!isPasswordMatch) {
       return res.status(401).json({ message: 'Incorrect Password' });
+    }
+
+    if (user.isDeleted) {
+      return res.status(403).json({
+        message: 'Your account has been deactivated and moved to the Recycle Bin. Contact your Administrator to restore access.',
+      });
     }
 
     // 3.5 Check Subscription Expiration (Non-SuperAdmin)
@@ -553,7 +583,7 @@ const forgotPassword = async (req, res) => {
 
     const user = await User.findOne({ email });
     // Always return success to prevent email enumeration
-    if (!user) {
+    if (!user || user.isDeleted) {
       return res.json({ message: 'If this email is registered, a reset link has been sent.' });
     }
 
@@ -633,7 +663,7 @@ const resetPassword = async (req, res) => {
       resetPasswordExpire: { $gt: Date.now() },
     });
 
-    if (!user) {
+    if (!user || user.isDeleted) {
       return res.status(400).json({ message: 'Invalid or expired reset link. Please request a new one.' });
     }
 
@@ -728,6 +758,9 @@ const updateEmployee = async (req, res) => {
     if (!user || !belongsToTenant(user, tenantId)) {
       return res.status(404).json({ message: 'Employee not found in your organization' });
     }
+    if (user.isDeleted) {
+      return res.status(400).json({ message: 'Cannot edit an employee currently in the Recycle Bin. Please restore them first.' });
+    }
 
     const {
       name, email, role, designation, department,
@@ -735,6 +768,16 @@ const updateEmployee = async (req, res) => {
       permanentAddress, currentAddress, bankDetails, joiningDate, password,
       weeklyHolidays, holidayStartDate, holidayValidUntil, gender,
     } = req.body;
+
+    if (role === 'SuperAdmin') {
+      return res.status(403).json({ message: 'Cannot assign SuperAdmin role' });
+    }
+    if (req.user.role === 'HR' && (user.role === 'Admin' || role === 'Admin')) {
+      return res.status(403).json({ message: 'HR users cannot modify Admin accounts or assign the Admin role' });
+    }
+    if (user.role === 'Admin' && role && role !== 'Admin' && user._id.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'You cannot change another Admin\'s role' });
+    }
 
     if (employeeCode && employeeCode !== user.employeeCode) {
       const codeExists = await User.findOne({
@@ -855,22 +898,301 @@ const updateEmployee = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// @desc    Delete employee (Admin only — tenant-isolated)
-// @route   DELETE /api/auth/employees/:id
+// @desc    Move employee to 30-day Recycle Bin (Admin only — tenant-isolated)
+//          STRICT RULE: Nobody can delete another Admin account.
+// @route   DELETE /api/auth/employee/:id
 // @access  Private (Admin)
 // ─────────────────────────────────────────────────────────────────────────────
 const deleteEmployee = async (req, res) => {
   try {
+    if (req.user.role !== 'Admin') {
+      return res.status(403).json({ message: 'Only an Admin can move employees to the Recycle Bin' });
+    }
+
     const tenantId = req.tenantId || getTenantId(req.user);
     const user = await User.findById(req.params.id);
     if (!user || !belongsToTenant(user, tenantId)) {
       return res.status(404).json({ message: 'Employee not found in your organization' });
     }
-    if (user._id.toString() === req.user._id.toString()) {
-      return res.status(400).json({ message: 'You cannot delete your own Admin account' });
+    if (user.role === 'SuperAdmin') {
+      return res.status(403).json({ message: 'SuperAdmin accounts cannot be deleted' });
     }
-    await User.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Employee removed successfully' });
+    if (user.role === 'Admin') {
+      if (user._id.toString() === req.user._id.toString()) {
+        return res.status(400).json({
+          message: 'Use the "Delete My Admin Account" option inside My Profile to delete your own Admin account.',
+        });
+      }
+      return res.status(403).json({
+        message: 'Access denied: Nobody else can delete an Admin account. Only an Admin can delete themselves.',
+      });
+    }
+    if (user.isDeleted) {
+      return res.status(400).json({ message: 'Employee is already in the Recycle Bin' });
+    }
+
+    const now = new Date();
+    const scheduledPurgeAt = new Date(
+      now.getTime() + RECYCLE_BIN_RETENTION_DAYS * 24 * 60 * 60 * 1000
+    );
+
+    user.isDeleted = true;
+    user.deletedAt = now;
+    user.scheduledPurgeAt = scheduledPurgeAt;
+    user.deletedBy = req.user._id;
+    user.deletedByName = req.user.name || 'Admin';
+    user.deletedByRole = req.user.role || 'Admin';
+    await user.save({ validateBeforeSave: false });
+
+    res.json({
+      message: `${user.name} moved to Recycle Bin. Auto-deletes permanently in ${RECYCLE_BIN_RETENTION_DAYS} days unless restored.`,
+      employee: {
+        _id: user._id,
+        name: user.name,
+        deletedAt: user.deletedAt,
+        scheduledPurgeAt: user.scheduledPurgeAt,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// @desc    Get all soft-deleted employees in Recycle Bin (Admin & HR — tenant-isolated)
+// @route   GET /api/auth/recycle-bin
+// @access  Private (Admin, HR)
+// ─────────────────────────────────────────────────────────────────────────────
+const getRecycleBinEmployees = async (req, res) => {
+  try {
+    const tenantId = req.tenantId || getTenantId(req.user);
+    const deletedUsers = await User.find(getTenantRecycleBinFilter(tenantId))
+      .select('-password -resetPasswordToken -resetPasswordExpire -faceDescriptor')
+      .sort({ deletedAt: -1 });
+
+    const nowMs = Date.now();
+    const items = deletedUsers.map((u) => {
+      const deletedAtDate = u.deletedAt ? new Date(u.deletedAt) : new Date(u.updatedAt || nowMs);
+      const purgeDate = u.scheduledPurgeAt
+        ? new Date(u.scheduledPurgeAt)
+        : new Date(deletedAtDate.getTime() + RECYCLE_BIN_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+      const daysRemaining = Math.max(
+        0,
+        Math.ceil((purgeDate.getTime() - nowMs) / (1000 * 60 * 60 * 24))
+      );
+
+      return {
+        ...userResponse(u),
+        isDeleted: true,
+        deletedAt: deletedAtDate,
+        scheduledPurgeAt: purgeDate,
+        deletedByName: u.deletedByName || 'Admin',
+        deletedByRole: u.deletedByRole || 'Admin',
+        daysRemaining,
+      };
+    });
+
+    res.json({
+      items,
+      count: items.length,
+      retentionDays: RECYCLE_BIN_RETENTION_DAYS,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// @desc    Restore an employee from the Recycle Bin (Admin & HR — tenant-isolated)
+// @route   PUT /api/auth/recycle-bin/:id/restore
+// @access  Private (Admin, HR)
+// ─────────────────────────────────────────────────────────────────────────────
+const restoreEmployee = async (req, res) => {
+  try {
+    const tenantId = req.tenantId || getTenantId(req.user);
+    const user = await User.findById(req.params.id);
+    if (!user || !belongsToTenant(user, tenantId)) {
+      return res.status(404).json({ message: 'Deleted employee not found in your organization' });
+    }
+    if (user.role === 'SuperAdmin') {
+      return res.status(403).json({ message: 'Invalid operation' });
+    }
+    if (!user.isDeleted) {
+      return res.status(400).json({ message: 'Employee is not in the Recycle Bin' });
+    }
+
+    user.isDeleted = false;
+    user.deletedAt = null;
+    user.scheduledPurgeAt = null;
+    user.deletedBy = null;
+    user.deletedByName = '';
+    user.deletedByRole = '';
+    await user.save({ validateBeforeSave: false });
+
+    res.json({
+      message: `${user.name} restored from Recycle Bin successfully! 🎉`,
+      employee: userResponse(user),
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// @desc    Permanently delete a soft-deleted non-Admin employee immediately (Admin only)
+// @route   DELETE /api/auth/recycle-bin/:id/permanent
+// @access  Private (Admin)
+// ─────────────────────────────────────────────────────────────────────────────
+const permanentlyDeleteEmployee = async (req, res) => {
+  try {
+    if (req.user.role !== 'Admin') {
+      return res.status(403).json({ message: 'Only an Admin can permanently delete employees' });
+    }
+
+    const tenantId = req.tenantId || getTenantId(req.user);
+    const user = await User.findById(req.params.id);
+    if (!user || !belongsToTenant(user, tenantId)) {
+      return res.status(404).json({ message: 'Employee not found in your organization' });
+    }
+    if (user.role === 'Admin' || user.role === 'SuperAdmin') {
+      return res.status(403).json({
+        message: 'Access denied: Nobody else can delete an Admin account. Only an Admin can delete themselves.',
+      });
+    }
+    if (!user.isDeleted) {
+      return res.status(400).json({
+        message: 'Move the employee to Recycle Bin first before permanent deletion.',
+      });
+    }
+
+    const deletedName = user.name;
+    await permanentlyPurgeEmployee(user);
+
+    res.json({ message: `${deletedName} permanently deleted from the system.` });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// @desc    Get Admin self-deletion impact status (other admins & org count)
+// @route   GET /api/auth/self-delete-status
+// @access  Private (Admin ONLY)
+// ─────────────────────────────────────────────────────────────────────────────
+const getAdminSelfDeleteStatus = async (req, res) => {
+  try {
+    if (req.user.role !== 'Admin') {
+      return res.status(403).json({ message: 'Only Admin accounts can access Admin self-deletion' });
+    }
+    const tenantId = req.tenantId || getTenantId(req.user);
+
+    const [otherAdminsCount, activeStaffCount] = await Promise.all([
+      User.countDocuments({
+        $or: [{ companyId: tenantId }, { _id: tenantId }],
+        role: 'Admin',
+        _id: { $ne: req.user._id },
+        isDeleted: { $ne: true },
+      }),
+      User.countDocuments({
+        ...getTenantUserFilter(tenantId),
+        _id: { $ne: req.user._id },
+      }),
+    ]);
+
+    res.json({
+      canSelfDelete: true,
+      otherAdminsCount,
+      isSoleAdmin: otherAdminsCount === 0,
+      activeStaffCount,
+      companyName: req.user.companyName || '',
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// @desc    Admin self-deletion (ONLY an Admin can delete themselves; nobody else can)
+// @route   DELETE /api/auth/self-delete-admin
+// @access  Private (Admin ONLY — strictly verified with password + phrase)
+// ─────────────────────────────────────────────────────────────────────────────
+const selfDeleteAdmin = async (req, res) => {
+  try {
+    if (req.user.role !== 'Admin') {
+      return res.status(403).json({
+        message: 'Access denied: Only an Admin can self-delete their Admin account.',
+      });
+    }
+
+    const { password, confirmText } = req.body;
+    if (!password) {
+      return res.status(400).json({ message: 'Current password is required to delete your Admin account' });
+    }
+    if ((confirmText || '').trim().toUpperCase() !== 'DELETE MY ACCOUNT') {
+      return res.status(400).json({ message: 'Please type "DELETE MY ACCOUNT" exactly to confirm' });
+    }
+
+    const adminUser = await User.findById(req.user._id);
+    if (!adminUser || adminUser.role !== 'Admin') {
+      return res.status(404).json({ message: 'Admin account not found' });
+    }
+
+    const isPasswordValid = await adminUser.matchPassword(password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: 'Incorrect password. Account deletion aborted.' });
+    }
+
+    const tenantId = getTenantId(adminUser);
+
+    // Check if another active Admin exists in the same organization
+    const survivingAdmin = await User.findOne({
+      $or: [{ companyId: tenantId }, { _id: tenantId }],
+      role: 'Admin',
+      _id: { $ne: adminUser._id },
+      isDeleted: { $ne: true },
+    }).select('name email phone');
+
+    if (survivingAdmin) {
+      // Transfer Subscription primary admin metadata if needed, then delete ONLY this Admin user
+      const Subscription = require('../models/Subscription');
+      const Notification = require('../models/Notification');
+      const Team = require('../models/Team');
+      const Meeting = require('../models/Meeting');
+
+      await Subscription.updateMany(
+        { companyId: tenantId, adminEmail: adminUser.email },
+        {
+          $set: {
+            adminName: survivingAdmin.name,
+            adminEmail: survivingAdmin.email,
+            adminPhone: survivingAdmin.phone || '',
+          },
+        }
+      );
+
+      await destroyCloudinaryAvatarIfExists(adminUser.profilePicture);
+
+      await Promise.all([
+        Notification.deleteMany({ userId: adminUser._id }),
+        Team.updateMany({ members: adminUser._id }, { $pull: { members: adminUser._id } }),
+        Meeting.updateMany({ attendees: adminUser._id }, { $pull: { attendees: adminUser._id } }),
+      ]);
+
+      await User.findByIdAndDelete(adminUser._id);
+
+      return res.json({
+        message: 'Your Admin account has been permanently deleted. Organization access continues with the remaining Admin.',
+        organizationRetained: true,
+      });
+    }
+
+    // Sole Admin of this organization -> cleanly purge the organization workspace & Admin account
+    await purgeTenantOrganization(tenantId);
+
+    return res.json({
+      message: 'Your Admin account and organization workspace have been permanently deleted.',
+      organizationRetained: false,
+    });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
@@ -1168,6 +1490,11 @@ const qrLogin = async (req, res) => {
     if (user.qrLoginToken !== qrToken) {
       return res.status(401).json({ message: 'QR code is invalid or has been revoked' });
     }
+    if (user.isDeleted) {
+      return res.status(403).json({
+        message: 'This account has been deactivated and moved to the Recycle Bin. QR login is disabled.',
+      });
+    }
 
     // Check Subscription Expiration for non-Admin staff
     if (user.role !== 'SuperAdmin') {
@@ -1236,6 +1563,11 @@ module.exports = {
   getAllEmployees,
   updateEmployee,
   deleteEmployee,
+  getRecycleBinEmployees,
+  restoreEmployee,
+  permanentlyDeleteEmployee,
+  getAdminSelfDeleteStatus,
+  selfDeleteAdmin,
   uploadAvatar,
   deleteAvatar,
   saveFaceDescriptor,

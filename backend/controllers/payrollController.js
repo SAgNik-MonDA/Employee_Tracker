@@ -577,6 +577,7 @@ const runAutoPayrollJob = async (customMonthYear = null, tenantId = null) => {
         role: { $nin: ADMIN_ROLES },
         basicSalary: { $gt: 0 },
         joiningDate: { $lte: lastDayOfMonth },
+        isDeleted: { $ne: true },
       };
 
   const employees = await User.find(empFilter);

@@ -12,12 +12,22 @@ const getTenantId = (user) => {
 };
 
 /**
- * MongoDB query filter matching ALL users belonging strictly to the caller's company.
- * Explicitly excludes SuperAdmin and legacy companyId:null leaks.
+ * MongoDB query filter matching ALL active users belonging strictly to the caller's company.
+ * Explicitly excludes SuperAdmin, soft-deleted (Recycle Bin) users, and legacy companyId:null leaks.
  */
 const getTenantUserFilter = (tenantId) => ({
   $or: [{ companyId: tenantId }, { _id: tenantId }],
   role: { $ne: 'SuperAdmin' },
+  isDeleted: { $ne: true },
+});
+
+/**
+ * MongoDB query filter matching soft-deleted (Recycle Bin) non-Admin employees within a tenant.
+ */
+const getTenantRecycleBinFilter = (tenantId) => ({
+  $or: [{ companyId: tenantId }, { _id: tenantId }],
+  role: { $nin: ['Admin', 'SuperAdmin'] },
+  isDeleted: true,
 });
 
 /**
@@ -57,6 +67,7 @@ const getTenantAdmins = async (tenantId, extraCriteria = { role: { $in: ['Admin'
     $and: [
       { $or: [{ companyId: tenantId }, { _id: tenantId }] },
       { role: { $ne: 'SuperAdmin' } },
+      { isDeleted: { $ne: true } },
       extraCriteria,
     ],
   }).select(select);
@@ -65,6 +76,7 @@ const getTenantAdmins = async (tenantId, extraCriteria = { role: { $in: ['Admin'
 module.exports = {
   getTenantId,
   getTenantUserFilter,
+  getTenantRecycleBinFilter,
   belongsToTenant,
   getTenantEmployeeIds,
   buildTenantRecordFilter,

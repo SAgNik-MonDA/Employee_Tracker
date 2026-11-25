@@ -83,7 +83,7 @@ const sendBirthdayEmails = async () => {
     const day         = now.getDate();
     console.log("[Birthday Scheduler] Checking birthdays for day=" + day + " month=" + month + " year=" + currentYear);
 
-    const allEmployees = await User.find({ dateOfBirth: { $ne: null } })
+    const allEmployees = await User.find({ dateOfBirth: { $ne: null }, isDeleted: { $ne: true } })
       .select("name email dateOfBirth lastBirthdayEmailYear");
 
     const todayBirthdays = allEmployees.filter((emp) => {

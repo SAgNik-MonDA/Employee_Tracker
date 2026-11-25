@@ -14,6 +14,7 @@ import {
   HiOutlineUser,
   HiOutlineVideoCamera,
   HiOutlineShieldCheck,
+  HiOutlineTrash,
   HiOutlineX,
   HiOutlineChevronRight,
 } from 'react-icons/hi';
@@ -41,6 +42,9 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: '/admin/teams',        icon: <HiOutlineUsers />,         label: 'Teams' },
     { to: '/admin/meetings',     icon: <HiOutlineVideoCamera />,   label: 'Meetings & MOM' },
     { to: '/admin/employees',    icon: <HiOutlineUsers />,          label: 'Manage Employees' },
+    ...(user?.role === 'Admin'
+      ? [{ to: '/admin/recycle-bin', icon: <HiOutlineTrash />,       label: 'Recycle Bin' }]
+      : []),
     { to: '/admin/holidays',     icon: <HiOutlineCalendar />,       label: 'Set Holidays' },
     { to: '/admin/shift-schedule', icon: <HiOutlineClock />,        label: 'Shift Schedule' },
     { to: '/admin/attendance',   icon: <HiOutlineClock />,          label: 'Attendance Overview' },
@@ -57,12 +61,13 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: '/admin/profile',      icon: <HiOutlineUser />,           label: 'My Profile' },
   ];
 
-  // HR links — full manage access (add/edit employees, leave approvals) but no delete
+  // HR links — employee management (create/edit employees, Recycle Bin restore, leave approvals)
   const hrLinks = [
     { to: '/admin/dashboard',    icon: <HiOutlineHome />,          label: 'Dashboard' },
     { to: '/admin/teams',        icon: <HiOutlineUsers />,         label: 'Teams' },
     { to: '/admin/meetings',     icon: <HiOutlineVideoCamera />,   label: 'Meetings & MOM' },
     { to: '/admin/employees',    icon: <HiOutlineUsers />,          label: 'Manage Employees' },
+    { to: '/admin/recycle-bin',  icon: <HiOutlineTrash />,          label: 'Recycle Bin' },
     { to: '/admin/holidays',     icon: <HiOutlineCalendar />,       label: 'Set Holidays' },
     { to: '/admin/shift-schedule', icon: <HiOutlineClock />,        label: 'Shift Schedule' },
     { to: '/admin/attendance',   icon: <HiOutlineClock />,          label: 'Attendance Overview' },

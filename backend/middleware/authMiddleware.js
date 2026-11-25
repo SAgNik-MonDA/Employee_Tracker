@@ -19,6 +19,10 @@ const protect = async (req, res, next) => {
         return res.status(401).json({ message: 'User not found' });
       }
 
+      if (req.user.isDeleted) {
+        return res.status(401).json({ message: 'Account has been deactivated and moved to Recycle Bin' });
+      }
+
       req.tenantId = getTenantId(req.user);
 
       // Check subscription enforcement if user is NOT SuperAdmin

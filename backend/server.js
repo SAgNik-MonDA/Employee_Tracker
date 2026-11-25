@@ -36,6 +36,10 @@ startAutoPayrollScheduler();
 // Start enterprise subscription lifecycle & auto-purge scheduler (runs daily at 00:05 AM IST)
 const { startSubscriptionScheduler } = require('./utils/subscriptionScheduler');
 startSubscriptionScheduler();
+
+// Start Recycle Bin 30-day employee auto-purge scheduler
+const { startRecycleBinScheduler } = require('./utils/recycleBinScheduler');
+startRecycleBinScheduler();
 const app    = express();
 const server = http.createServer(app);
 const io     = new Server(server, { cors: { origin: '*' } });

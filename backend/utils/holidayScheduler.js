@@ -11,6 +11,7 @@ const clearExpiredHolidaysAndNotify = async () => {
     const expiredUsers = await User.find({
       holidayValidUntil: { $lt: now, $ne: null },
       role: { $ne: 'SuperAdmin' },
+      isDeleted: { $ne: true },
     });
 
     if (expiredUsers.length > 0) {
@@ -67,6 +68,7 @@ const clearExpiredHolidaysAndNotify = async () => {
     const remindingUsers = await User.find({
       holidayValidUntil: { $gt: tomorrow, $lte: dayAfter },
       role: { $ne: 'SuperAdmin' },
+      isDeleted: { $ne: true },
     });
 
     if (remindingUsers.length > 0) {

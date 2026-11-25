@@ -14,6 +14,11 @@ const {
   getAllEmployees,
   updateEmployee,
   deleteEmployee,
+  getRecycleBinEmployees,
+  restoreEmployee,
+  permanentlyDeleteEmployee,
+  getAdminSelfDeleteStatus,
+  selfDeleteAdmin,
   uploadAvatar,
   deleteAvatar,
   saveFaceDescriptor,
@@ -35,6 +40,13 @@ router.post('/qr-login',                 qrLogin);
 router.get('/employees',                 protect, authorizeRoles('Admin', 'HR', 'Manager', 'PM', 'TL'), getAllEmployees);
 router.put('/employee/:id',              protect, authorizeRoles('Admin', 'HR'), updateEmployee);
 router.delete('/employee/:id',           protect, authorizeRoles('Admin'), deleteEmployee);
+
+// ── Admin Self-Delete (Admin ONLY) & Recycle Bin (Admin + Employee-creator HR) ──
+router.get('/self-delete-status',        protect, authorizeRoles('Admin'), getAdminSelfDeleteStatus);
+router.delete('/self-delete-admin',      protect, authorizeRoles('Admin'), selfDeleteAdmin);
+router.get('/recycle-bin',               protect, authorizeRoles('Admin', 'HR'), getRecycleBinEmployees);
+router.put('/recycle-bin/:id/restore',   protect, authorizeRoles('Admin', 'HR'), restoreEmployee);
+router.delete('/recycle-bin/:id/permanent', protect, authorizeRoles('Admin'), permanentlyDeleteEmployee);
 
 // ── Password Reset ────────────────────────────────────────────────────────────
 router.post('/forgot-password',          forgotPassword);

@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { HiOutlineShieldCheck, HiOutlineCurrencyRupee, HiOutlineArrowRight } from 'react-icons/hi';
+import { HiOutlineShieldCheck, HiOutlineCurrencyRupee, HiOutlineArrowRight, HiOutlineTrash, HiOutlineRefresh, HiOutlineClock } from 'react-icons/hi';
 import API from '../../api/axios';
+import { useAuth } from '../../context/AuthContext';
 import StatCard from '../../components/common/StatCard';
 import BirthdayBanner from '../../components/common/BirthdayBanner';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 const AdminDashboard = () => {
+  const { user } = useAuth();
+  const canAccessRecycleBin = user?.role === 'Admin' || user?.role === 'HR';
   const [stats, setStats] = useState({
     totalEmployees: 0,
     presentToday: 0,
@@ -19,6 +22,7 @@ const AdminDashboard = () => {
   const [pendingEarlyCheckouts, setPendingEarlyCheckouts] = useState([]);
   const [pendingFaceResets, setPendingFaceResets] = useState([]);
   const [pendingWithdrawals, setPendingWithdrawals] = useState([]);
+  const [recycleBinItems, setRecycleBinItems] = useState([]);
   const [financeStats, setFinanceStats] = useState({ totalBasic: 0, totalNet: 0, totalPf: 0, totalMediclaim: 0 });
   const [loading, setLoading] = useState(true);
 
@@ -32,13 +36,16 @@ const AdminDashboard = () => {
       const now = new Date();
       const monthYear = `${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`;
 
-      const [employeesRes, todayAttendanceRes, leavesRes, payrollRes, earlyCheckoutRes, withdrawalsRes] = await Promise.all([
+      const [employeesRes, todayAttendanceRes, leavesRes, payrollRes, earlyCheckoutRes, withdrawalsRes, recycleRes] = await Promise.all([
         API.get('/auth/employees'),
         API.get(`/attendance/all?date=${today}`),
         API.get('/leaves/all-requests?status=Pending'),
         API.get(`/payroll/all?monthYear=${monthYear}`),
         API.get('/attendance/early-checkout/pending').catch(() => ({ data: [] })),
         API.get('/withdrawals/all').catch(() => ({ data: [] })),
+        canAccessRecycleBin
+          ? API.get('/auth/recycle-bin').catch(() => ({ data: { items: [] } }))
+          : Promise.resolve({ data: { items: [] } }),
       ]);
 
       const employees = employeesRes.data;
@@ -46,6 +53,7 @@ const AdminDashboard = () => {
       setPendingEarlyCheckouts(earlyCheckoutRes.data);
       setPendingFaceResets(employees.filter(e => e.faceResetRequest === 'Pending'));
       setPendingWithdrawals(withdrawalsRes.data.filter(w => w.status === 'Pending'));
+      setRecycleBinItems(Array.isArray(recycleRes?.data?.items) ? recycleRes.data.items : []);
 
       // Financial overview
       let totalBasic = 0, totalNet = 0, totalPf = 0, totalMediclaim = 0;
@@ -396,6 +404,77 @@ const AdminDashboard = () => {
           </div>
         )}
       </div>
+
+      {/* ── Employee Recycle Bin Section (Admin & HR — employee-creator roles) ── */}
+      {canAccessRecycleBin && (
+        <div className="glass-card p-6 mt-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-500 dark:text-rose-400">
+                <HiOutlineTrash className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-surface-100 flex items-center gap-2">
+                  Employee Recycle Bin
+                  {recycleBinItems.length > 0 && (
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500/20 text-rose-500 dark:text-rose-300 border border-rose-500/30">
+                      {recycleBinItems.length}
+                    </span>
+                  )}
+                </h2>
+                <p className="text-xs text-surface-400">
+                  Deleted employees remain recoverable for 30 days before automatic permanent deletion
+                </p>
+              </div>
+            </div>
+            <Link
+              to="/admin/recycle-bin"
+              className="px-4 py-2 rounded-xl bg-[#D2F801] hover:bg-[#c3e800] text-[#0B0D11] font-bold text-xs inline-flex items-center gap-1.5 transition-all shadow-sm w-fit"
+            >
+              Open Recycle Bin <HiOutlineArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          {recycleBinItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-6 text-surface-400 bg-surface-800/30 rounded-xl border border-[#84B800]/35 dark:border-[#BEEB00]/35 text-center px-4">
+              <p className="font-semibold text-surface-200 text-sm">Recycle Bin is empty</p>
+              <p className="text-xs mt-1">
+                Deleted employees appear here with a 30-day countdown for easy one-click restoration.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {recycleBinItems.slice(0, 3).map((emp) => (
+                <div
+                  key={emp._id}
+                  className="p-3.5 rounded-xl bg-surface-800/30 border border-[#84B800]/35 dark:border-[#BEEB00]/35 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-bold text-surface-100 text-sm truncate">{emp.name}</span>
+                      <span className="text-xs font-mono px-2 py-0.5 rounded bg-surface-800 text-surface-300 border border-surface-700">
+                        {emp.employeeCode || emp.email}
+                      </span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-500 dark:text-amber-300 border border-amber-500/30 inline-flex items-center gap-1 font-semibold">
+                        <HiOutlineClock className="w-3 h-3" /> {emp.daysRemaining}d left
+                      </span>
+                    </div>
+                    <p className="text-xs text-surface-400 mt-1">
+                      {emp.role} • Deleted by {emp.deletedByName || 'Admin'}
+                    </p>
+                  </div>
+                  <Link
+                    to="/admin/recycle-bin"
+                    className="px-3 py-1.5 rounded-lg bg-[#D2F801]/20 hover:bg-[#D2F801]/30 border border-[#84B800]/50 dark:border-[#D2F801]/40 text-[#3F5C00] dark:text-[#D2F801] text-xs font-bold inline-flex items-center gap-1.5 w-fit whitespace-nowrap"
+                  >
+                    <HiOutlineRefresh className="w-3.5 h-3.5" /> Restore / Manage
+                  </Link>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Pending Face Resets ───────────────────────────────────── */}
       <div className="glass-card p-6 md:col-span-2 mt-6">
